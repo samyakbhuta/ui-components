@@ -96,14 +96,24 @@ const labelOf = (options: Option[], value: unknown) => options.find((option) => 
 const optionItems = (prefix: string, options: Option[]) =>
   options.map((option) => `<ui-${prefix}-item value="${option.value}">${option.label}</ui-${prefix}-item>`).join("");
 
+const icon = (paths: string) =>
+  `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+const icons = {
+  attach: icon('<path d="M12 5v14M5 12h14"/>'),
+  voice: icon('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
+  send: icon('<path d="M12 19V5M5 12l7-7 7 7"/>'),
+  chevron: icon('<path d="m6 9 6 6 6-6"/>'),
+};
+
 function select(label: string, options: Option[], value: string) {
   return `
     <ui-select default-value="${value}">
       <ui-select-label class="visually-hidden">${label}</ui-select-label>
       <ui-select-trigger>
-        <button type="button" class="select-trigger">
-          <span class="select-name" aria-hidden="true">${label}:</span>
+        <button type="button" class="ghost select-trigger">
+          <span class="select-name" aria-hidden="true">${label}</span>
           <ui-select-value></ui-select-value>
+          ${icons.chevron}
         </button>
       </ui-select-trigger>
       <ui-select-content>${optionItems("select", options)}</ui-select-content>
@@ -115,61 +125,76 @@ export function mountChatShell(root: HTMLElement) {
   root.innerHTML = `
     <div class="chat-shell">
       <header class="chat-header">
-        <a href="/showcase.html">Showcase</a>
+        <a class="back" href="/showcase.html">← Showcase</a>
         <h1>AI chat</h1>
       </header>
       <section class="transcript" aria-label="Conversation">
-        <p class="transcript-empty">Send a prompt to start. Type / for commands or @ to reference a file.</p>
+        <div class="transcript-empty">
+          <h2>What can I help with?</h2>
+          <p>Type <kbd>/</kbd> for commands or <kbd>@</kbd> to reference a file. Drop or paste files to attach them.</p>
+        </div>
         <ol class="messages" aria-live="polite"></ol>
       </section>
       <form class="composer">
-        <ui-segmented-control class="modes" aria-label="Mode" default-value="auto">
-          <ui-segmented-control-indicator></ui-segmented-control-indicator>
-          ${optionItems("segmented-control", modes)}
-        </ui-segmented-control>
-        <ui-textarea>
-          <textarea
-            name="prompt"
-            rows="3"
-            aria-label="Prompt"
-            placeholder="Ask anything. / for commands, @ to reference"
-          ></textarea>
-        </ui-textarea>
-        <ui-trigger-menu data-agent-hidden>
-          <ui-trigger-menu-hint></ui-trigger-menu-hint>
-          <div class="visually-hidden">
-            <ui-trigger-menu-status></ui-trigger-menu-status>
-          </div>
-          <ui-trigger-menu-content>
-            <ui-trigger-menu-empty>No matches</ui-trigger-menu-empty>
-            <ui-trigger-menu-list></ui-trigger-menu-list>
-          </ui-trigger-menu-content>
-        </ui-trigger-menu>
-        <ui-file-input multiple class="attachments">
-          <ui-file-input-list aria-label="Attachments">
-            <template>
-              <ui-file-input-item class="attachment">
-                <span data-file="name"></span>
-                <span class="attachment-size" data-file="size"></span>
-                <ui-file-input-item-remove>
-                  <button type="button" class="attachment-remove">×</button>
-                </ui-file-input-item-remove>
-              </ui-file-input-item>
-            </template>
-          </ui-file-input-list>
-          <div class="composer-toolbar">
-            <ui-file-input-trigger>
-              <button type="button">Attach files</button>
-            </ui-file-input-trigger>
-            ${select("Model", models, "balanced")}
-            ${select("Thinking", thinkingLevels, "medium")}
-            <ui-toggle class="voice" data-agent-hidden${Recognition ? "" : " disabled"}>
-              <button type="button"${Recognition ? "" : ' title="Voice input isn\'t supported in this browser"'}>Voice input</button>
-            </ui-toggle>
-            <span class="voice-status" role="status"></span>
-            <ui-button><button type="submit">Send</button></ui-button>
-          </div>
+        <ui-file-input multiple>
+          <ui-file-input-dropzone class="composer-card" paste-target="#prompt-input">
+            <ui-file-input-list class="attachments" aria-label="Attachments">
+              <template>
+                <ui-file-input-item class="attachment">
+                  <span class="attachment-name" data-file="name"></span>
+                  <span class="attachment-size" data-file="size"></span>
+                  <ui-file-input-item-remove>
+                    <button type="button" class="attachment-remove">×</button>
+                  </ui-file-input-item-remove>
+                </ui-file-input-item>
+              </template>
+            </ui-file-input-list>
+            <ui-textarea auto-resize>
+              <textarea
+                id="prompt-input"
+                name="prompt"
+                rows="1"
+                aria-label="Prompt"
+                placeholder="Ask anything…"
+              ></textarea>
+            </ui-textarea>
+            <ui-trigger-menu data-agent-hidden>
+              <ui-trigger-menu-hint></ui-trigger-menu-hint>
+              <div class="visually-hidden">
+                <ui-trigger-menu-status></ui-trigger-menu-status>
+              </div>
+              <ui-trigger-menu-content>
+                <ui-trigger-menu-empty>No matches</ui-trigger-menu-empty>
+                <ui-trigger-menu-list></ui-trigger-menu-list>
+              </ui-trigger-menu-content>
+            </ui-trigger-menu>
+            <div class="composer-bar">
+              <div class="bar-group">
+                <ui-file-input-trigger>
+                  <button type="button" class="icon-button" aria-label="Attach files" title="Attach files">${icons.attach}</button>
+                </ui-file-input-trigger>
+                <ui-segmented-control class="modes" aria-label="Mode" default-value="auto">
+                  <ui-segmented-control-indicator></ui-segmented-control-indicator>
+                  ${optionItems("segmented-control", modes)}
+                </ui-segmented-control>
+              </div>
+              <div class="bar-group">
+                ${select("Model", models, "balanced")}
+                ${select("Thinking", thinkingLevels, "medium")}
+                <ui-toggle class="voice" data-agent-hidden${Recognition ? "" : " disabled"}>
+                  <button type="button" class="icon-button" aria-label="Voice input" title="${Recognition ? "Voice input" : "Voice input isn't supported in this browser"}">${icons.voice}</button>
+                </ui-toggle>
+                <ui-button class="send" disabled focusable-when-disabled>
+                  <button type="submit" class="icon-button send-button" aria-label="Send" title="Send (Enter)">${icons.send}</button>
+                </ui-button>
+              </div>
+            </div>
+          </ui-file-input-dropzone>
         </ui-file-input>
+        <p class="composer-hint">
+          <span class="voice-status" role="status"></span>
+          <span class="shortcuts">Enter to send · Shift+Enter for a new line</span>
+        </p>
       </form>
     </div>
   `;
@@ -184,7 +209,8 @@ export function mountChatShell(root: HTMLElement) {
   const voice = root.querySelector("ui-toggle")!;
   const voiceStatus = root.querySelector<HTMLSpanElement>(".voice-status")!;
   const messages = root.querySelector<HTMLOListElement>(".messages")!;
-  const empty = root.querySelector<HTMLParagraphElement>(".transcript-empty")!;
+  const empty = root.querySelector<HTMLDivElement>(".transcript-empty")!;
+  const send = root.querySelector("ui-button")!;
   // ui-textarea owns the field so agents can set its value. The menu reaches it through an
   // adapter and is hidden from agents, who can type commands and references into the prompt.
   menu.editor = textFieldAdapter(textarea);
@@ -219,6 +245,12 @@ export function mountChatShell(root: HTMLElement) {
     recognition.start();
     voiceStatus.textContent = "Listening…";
   });
+
+  const updateSend = () => {
+    send.disabled = !textarea.value.trim() && attachments.api.getValue().length === 0;
+  };
+  textarea.addEventListener("input", updateSend);
+  attachments.addEventListener("valuechange", () => queueMicrotask(updateSend));
 
   textarea.addEventListener("keydown", (event) => {
     // While the suggestion list is open, the menu handles Enter first and marks it handled.
