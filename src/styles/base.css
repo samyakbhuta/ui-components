@@ -1,0 +1,11 @@
+/* ui-sdk adds a little CSS in this layer. Declared first, it ranks below any layers added later. */
+@layer ui-sdk;
+
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+}

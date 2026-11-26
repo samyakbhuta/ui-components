@@ -1,0 +1,26 @@
+.showcase {
+  max-width: 40rem;
+  margin: 4rem auto;
+  padding: 0 1rem;
+}
+
+.experiments {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.experiments li {
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, CanvasText 30%, Canvas);
+  border-radius: 0.5rem;
+}
+
+.experiments a {
+  font-weight: 600;
+}
+
+.experiments p {
+  margin: 0.5rem 0 0;
+}

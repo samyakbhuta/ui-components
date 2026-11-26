@@ -1,0 +1,153 @@
+.chat-shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 1rem;
+  box-sizing: border-box;
+  max-width: 48rem;
+  height: 100dvh;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.chat-header h1 {
+  margin: 0.25rem 0 0;
+  font-size: 1.5rem;
+}
+
+.transcript {
+  overflow-y: auto;
+}
+
+.transcript-empty {
+  color: color-mix(in srgb, CanvasText 65%, Canvas);
+}
+
+.messages {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.message {
+  justify-self: end;
+  max-width: 85%;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, CanvasText 8%, Canvas);
+}
+
+.message p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.message .message-meta {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, CanvasText 70%, Canvas);
+}
+
+.composer {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid color-mix(in srgb, CanvasText 55%, Canvas);
+  border-radius: 0.75rem;
+  background: Field;
+  color: FieldText;
+}
+
+.composer:has(textarea:focus-visible) {
+  outline: auto;
+}
+
+.composer textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.25rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  resize: none;
+  outline: none;
+}
+
+/* Firefox dims placeholders with opacity, which would undo this color. */
+.composer textarea::placeholder {
+  color: color-mix(in srgb, FieldText 60%, Field);
+  opacity: 1;
+}
+
+[data-slot="trigger-menu-hint"] {
+  color: color-mix(in srgb, FieldText 60%, Field);
+}
+
+.composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.composer-tip {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, FieldText 65%, Field);
+}
+
+.composer-actions button {
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+[data-slot="trigger-menu-content"] {
+  box-sizing: border-box;
+  min-width: 14rem;
+  max-height: min(18rem, var(--available-height));
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.25rem;
+  border: 1px solid color-mix(in srgb, CanvasText 55%, Canvas);
+  border-radius: 0.5rem;
+  background: Canvas;
+  color: CanvasText;
+  box-shadow: 0 4px 16px color-mix(in srgb, CanvasText 20%, transparent);
+}
+
+[data-slot="trigger-menu-content"][data-trigger="/"] [data-slot="trigger-menu-item"] {
+  font-family: ui-monospace, monospace;
+}
+
+[data-slot="trigger-menu-group-label"] {
+  padding: 0.375rem 0.5rem 0.125rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: color-mix(in srgb, CanvasText 70%, Canvas);
+}
+
+[data-slot="trigger-menu-item"] {
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.25rem;
+  cursor: default;
+}
+
+[data-slot="trigger-menu-item"][data-highlighted] {
+  background: color-mix(in srgb, CanvasText 12%, Canvas);
+}
+
+[data-slot="trigger-menu-empty"][data-empty] {
+  padding: 0.375rem 0.5rem;
+  color: color-mix(in srgb, CanvasText 70%, Canvas);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
