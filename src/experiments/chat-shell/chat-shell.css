@@ -86,24 +86,120 @@
   color: color-mix(in srgb, FieldText 60%, Field);
 }
 
-.composer-actions {
+.composer-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem;
 }
 
-.composer-tip {
-  font-size: 0.8125rem;
-  color: color-mix(in srgb, FieldText 65%, Field);
-}
-
-.composer-actions button {
+.composer-toolbar button {
   font: inherit;
   font-size: 0.875rem;
 }
 
-[data-slot="trigger-menu-content"] {
+.composer-toolbar [type="submit"] {
+  margin-inline-start: auto;
+}
+
+.voice-status:empty {
+  display: none;
+}
+
+.select-name {
+  color: color-mix(in srgb, ButtonText 70%, ButtonFace);
+}
+
+.voice button[data-pressed] {
+  background: CanvasText;
+  color: Canvas;
+}
+
+.voice-status {
+  font-size: 0.8125rem;
+}
+
+[data-slot="segmented-control"] {
+  position: relative;
+  display: inline-flex;
+  justify-self: start;
+  isolation: isolate;
+  padding: 0.125rem;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, FieldText 8%, Field);
+}
+
+[data-slot="segmented-control-item"] {
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: default;
+}
+
+[data-slot="segmented-control-item"]:focus-visible {
+  outline: auto;
+}
+
+[data-slot="segmented-control-indicator"] {
+  position: absolute;
+  z-index: -1;
+  top: var(--segmented-control-indicator-top);
+  left: var(--segmented-control-indicator-left);
+  width: var(--segmented-control-indicator-width);
+  height: var(--segmented-control-indicator-height);
+  border: 1px solid color-mix(in srgb, FieldText 55%, Field);
+  border-radius: 0.375rem;
+  box-sizing: border-box;
+  background: Field;
+  transition-property: top, left, width, height;
+  transition-duration: 200ms;
+}
+
+[data-slot="segmented-control-indicator"][data-activation-direction="none"] {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="segmented-control-indicator"] {
+    transition: none;
+  }
+}
+
+[data-slot="file-input-list"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.25rem 0.125rem 0.5rem;
+  border: 1px solid color-mix(in srgb, FieldText 40%, Field);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+}
+
+.attachment-size {
+  color: color-mix(in srgb, FieldText 70%, Field);
+}
+
+.attachment-remove {
+  padding: 0 0.375rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+.attachment-remove:hover {
+  background: color-mix(in srgb, FieldText 12%, Field);
+}
+
+[data-slot="trigger-menu-content"],
+[data-slot="select-content"] {
   box-sizing: border-box;
   min-width: 14rem;
   max-height: min(18rem, var(--available-height));
@@ -128,14 +224,20 @@
   color: color-mix(in srgb, CanvasText 70%, Canvas);
 }
 
-[data-slot="trigger-menu-item"] {
+[data-slot="trigger-menu-item"],
+[data-slot="select-item"] {
   padding: 0.375rem 0.5rem;
   border-radius: 0.25rem;
   cursor: default;
 }
 
-[data-slot="trigger-menu-item"][data-highlighted] {
+[data-slot="trigger-menu-item"][data-highlighted],
+[data-slot="select-item"][data-highlighted] {
   background: color-mix(in srgb, CanvasText 12%, Canvas);
+}
+
+[data-slot="select-item"][data-selected] {
+  font-weight: 600;
 }
 
 [data-slot="trigger-menu-empty"][data-empty] {
