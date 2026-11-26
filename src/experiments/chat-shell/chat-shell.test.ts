@@ -27,7 +27,7 @@ async function renderShell() {
   };
 }
 
-test("the composer's controls are named and start on Auto, Balanced and Medium", async () => {
+test("the composer's controls are named and start on Auto, Sonnet 5.5 and Medium", async () => {
   const { prompt, send, messages } = await renderShell();
 
   expect(prompt.value).toBe("");
@@ -36,10 +36,9 @@ test("the composer's controls are named and start on Auto, Balanced and Medium",
   expect(screen.getAllByRole("radio").map((radio) => [radio.textContent, radio.getAttribute("aria-checked")])).toEqual([
     ["Auto", "true"],
     ["Plan", "false"],
-    ["Execute", "false"],
-    ["Trade", "false"],
+    ["Accept-edits", "false"],
   ]);
-  expect(screen.getByRole("combobox", { name: "Model" }).textContent).toContain("Balanced");
+  expect(screen.getByRole("combobox", { name: "Model" }).textContent).toContain("Sonnet 5.5");
   expect(screen.getByRole("combobox", { name: "Thinking" }).textContent).toContain("Medium");
   expect(screen.getByRole("button", { name: "Attach files" })).toBeDefined();
   expect(screen.getByRole("button", { name: "Voice input" }).getAttribute("aria-pressed")).toBe("false");
@@ -54,7 +53,7 @@ test("Send adds the prompt with its settings, empties the box and keeps focus th
   await user.click(send);
 
   expect(texts()).toEqual(["Explain web components"]);
-  expect(metas()).toEqual(["Auto · Balanced · Thinking: Medium"]);
+  expect(metas()).toEqual(["Auto · Sonnet 5.5 · Thinking: Medium"]);
   expect(prompt.value).toBe("");
   expect(document.activeElement).toBe(prompt);
 });
@@ -77,14 +76,14 @@ test("the chosen mode, model and thinking level go with the prompt", async () =>
 
   await user.click(screen.getByRole("radio", { name: "Plan" }));
   await user.keyboard("{ArrowRight}");
-  expect(screen.getByRole("radio", { name: "Execute" }).getAttribute("aria-checked")).toBe("true");
+  expect(screen.getByRole("radio", { name: "Accept-edits" }).getAttribute("aria-checked")).toBe("true");
   const [model, thinking] = document.querySelectorAll("ui-select");
-  model.api.setValue("deep");
+  model.api.setValue("opus-5.5");
   thinking.api.setValue("off");
   await settle();
 
   await user.type(prompt, "Ship it{Enter}");
-  expect(metas()).toEqual(["Execute · Deep · Thinking: Off"]);
+  expect(metas()).toEqual(["Accept-edits · Opus 5.5 · Thinking: Off"]);
 });
 
 // jsdom never reports a trigger match while typing, so typing into the list is checked in a real browser.
@@ -112,7 +111,7 @@ test("a sent prompt notes its command and the files it references", async () => 
   await user.type(prompt, "/explain @package.json and @llms.txt");
   await user.click(send);
 
-  expect(metas()).toEqual(["Auto · Balanced · Thinking: Medium · Command: /explain · References: @package.json, @llms.txt"]);
+  expect(metas()).toEqual(["Auto · Sonnet 5.5 · Thinking: Medium · Command: /explain · References: @package.json, @llms.txt"]);
 });
 
 test("attached files show, can be removed, go with the prompt and clear after sending", async () => {
@@ -132,7 +131,7 @@ test("attached files show, can be removed, go with the prompt and clear after se
   await settle();
   await user.type(prompt, "{Enter}");
   expect(messages()).toHaveLength(1);
-  expect(metas()).toEqual(["Auto · Balanced · Thinking: Medium · Attached: notes.txt"]);
+  expect(metas()).toEqual(["Auto · Sonnet 5.5 · Thinking: Medium · Attached: notes.txt"]);
   expect(attachments.api.getValue()).toHaveLength(0);
 });
 
@@ -201,7 +200,7 @@ test("an agent can set the mode, model and thinking level, write a prompt and se
   const result = await agent.act({
     steps: [
       { ref: "Mode", action: "setValue", args: ["Plan"] },
-      { ref: "Model", action: "setValue", args: ["Deep"] },
+      { ref: "Model", action: "setValue", args: ["Haiku 5.5"] },
       { ref: "Thinking", action: "setValue", args: ["High"] },
       { ref: "Prompt", action: "setValue", args: ["/summarize @README.md"] },
       { ref: "Send", action: "press" },
@@ -209,6 +208,6 @@ test("an agent can set the mode, model and thinking level, write a prompt and se
   });
   expect(result.ok, result.error?.message).toBe(true);
   expect(texts()).toEqual(["/summarize @README.md"]);
-  expect(metas()).toEqual(["Plan · Deep · Thinking: High · Command: /summarize · References: @README.md"]);
+  expect(metas()).toEqual(["Plan · Haiku 5.5 · Thinking: High · Command: /summarize · References: @README.md"]);
   expect(prompt.value).toBe("");
 });

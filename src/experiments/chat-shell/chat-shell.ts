@@ -13,14 +13,13 @@ type Option = { value: string; label: string };
 export const modes: Option[] = [
   { value: "auto", label: "Auto" },
   { value: "plan", label: "Plan" },
-  { value: "execute", label: "Execute" },
-  { value: "trade", label: "Trade" },
+  { value: "accept-edits", label: "Accept-edits" },
 ];
 
 export const models: Option[] = [
-  { value: "fast", label: "Fast" },
-  { value: "balanced", label: "Balanced" },
-  { value: "deep", label: "Deep" },
+  { value: "opus-5.5", label: "Opus 5.5" },
+  { value: "sonnet-5.5", label: "Sonnet 5.5" },
+  { value: "haiku-5.5", label: "Haiku 5.5" },
 ];
 
 export const thinkingLevels: Option[] = [
@@ -179,7 +178,7 @@ export function mountChatShell(root: HTMLElement) {
                 </ui-segmented-control>
               </div>
               <div class="bar-group">
-                ${select("Model", models, "balanced")}
+                ${select("Model", models, "sonnet-5.5")}
                 ${select("Thinking", thinkingLevels, "medium")}
                 <ui-toggle class="voice" data-agent-hidden${Recognition ? "" : " disabled"}>
                   <button type="button" class="icon-button" aria-label="Voice input" title="${Recognition ? "Voice input" : "Voice input isn't supported in this browser"}">${icons.voice}</button>
