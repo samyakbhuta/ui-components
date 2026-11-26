@@ -62,6 +62,10 @@ export type ComposerStrings = {
   enterHint: string;
   modEnterHint: (modifier: string) => string;
   fileRejected: (file: File, reason: string, limits: { maxFiles?: number; maxSize?: number }) => string;
+  pastedAsFile: string;
+  pastedFileName: string;
+  counter: (length: number, max: number) => string;
+  limitReached: string;
 };
 
 export const defaultStrings: ComposerStrings = {
@@ -94,6 +98,10 @@ export const defaultStrings: ComposerStrings = {
             : reason;
     return `${file.name} wasn't attached: ${why}.`;
   },
+  pastedAsFile: "Long paste added as an attachment",
+  pastedFileName: "Pasted text.txt",
+  counter: (length, max) => `${length.toLocaleString()} / ${max.toLocaleString()}`,
+  limitReached: "Character limit reached",
 };
 
 /** SVG markup for each icon. Icons are decorative: buttons are named by `strings`. */
@@ -207,7 +215,25 @@ let instances = 0;
 
 /** Attributes whose change rebuilds the inside; the rest update in place. */
 const rebuildAttributes = ["attachments", "voice", "accept", "max-files", "max-size", "hint", "label"];
-const liveAttributes = ["placeholder", "busy", "disabled", "max-length", "rows", "submit-on", "voice-lang"];
+const liveAttributes = [
+  "placeholder",
+  "busy",
+  "disabled",
+  "max-length",
+  "rows",
+  "submit-on",
+  "voice-lang",
+  "history",
+  "persist",
+  "paste-as-file",
+];
+
+/** The most prompts `history` keeps. */
+const historyLimit = 100;
+/** Pastes at least this long become a file when `paste-as-file` has no number. */
+const defaultPasteLimit = 2000;
+
+type Saved = { value?: string; mode?: string; model?: string; thinking?: string; history?: string[] };
 
 /**
  * `<ai-composer>`: the input box of an AI chat. A prompt and a Send button, plus whichever of
@@ -235,6 +261,15 @@ export class AiComposerElement extends HTMLElement {
   /** Values set before the inside exists, or kept across a rebuild. */
   #pending: { value?: string; mode?: string; model?: string; thinking?: string; files?: File[]; focused?: boolean } = {};
   #picked = new Map<string, string>();
+  #history: string[] = [];
+  /** Where ArrowUp has got to in `history`, or -1 while not browsing it. */
+  #historyIndex = -1;
+  #draft = "";
+  #recalling = false;
+  #saveTimer?: ReturnType<typeof setTimeout>;
+  #previews = new Map<File, string>();
+  #restored = false;
+  #atLimit = false;
   #namedGroup = false;
   #listening?: { stop(): void };
   #statusTimer?: ReturnType<typeof setTimeout>;
@@ -351,6 +386,16 @@ export class AiComposerElement extends HTMLElement {
     return [...(this.#fileInput?.api.getValue() ?? [])];
   }
 
+  /** Sent prompts, oldest first. With the `history` attribute, ArrowUp brings them back. */
+  get history(): string[] {
+    return [...this.#history];
+  }
+  set history(value: string[]) {
+    this.#history = [...(value ?? [])].slice(-historyLimit);
+    this.#historyIndex = -1;
+    this.#save();
+  }
+
   get busy() {
     return this.hasAttribute("busy");
   }
@@ -415,7 +460,12 @@ export class AiComposerElement extends HTMLElement {
       references,
     };
     const sent = this.#emit("promptsubmit", detail, true);
-    if (sent) this.clear();
+    if (sent) {
+      if (text && this.#history.at(-1) !== text) this.#history = [...this.#history, text].slice(-historyLimit);
+      this.#historyIndex = -1;
+      this.clear();
+      this.#save();
+    }
     return sent;
   }
 
@@ -532,6 +582,16 @@ export class AiComposerElement extends HTMLElement {
       this.#slotted = [...this.children].filter((child): child is HTMLElement => child.hasAttribute("slot"));
     }
     this.#slotted = this.#slotted.filter((child) => child.isConnected || !this.#rendered);
+    // A saved draft comes back first, so the controls start on its choices.
+    if (!this.#restored) {
+      this.#restored = true;
+      const saved = this.#load();
+      if (saved) {
+        this.#pending.value ??= saved.value;
+        for (const part of ["mode", "model", "thinking"] as const) this.#pending[part] ??= saved[part];
+        if (saved.history && this.#history.length === 0) this.#history = saved.history.slice(-historyLimit);
+      }
+    }
 
     const s = this.#strings;
     const id = this.#id;
@@ -592,6 +652,7 @@ export class AiComposerElement extends HTMLElement {
           ? `<ui-file-input-list data-part="attachments" aria-label="${escape(s.attachments)}">
               <template>
                 <ui-file-input-item data-part="attachment">
+                  <img data-part="attachment-preview" alt="" hidden>
                   <span data-part="attachment-name" data-file="name"></span>
                   <span data-part="attachment-size" data-file="size"></span>
                   <ui-file-input-item-remove>
@@ -636,6 +697,7 @@ export class AiComposerElement extends HTMLElement {
                 </ui-toggle>`
               : ""
           }
+          <span data-part="counter" id="${id}-counter" hidden></span>
           <ui-button data-part="send" disabled focusable-when-disabled>
             <button type="button" data-button="icon" data-part="send-button"></button>
           </ui-button>
@@ -683,7 +745,10 @@ export class AiComposerElement extends HTMLElement {
             ? this.querySelector("[data-part='footer']")
             : null;
     if (!region) return;
-    if (child.slot === "end") region.insertBefore(child, region.querySelector(":scope > [data-part='voice'], :scope > [data-part='send']"));
+    if (child.slot === "end") {
+      const builtIn = [...region.children].find((other) => ["voice", "counter", "send"].includes((other as HTMLElement).dataset.part ?? ""));
+      region.insertBefore(child, builtIn ?? null);
+    }
     else region.append(child);
   }
 
@@ -713,9 +778,20 @@ export class AiComposerElement extends HTMLElement {
     };
     menu.editor = adapter;
 
-    textarea.addEventListener("input", () => this.#updateSend());
-    prompt.addEventListener("valuechange", () => queueMicrotask(() => this.#emit("valuechange", { value: this.value })));
+    textarea.addEventListener("input", () => {
+      // Typing over a recalled prompt makes it the draft.
+      if (!this.#recalling) this.#historyIndex = -1;
+      this.#updateSend();
+      this.#updateCounter();
+    });
+    prompt.addEventListener("valuechange", () =>
+      queueMicrotask(() => {
+        this.#emit("valuechange", { value: this.value });
+        this.#save();
+      }),
+    );
     textarea.addEventListener("keydown", (event) => {
+      if ((event.key === "ArrowUp" || event.key === "ArrowDown") && this.#browseHistory(event)) return;
       if (event.key !== "Enter" || event.isComposing || event.defaultPrevented) return;
       const modEnter = this.getAttribute("submit-on") === "mod-enter";
       if (modEnter ? !(event.metaKey || event.ctrlKey) : event.shiftKey) return;
@@ -737,7 +813,10 @@ export class AiComposerElement extends HTMLElement {
 
     for (const part of ["mode", "model", "thinking"] as const) {
       this.#control(part)?.addEventListener("valuechange", () =>
-        queueMicrotask(() => this.#emit(`${part}change`, { value: this.#current(part) })),
+        queueMicrotask(() => {
+          this.#emit(`${part}change`, { value: this.#current(part) });
+          this.#save();
+        }),
       );
     }
 
@@ -746,8 +825,15 @@ export class AiComposerElement extends HTMLElement {
         queueMicrotask(() => {
           this.#updateSend();
           this.#emit("fileschange", { value: this.files });
+          this.#releasePreviews();
         }),
       );
+      // Image attachments show a thumbnail.
+      const list = this.querySelector("[data-part='attachments']");
+      if (list) {
+        new MutationObserver(() => this.#showPreviews()).observe(list, { childList: true, subtree: true });
+      }
+      textarea.addEventListener("paste", (event) => this.#pasteAsFile(event));
       files.addEventListener("reject", (event) => {
         const rejected = event.detail.value as { file: File; reasons: string[] }[];
         const limits = {
@@ -783,6 +869,131 @@ export class AiComposerElement extends HTMLElement {
       this.#status(this.#strings.listening);
       this.#emit("voicestart", null);
     });
+  }
+
+  /** ArrowUp and ArrowDown walk through sent prompts. Returns true when the key was used. */
+  #browseHistory(event: KeyboardEvent) {
+    if (!this.hasAttribute("history") || event.defaultPrevented || event.isComposing) return false;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return false;
+    const textarea = this.#textarea!;
+    const { selectionStart: start, selectionEnd: end, value } = textarea;
+    if (start !== end || this.#history.length === 0) return false;
+    const browsing = this.#historyIndex !== -1;
+
+    let next: number;
+    if (event.key === "ArrowUp") {
+      // Start from an empty box or the very start, and keep going from the first line.
+      const onFirstLine = !value.slice(0, start).includes("\n");
+      if (browsing ? !onFirstLine : value !== "" && start !== 0) return false;
+      if (browsing && this.#historyIndex === 0) return true;
+      if (!browsing) this.#draft = value;
+      next = browsing ? this.#historyIndex - 1 : this.#history.length - 1;
+    } else {
+      if (!browsing || value.slice(end).includes("\n")) return false;
+      next = this.#historyIndex + 1;
+    }
+
+    event.preventDefault();
+    const text = next >= this.#history.length ? this.#draft : this.#history[next];
+    this.#historyIndex = next >= this.#history.length ? -1 : next;
+    this.#recalling = true;
+    this.#prompt!.api.setValue(text);
+    this.#recalling = false;
+    textarea.setSelectionRange(text.length, text.length);
+    this.#updateSend();
+    this.#updateCounter();
+    return true;
+  }
+
+  get #storageKey() {
+    const name = this.getAttribute("persist");
+    return name ? `ai-composer:${name}` : null;
+  }
+
+  #load(): Saved | null {
+    const key = this.#storageKey;
+    if (!key) return null;
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+      return saved && typeof saved === "object" ? (saved as Saved) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Saves the draft, the choices and the history, a moment after the last change. */
+  #save() {
+    const key = this.#storageKey;
+    if (!key || !this.#rendered) return;
+    clearTimeout(this.#saveTimer);
+    this.#saveTimer = setTimeout(() => {
+      const saved: Saved = {
+        value: this.value,
+        mode: this.mode,
+        model: this.model,
+        thinking: this.thinking,
+        history: this.hasAttribute("history") ? this.#history : undefined,
+      };
+      try {
+        localStorage.setItem(key, JSON.stringify(saved));
+      } catch {
+        // Storage can be full or blocked; the composer works without it.
+      }
+    }, 250);
+  }
+
+  #pasteAsFile(event: ClipboardEvent) {
+    const setting = this.getAttribute("paste-as-file");
+    if (setting === null || !this.hasAttribute("attachments") || this.disabled) return;
+    const limit = Number(setting) > 0 ? Number(setting) : defaultPasteLimit;
+    const text = event.clipboardData?.getData("text/plain") ?? "";
+    if (text.length < limit || (event.clipboardData?.files.length ?? 0) > 0) return;
+    event.preventDefault();
+    const file = new File([text], this.#strings.pastedFileName, { type: "text/plain", lastModified: Date.now() });
+    if (this.addFiles([file])) this.#status(this.#strings.pastedAsFile, 4000);
+  }
+
+  #showPreviews() {
+    for (const item of this.querySelectorAll<HTMLElement & { file?: File }>("[data-part='attachment']")) {
+      const file = item.file;
+      const image = item.querySelector<HTMLImageElement>("[data-part='attachment-preview']");
+      if (!file || !image || image.getAttribute("src") || !file.type.startsWith("image/")) continue;
+      if (typeof URL.createObjectURL !== "function") continue;
+      let url = this.#previews.get(file);
+      if (!url) {
+        url = URL.createObjectURL(file);
+        this.#previews.set(file, url);
+      }
+      image.src = url;
+      image.hidden = false;
+    }
+  }
+
+  /** Frees the thumbnails of files that are no longer attached. */
+  #releasePreviews() {
+    const attached = new Set(this.files);
+    for (const [file, url] of this.#previews) {
+      if (attached.has(file)) continue;
+      URL.revokeObjectURL?.(url);
+      this.#previews.delete(file);
+    }
+  }
+
+  #updateCounter() {
+    const counter = this.querySelector<HTMLElement>("[data-part='counter']");
+    const textarea = this.#textarea;
+    if (!counter || !textarea) return;
+    const max = Number(this.getAttribute("max-length"));
+    const length = textarea.value.length;
+    // Shown from 80% of the limit, so it only appears when it matters.
+    counter.hidden = !(max > 0 && length >= max * 0.8);
+    counter.textContent = max > 0 ? this.#strings.counter(length, max) : "";
+    const atLimit = max > 0 && length >= max;
+    counter.toggleAttribute("data-limit", atLimit);
+    if (atLimit && !this.#atLimit) this.#status(this.#strings.limitReached, 4000);
+    this.#atLimit = atLimit;
+    if (max > 0) textarea.setAttribute("aria-describedby", counter.id);
+    else textarea.removeAttribute("aria-describedby");
   }
 
   #updateTriggers() {
@@ -829,6 +1040,7 @@ export class AiComposerElement extends HTMLElement {
         custom ?? (this.getAttribute("submit-on") === "mod-enter" ? s.modEnterHint(isMac() ? "⌘" : "Ctrl") : s.enterHint);
     }
     this.#updateSend();
+    this.#updateCounter();
   }
 
   #updateSend() {

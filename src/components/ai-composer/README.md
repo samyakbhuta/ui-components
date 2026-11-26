@@ -85,7 +85,10 @@ Setting a list to `[]` takes its control away again. If the browser can't recogn
 | `hint` | depends on `submit-on` | The line under the box. `hint=""` hides it. |
 | `submit-on` | `enter` | `enter`: Enter sends and Shift+Enter adds a line. `mod-enter`: Ctrl+Enter (⌘+Enter on a Mac) sends and Enter adds a line. |
 | `rows` | `1` | How many lines tall the prompt starts. It grows as people type, up to `--ai-composer-max-height`. |
-| `max-length` | no limit | The most characters the prompt holds. |
+| `max-length` | no limit | The most characters the prompt holds. A counter appears from 80% of the limit, and screen readers hear when it's reached. |
+| `history` | off | ArrowUp in an empty box (or at its very start) brings back earlier prompts; ArrowDown goes forward, back to what you were typing. Sent prompts are added to `history`. |
+| `persist` | off | Saves the draft, the choices and the history in `localStorage` under this name, like `persist="chat"`, so a reload doesn't lose them. Sending clears the saved draft. |
+| `paste-as-file` | off | With `attachments`, a paste of at least this many characters becomes a text file attachment instead of filling the box. Without a number, 2,000. |
 | `busy` | off | The AI is responding. Send becomes **Stop**, which fires `promptstop`, and nothing can be sent. People can keep typing. |
 | `disabled` | off | Locks every control. |
 
@@ -103,7 +106,8 @@ Every attribute can change at any time, and what people have typed, attached and
 | `speechRecognizer` | `SpeechRecognizer` | The speech engine. Defaults to the browser's own; see [Recipes](#use-a-cloud-speech-service). |
 | `value` | `string` | The prompt's text. Setting it fires `valuechange`. |
 | `mode`, `model`, `thinking` | `string \| undefined` | The chosen values, or `undefined` while that control is off. |
-| `files` | `File[]` (read-only) | The attached files. Use `addFiles()` and `clear()` to change them. |
+| `files` | `File[]` (read-only) | The attached files. Use `addFiles()` and `clear()` to change them. Image attachments show a thumbnail. |
+| `history` | `string[]` | Sent prompts, oldest first, up to 100. Set it to seed or clear the history. |
 | `busy`, `disabled` | `boolean` | The same as the attributes. |
 
 `ComposerOption` is `{ value, label, description?, disabled? }`. A `description` shows under the label in the Model and Thinking menus, and as a tooltip on a mode. A `disabled` option shows but can't be chosen.
@@ -221,6 +225,9 @@ composer.strings = {
 | `enterHint` | `Enter to send · Shift+Enter for a new line` |
 | `modEnterHint(modifier)` | `${modifier}+Enter to send · Enter for a new line` |
 | `fileRejected(file, reason, limits)` | `notes.exe wasn't attached: that type of file isn't accepted.` `reason` is `file-type`, `file-too-large` or `too-many-files`. |
+| `pastedAsFile`, `pastedFileName` | `Long paste added as an attachment`, `Pasted text.txt` |
+| `counter(length, max)` | `3,500 / 4,000` |
+| `limitReached` | `Character limit reached` |
 
 The labels of the modes, models and thinking levels come from your own lists.
 
@@ -334,6 +341,14 @@ composer.speechRecognizer = {
 
 Call `onText` with each finished phrase, and `onEnd` once listening stops for any reason.
 
+### Remember drafts and earlier prompts
+
+```html
+<ai-composer history persist="support-chat" attachments paste-as-file max-length="8000"></ai-composer>
+```
+
+Each composer with its own `persist` name keeps its own draft. When `accept` is set, make sure it allows `.txt` files if you use `paste-as-file`.
+
 ### Your own model list
 
 ```ts
@@ -350,4 +365,4 @@ composer.model = localStorage.getItem("model") ?? "haiku-5.5";
 
 - `ai-composer.ts`: the element, its types, and the default lists, strings and icons.
 - `ai-composer.css`: its styles.
-- `ai-composer.test.ts`: tests for every attribute, property, method, event and slot, plus agent use.
+- `ai-composer.test.ts`: tests for every attribute, property, method, event and slot, the extras (history, drafts, long pastes, thumbnails, the counter), plus agent use.

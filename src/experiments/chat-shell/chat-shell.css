@@ -39,20 +39,14 @@
   text-decoration: underline;
 }
 
-/* Conversation */
+/* Conversation: <ai-transcript> scrolls; the page gives it room and an empty state. */
 
 .transcript {
-  overflow-y: auto;
   padding: 1rem 0;
 }
 
-.transcript:has(.transcript-empty:not([hidden])) {
-  display: grid;
-  place-items: center;
-}
-
 .transcript-empty {
-  max-width: 28rem;
+  max-width: 30rem;
   text-align: center;
 }
 
@@ -66,6 +60,34 @@
   color: var(--muted);
 }
 
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.suggestion {
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.suggestion:hover {
+  background: var(--soft);
+}
+
+.suggestion:focus-visible {
+  outline: auto;
+}
+
 kbd {
   padding: 0 0.3em;
   border: 1px solid var(--line);
@@ -74,45 +96,10 @@ kbd {
   font-size: 0.875em;
 }
 
-.messages {
-  display: grid;
-  gap: 1rem;
+.message-meta {
   margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.message {
-  display: grid;
-  justify-items: end;
-  gap: 0.25rem;
-}
-
-.message.reply {
-  justify-items: start;
-}
-
-.message p {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.message.user p:not(.message-meta) {
-  max-width: 85%;
-  padding: 0.5rem 0.875rem;
-  border-radius: 1rem;
-  background: var(--soft);
-}
-
-.message .message-meta {
   font-size: 0.75rem;
   color: var(--muted);
-}
-
-.message.reply p:not(.message-meta) {
-  max-width: 85%;
-  line-height: 1.5;
 }
 
 /* Composer: the component brings its own styles; the page only places it. */

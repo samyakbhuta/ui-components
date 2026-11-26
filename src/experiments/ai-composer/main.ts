@@ -1,6 +1,9 @@
 import "../../styles/base.css";
 import "./docs.css";
+import "../../components/ai-message/ai-message.ts";
 import "../../components/ai-thinking/ai-thinking.ts";
+import "../../components/ai-transcript/ai-transcript.ts";
+import { mountPlayground } from "./playground.ts";
 import {
   type AiComposerElement,
   defaultModels,
@@ -15,7 +18,43 @@ type Demo = {
   html: string;
   script?: string;
   setup?: (root: HTMLElement) => void;
+  /** The example shows its own code. */
+  noCode?: boolean;
 };
+
+const sampleReply = `Here's what a reply can hold:
+
+- **Bold**, *italic*, \`inline code\` and [links](https://developer.mozilla.org/docs/Web/API/Web_components)
+- Nested lists
+  1. like this
+  2. and this
+
+| Part | Element |
+|---|:-:|
+| Input | \`<ai-composer>\` |
+| Messages | \`<ai-message>\` |
+
+\`\`\`html
+<ai-message>**Markdown** goes here</ai-message>
+\`\`\`
+
+> HTML in a reply shows as text: <img src=x onerror=alert(1)> stays harmless.`;
+
+/** Streams text into a message a few characters at a time. */
+function stream(message: HTMLElementTagNameMap["ai-message"], text: string, signal?: AbortSignal) {
+  message.text = "";
+  message.streaming = true;
+  let index = 0;
+  const timer = setInterval(() => {
+    if (signal?.aborted || index >= text.length) {
+      clearInterval(timer);
+      message.done();
+      return;
+    }
+    message.appendText(text.slice(index, index + 5));
+    index += 5;
+  }, 16);
+}
 
 const files = ["README.md", "package.json", "src/main.ts", "src/components/ai-composer/ai-composer.ts"];
 
@@ -35,6 +74,14 @@ function logEvents(root: HTMLElement) {
 }
 
 const demos: Demo[] = [
+  {
+    id: "playground",
+    title: "Playground",
+    intro: "Switch features on and off, change the look, and copy the code for what you've built.",
+    html: "",
+    noCode: true,
+    setup: (root) => mountPlayground(root),
+  },
   {
     id: "minimal",
     title: "Minimal",
@@ -166,6 +213,69 @@ composer.models = [
     },
   },
   {
+    id: "extras",
+    title: "History, drafts, long pastes and a counter",
+    intro:
+      "history: press ↑ in an empty box for earlier prompts. persist: the draft and choices survive a reload. paste-as-file: a paste of 500 characters or more becomes an attachment. max-length: a counter appears near the limit.",
+    html: `<ai-composer history persist="docs-example" attachments paste-as-file="500" max-length="280"></ai-composer>`,
+    setup: (root) => {
+      const composer = root.querySelector("ai-composer")!;
+      if (composer.history.length === 0) composer.history = ["What's a custom element?", "/explain @README.md"];
+    },
+  },
+  {
+    id: "messages",
+    title: "<ai-message>",
+    intro:
+      "One message. Assistant messages render Markdown safely and offer Copy and Retry; yours show as typed and offer Copy and Edit. Text streams in with appendText().",
+    html: `<ai-message from="user">Show me what a reply can look like</ai-message>
+<ai-message class="sample-reply"></ai-message>
+<button type="button" class="replay">Stream it again</button>`,
+    script: `const reply = document.createElement("ai-message")
+reply.streaming = true
+transcript.append(reply)
+for await (const chunk of stream) reply.appendText(chunk)
+reply.done()
+
+reply.addEventListener("messageaction", (event) => {
+  if (event.detail.action === "retry") askAgain()
+})`,
+    setup: (root) => {
+      const reply = root.querySelector<HTMLElementTagNameMap["ai-message"]>(".sample-reply")!;
+      reply.text = sampleReply;
+      root.querySelector(".replay")!.addEventListener("click", () => stream(reply, sampleReply));
+      root.addEventListener("messageaction", (event) => {
+        if (event.detail.action === "retry") stream(reply, sampleReply);
+      });
+    },
+  },
+  {
+    id: "transcript",
+    title: "<ai-transcript>",
+    intro:
+      "The scrolling conversation. It follows a streaming reply while you're at the bottom, stays put if you scroll up to read, and offers Jump to latest. Screen readers hear each finished reply once.",
+    html: `<ai-transcript class="short-transcript">
+  <p slot="empty">No messages yet.</p>
+</ai-transcript>
+<button type="button" class="add-reply">Add a long reply</button>`,
+    script: `<ai-transcript>
+  <p slot="empty">What can I help with?</p>
+  <!-- <ai-message> elements go here -->
+</ai-transcript>`,
+    setup: (root) => {
+      const transcript = root.querySelector("ai-transcript")!;
+      let count = 0;
+      root.querySelector(".add-reply")!.addEventListener("click", () => {
+        count += 1;
+        const question = Object.assign(document.createElement("ai-message"), { from: "user" as const, text: `Question ${count}` });
+        const reply = document.createElement("ai-message");
+        transcript.append(question, reply);
+        const paragraphs = Array.from({ length: 8 }, (_, index) => `Paragraph ${index + 1} of reply ${count}. Scroll up while this streams: the view stays where you put it.`);
+        stream(reply, paragraphs.join("\n\n"));
+      });
+    },
+  },
+  {
     id: "slots",
     title: "Your own buttons and footer",
     intro: 'Children with slot="start" or slot="end" go into the bar; slot="footer" replaces the hint line.',
@@ -266,8 +376,8 @@ const main = document.querySelector<HTMLElement>("#app")!;
 main.innerHTML = `
   <header class="docs-header">
     <a class="back" href="/showcase.html">← Showcase</a>
-    <h1>&lt;ai-composer&gt; and &lt;ai-thinking&gt;</h1>
-    <p>Live examples. The full reference is in <code>src/components/ai-composer/README.md</code> and <code>src/components/ai-thinking/README.md</code>.</p>
+    <h1>AI chat components</h1>
+    <p>Live examples of <code>&lt;ai-composer&gt;</code>, <code>&lt;ai-message&gt;</code>, <code>&lt;ai-transcript&gt;</code> and <code>&lt;ai-thinking&gt;</code>. Each has a README with its full API in <code>src/components/</code>.</p>
     <nav aria-label="Examples"><ul>${demos.map((demo) => `<li><a href="#${demo.id}">${escape(demo.title)}</a></li>`).join("")}</ul></nav>
   </header>
   ${demos
@@ -278,11 +388,15 @@ main.innerHTML = `
       <p>${escape(demo.intro)}</p>
       <div class="demo-stage">${demo.html}</div>
       <p class="event-log" aria-live="off"></p>
-      <details class="demo-code">
+      ${
+        demo.noCode
+          ? ""
+          : `<details class="demo-code">
         <summary>Code</summary>
         <pre><code>${escape(demo.html)}</code></pre>
         ${demo.script ? `<pre><code>${escape(demo.script)}</code></pre>` : ""}
-      </details>
+      </details>`
+      }
     </section>`,
     )
     .join("")}

@@ -19,6 +19,8 @@ To build a new component, also:
 Our own components live in `src/components/`, each with a README that documents its full API:
 
 - `<ai-composer>` (`src/components/ai-composer/README.md`): the input box of an AI chat. It arranges ui-sdk parts; every extra (attachments, voice, mode, model, thinking, `/` commands, `@` references) is opt-in.
+- `<ai-message>` (`src/components/ai-message/README.md`): one message. Renders Markdown with its own safe renderer (`markdown.ts`), which builds DOM nodes and never parses model text as HTML; keep it that way.
+- `<ai-transcript>` (`src/components/ai-transcript/README.md`): the scrolling conversation, which follows streaming replies and announces finished ones.
 - `<ai-thinking>` (`src/components/ai-thinking/README.md`): the "Thinking…" indicator for a conversation.
 
 When you change a component's API, update its README, its tests, and the live examples in `src/experiments/ai-composer/main.ts` (`/experiments/ai-composer.html`).

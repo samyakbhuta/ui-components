@@ -235,7 +235,7 @@ test("slotted children go to the start or end of the bar, or replace the hint", 
   const start = composer.querySelector("[data-part='start']")!;
   const end = composer.querySelector("[data-part='end']")!;
   expect(start.lastElementChild!.textContent).toBe("Web search");
-  expect([...end.children].map((child) => child.textContent!.trim() || child.getAttribute("data-part"))).toEqual(["Tools", "send"]);
+  expect([...end.children].map((child) => child.textContent!.trim() || child.getAttribute("data-part"))).toEqual(["Tools", "counter", "send"]);
   expect(composer.querySelector("[data-part='footer']")!.textContent).toContain("AI can make mistakes.");
   expect(composer.querySelector("[data-part='hint']")).toBeNull();
 
@@ -461,4 +461,111 @@ test("agents can use every control, and two composers stay apart by their labels
   expect(first.model).toBe("haiku-5.5");
   expect(sent).toEqual(["Prompt: Hi", "Reply: Thanks"]);
   expect([first.value, second.value]).toEqual(["", ""]);
+});
+
+test("with history, ArrowUp and ArrowDown walk through sent prompts and back to the draft", async () => {
+  const user = userEvent.setup();
+  const { composer, prompt } = await mount("<ai-composer history></ai-composer>");
+  composer.history = ["first", "second"];
+
+  await user.click(prompt);
+  await user.keyboard("{ArrowUp}");
+  expect(prompt.value).toBe("second");
+  expect(prompt.selectionStart).toBe(6);
+  await user.keyboard("{ArrowUp}{ArrowUp}");
+  expect(prompt.value).toBe("first");
+  await user.keyboard("{ArrowDown}");
+  expect(prompt.value).toBe("second");
+  await user.keyboard("{ArrowDown}");
+  expect(prompt.value).toBe("");
+
+  // Sending adds to the history, without repeating the last entry.
+  composer.value = "third";
+  composer.submit();
+  composer.value = "third";
+  composer.submit();
+  expect(composer.history).toEqual(["first", "second", "third"]);
+});
+
+test("without the history attribute, ArrowUp moves the caret as usual", async () => {
+  const user = userEvent.setup();
+  const { composer, prompt } = await mount();
+  composer.history = ["earlier"];
+  await user.click(prompt);
+  await user.keyboard("{ArrowUp}");
+  expect(prompt.value).toBe("");
+});
+
+test("with persist, the draft and the choices come back after a reload, and sending clears the draft", async () => {
+  localStorage.clear();
+  const saved = () => new Promise((resolve) => setTimeout(resolve, 300));
+  const first = await mount('<ai-composer persist="chat" history></ai-composer>', everything);
+  first.composer.value = "half-written";
+  first.composer.model = "haiku-5.5";
+  await settle();
+  await saved();
+  expect(JSON.parse(localStorage.getItem("ai-composer:chat")!)).toMatchObject({ value: "half-written", model: "haiku-5.5" });
+  first.composer.remove();
+
+  const second = await mount('<ai-composer persist="chat" history></ai-composer>', everything);
+  expect(second.composer.value).toBe("half-written");
+  expect(second.composer.model).toBe("haiku-5.5");
+  second.composer.submit();
+  await saved();
+  expect(JSON.parse(localStorage.getItem("ai-composer:chat")!)).toMatchObject({ value: "", history: ["half-written"] });
+  localStorage.clear();
+});
+
+test("a long paste becomes an attachment with paste-as-file", async () => {
+  const user = userEvent.setup();
+  const { composer, prompt } = await mount('<ai-composer attachments paste-as-file="20"></ai-composer>');
+
+  await user.click(prompt);
+  await user.paste("short");
+  expect(prompt.value).toBe("short");
+  await user.paste("a long pasted log that goes on and on");
+  await settle();
+  expect(prompt.value).toBe("short");
+  expect(composer.files.map((file) => [file.name, file.type])).toEqual([["Pasted text.txt", "text/plain"]]);
+  expect(await composer.files[0].text()).toBe("a long pasted log that goes on and on");
+  expect(composer.querySelector("[data-part='status']")!.textContent).toBe("Long paste added as an attachment");
+});
+
+test("image attachments show a thumbnail that is freed when removed", async () => {
+  const create = vi.fn(() => "blob:thumbnail");
+  const revoke = vi.fn();
+  Object.assign(URL, { createObjectURL: create, revokeObjectURL: revoke });
+  try {
+    const { composer } = await mount("<ai-composer attachments></ai-composer>");
+    composer.addFiles([new File(["png"], "chart.png", { type: "image/png" }), new File(["a"], "notes.txt", { type: "text/plain" })]);
+    await settle();
+    const previews = [...composer.querySelectorAll<HTMLImageElement>("[data-part='attachment-preview']")];
+    expect(previews.map((image) => [image.getAttribute("src"), image.hidden])).toEqual([
+      ["blob:thumbnail", false],
+      [null, true],
+    ]);
+    expect(previews[0].alt).toBe("");
+
+    composer.clear();
+    await settle();
+    expect(revoke).toHaveBeenCalledWith("blob:thumbnail");
+  } finally {
+    Object.assign(URL, { createObjectURL: undefined, revokeObjectURL: undefined });
+  }
+});
+
+test("a counter shows near max-length and says when the limit is reached", async () => {
+  const user = userEvent.setup();
+  const { composer, prompt } = await mount('<ai-composer max-length="10"></ai-composer>');
+  const counter = composer.querySelector<HTMLElement>("[data-part='counter']")!;
+  expect(prompt.maxLength).toBe(10);
+  expect(prompt.getAttribute("aria-describedby")).toBe(counter.id);
+
+  await user.type(prompt, "1234567");
+  expect(counter.hidden).toBe(true);
+  await user.type(prompt, "8");
+  expect([counter.hidden, counter.textContent]).toEqual([false, "8 / 10"]);
+  await user.type(prompt, "90");
+  expect(counter.hasAttribute("data-limit")).toBe(true);
+  expect(composer.querySelector("[data-part='status']")!.textContent).toBe("Character limit reached");
 });
