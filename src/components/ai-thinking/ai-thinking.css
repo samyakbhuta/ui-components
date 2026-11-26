@@ -1,0 +1,125 @@
+/*
+ * <ai-thinking> styles, in the `ai-thinking` layer so unlayered page rules win.
+ * The text stays readable on its own: the sweep only adds a brighter band on top of it.
+ */
+@layer ai-thinking {
+  ai-thinking {
+    --ai-thinking-color: color-mix(in srgb, CanvasText 64%, Canvas);
+    --ai-thinking-highlight: CanvasText;
+    --ai-thinking-duration: 2s;
+    --ai-thinking-band: 20%;
+
+    display: block;
+    font-size: 0.875rem;
+    color: var(--ai-thinking-color);
+  }
+
+  ai-thinking [data-part="summary"] {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  ai-thinking summary[data-part="summary"] {
+    cursor: pointer;
+    border-radius: 0.25rem;
+  }
+
+  ai-thinking summary[data-part="summary"]:focus-visible {
+    outline: auto;
+  }
+
+  /* Draw the disclosure arrow after the text, and turn it when open. */
+  ai-thinking summary[data-part="summary"]::-webkit-details-marker {
+    display: none;
+  }
+
+  ai-thinking summary[data-part="summary"] {
+    list-style: none;
+  }
+
+  ai-thinking summary[data-part="summary"]::after {
+    content: "›";
+    display: inline-block;
+    transition: rotate 150ms;
+  }
+
+  ai-thinking details[open] > summary[data-part="summary"]::after {
+    rotate: 90deg;
+  }
+
+  ai-thinking [data-part="time"] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ai-thinking [data-part="time"]:empty {
+    display: none;
+  }
+
+  ai-thinking [data-shimmer] {
+    background: linear-gradient(
+        90deg,
+        transparent calc(50% - var(--ai-thinking-band)),
+        var(--ai-thinking-highlight) 50%,
+        transparent calc(50% + var(--ai-thinking-band))
+      )
+      0 0 / 250% 100% no-repeat,
+      linear-gradient(var(--ai-thinking-color), var(--ai-thinking-color));
+    background-clip: text;
+    color: transparent;
+    animation: ai-thinking-shimmer var(--ai-thinking-duration) linear infinite;
+  }
+
+  ai-thinking [data-part="reasoning"] {
+    margin: 0.5rem 0 0;
+    padding-inline-start: 0.75rem;
+    border-inline-start: 2px solid color-mix(in srgb, CanvasText 20%, Canvas);
+    white-space: pre-wrap;
+  }
+
+  ai-thinking [data-part="announcement"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  @keyframes ai-thinking-shimmer {
+    from {
+      background-position: 100% 0, 0 0;
+    }
+    to {
+      background-position: 0% 0, 0 0;
+    }
+  }
+
+  /* With reduced motion, a slow color change instead of a moving band. It only gets darker, so contrast holds. */
+  @media (prefers-reduced-motion: reduce) {
+    ai-thinking [data-shimmer] {
+      background: none;
+      color: var(--ai-thinking-color);
+      animation: ai-thinking-fade 3s ease-in-out infinite alternate;
+    }
+
+    ai-thinking summary[data-part="summary"]::after {
+      transition: none;
+    }
+  }
+
+  @keyframes ai-thinking-fade {
+    to {
+      color: var(--ai-thinking-highlight);
+    }
+  }
+
+  /* Forced colors can't draw gradient text, so show it plain. */
+  @media (forced-colors: active) {
+    ai-thinking [data-shimmer] {
+      background: none;
+      color: CanvasText;
+      animation: none;
+    }
+  }
+}

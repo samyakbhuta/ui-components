@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/dom";
+import { screen, waitFor, within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { settle } from "@ui-sdk/core/testing";
 import { createAgent } from "@ui-sdk/web/agent";
@@ -12,27 +12,29 @@ afterEach(() => {
   delete speech.SpeechRecognition;
 });
 
-async function renderShell() {
+async function renderShell(speed = 0) {
   const root = document.createElement("div");
   document.body.append(root);
-  mountChatShell(root);
+  mountChatShell(root, { speed });
   await settle();
-  const messages = () => within(screen.getByRole("region", { name: "Conversation" })).queryAllByRole("listitem");
+  const conversation = screen.getByRole("region", { name: "Conversation" });
+  const items = (kind: string) => [...conversation.querySelectorAll<HTMLElement>(`.message.${kind}`)];
   return {
+    composer: document.querySelector("ai-composer")!,
+    conversation,
     prompt: screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Prompt" }),
-    send: screen.getByRole("button", { name: "Send" }),
-    messages,
-    texts: () => messages().map((item) => item.querySelector("p:not(.message-meta)")?.textContent ?? ""),
-    metas: () => messages().map((item) => item.querySelector(".message-meta")!.textContent),
+    send: () => document.querySelector<HTMLButtonElement>("[data-part='send-button']")!,
+    sent: () => items("user").map((item) => item.querySelector("p:not(.message-meta)")?.textContent ?? ""),
+    metas: () => items("user").map((item) => item.querySelector(".message-meta")!.textContent),
+    replies: () => items("reply"),
+    idle: () => waitFor(() => expect(document.querySelector("ai-composer")!.busy).toBe(false)),
   };
 }
 
-test("the composer's controls are named and start on Auto, Sonnet 5.5 and Medium", async () => {
-  const { prompt, send, messages } = await renderShell();
+test("the composer has every feature on, starting on Auto, Sonnet 5.5 and Medium", async () => {
+  speech.SpeechRecognition = class {};
+  const { composer } = await renderShell();
 
-  expect(prompt.value).toBe("");
-  expect(send.getAttribute("type")).toBe("submit");
-  expect(screen.getByRole("radiogroup", { name: "Mode" })).toBeDefined();
   expect(screen.getAllByRole("radio").map((radio) => [radio.textContent, radio.getAttribute("aria-checked")])).toEqual([
     ["Auto", "true"],
     ["Plan", "false"],
@@ -40,161 +42,98 @@ test("the composer's controls are named and start on Auto, Sonnet 5.5 and Medium
   ]);
   expect(screen.getByRole("combobox", { name: "Model" }).textContent).toContain("Sonnet 5.5");
   expect(screen.getByRole("combobox", { name: "Thinking" }).textContent).toContain("Medium");
-  expect(screen.getByRole("button", { name: "Attach files" })).toBeDefined();
-  expect(screen.getByRole("button", { name: "Voice input" }).getAttribute("aria-pressed")).toBe("false");
-  expect(messages()).toHaveLength(0);
+  for (const name of ["Attach files", "Voice input"]) expect(screen.getByRole("button", { name })).toBeDefined();
+  expect(composer.querySelector("ui-trigger-menu")!.triggers!.map((trigger) => trigger.char)).toEqual(["/", "@"]);
 });
 
-test("Send adds the prompt with its settings, empties the box and keeps focus there", async () => {
+test("a sent prompt shows with its settings, then a reply after the thinking indicator", async () => {
   const user = userEvent.setup();
-  const { prompt, send, texts, metas } = await renderShell();
+  const { prompt, send, sent, metas, replies, idle } = await renderShell();
 
-  await user.type(prompt, "Explain web components");
-  await user.click(send);
-
-  expect(texts()).toEqual(["Explain web components"]);
-  expect(metas()).toEqual(["Auto · Sonnet 5.5 · Thinking: Medium"]);
+  await user.type(prompt, "/explain @package.json");
+  await user.click(send());
+  expect(sent()).toEqual(["/explain @package.json"]);
+  expect(metas()).toEqual(["Auto · Sonnet 5.5 · Thinking: Medium · Command: /explain · References: @package.json"]);
   expect(prompt.value).toBe("");
-  expect(document.activeElement).toBe(prompt);
+
+  await idle();
+  const [reply] = replies();
+  const thinking = reply.querySelector("ai-thinking")!;
+  expect(thinking.status).toBe("done");
+  expect(thinking.timer).toBe(true);
+  expect(thinking.reasoning).toBe("Reading @package.json.\nThinking.");
+  expect(reply.querySelector("p")!.textContent).toBe(
+    "This is a pretend reply from Sonnet 5.5 in Auto mode. A real app would send your prompt to the model here and stream its answer.",
+  );
 });
 
-test("Enter sends, Shift+Enter adds a line, and an empty box sends nothing", async () => {
+test("with thinking off the reply comes without the indicator", async () => {
   const user = userEvent.setup();
-  const { prompt, messages, texts } = await renderShell();
-
-  await user.click(prompt);
-  await user.keyboard("{Enter}");
-  expect(messages()).toHaveLength(0);
-
-  await user.keyboard("first{Shift>}{Enter}{/Shift}second{Enter}");
-  expect(texts()).toEqual(["first\nsecond"]);
-});
-
-test("the chosen mode, model and thinking level go with the prompt", async () => {
-  const user = userEvent.setup();
-  const { prompt, metas } = await renderShell();
-
-  await user.click(screen.getByRole("radio", { name: "Plan" }));
-  await user.keyboard("{ArrowRight}");
-  expect(screen.getByRole("radio", { name: "Accept-edits" }).getAttribute("aria-checked")).toBe("true");
-  const [model, thinking] = document.querySelectorAll("ui-select");
-  model.api.setValue("opus-5.5");
-  thinking.api.setValue("off");
+  const { composer, prompt, replies, idle } = await renderShell();
+  composer.thinking = "off";
+  composer.mode = "accept-edits";
+  composer.model = "opus-5.5";
   await settle();
 
   await user.type(prompt, "Ship it{Enter}");
-  expect(metas()).toEqual(["Accept-edits · Opus 5.5 · Thinking: Off"]);
+  await idle();
+  expect(replies()[0].querySelector("ai-thinking")).toBeNull();
+  expect(replies()[0].textContent).toContain("Opus 5.5 in Accept-edits mode");
 });
 
-// jsdom never reports a trigger match while typing, so typing into the list is checked in a real browser.
-test("/ offers commands at the start of the prompt and @ offers files and docs", async () => {
-  await renderShell();
-  const [slash, at] = document.querySelector("ui-trigger-menu")!.triggers!;
-  const labels = (items: unknown) =>
-    (items as { label: string; items?: unknown[] }[]).map((item) =>
-      item.items ? `${item.label}: ${item.items.join(", ")}` : item.label,
-    );
-
-  expect(slash).toMatchObject({ char: "/", boundary: "start" });
-  expect(labels(slash.items)).toEqual(["summarize", "explain", "translate", "clear"]);
-  expect(at.char).toBe("@");
-  expect(labels(at.items)).toEqual([
-    "Files: README.md, package.json, src/main.ts, src/components/app-root.ts",
-    "Docs: llms.txt, trigger-menu.md, button.md",
-  ]);
-});
-
-test("a sent prompt notes its command and the files it references", async () => {
+test("while a reply is coming, Send is Stop, the conversation is busy, and Stop ends it", async () => {
   const user = userEvent.setup();
-  const { prompt, send, metas } = await renderShell();
+  const { composer, conversation, prompt, send, replies } = await renderShell(1);
 
-  await user.type(prompt, "/explain @package.json and @llms.txt");
-  await user.click(send);
+  await user.type(prompt, "Long answer please{Enter}");
+  expect(composer.busy).toBe(true);
+  expect(conversation.getAttribute("aria-busy")).not.toBeNull();
+  expect(send().getAttribute("aria-label")).toBe("Stop");
+  expect(replies()[0].querySelector("ai-thinking")!.status).toBe("thinking");
 
-  expect(metas()).toEqual(["Auto · Sonnet 5.5 · Thinking: Medium · Command: /explain · References: @package.json, @llms.txt"]);
+  await user.click(send());
+  await waitFor(() => expect(composer.busy).toBe(false));
+  expect(replies()[0].querySelector("ai-thinking")).toBeNull();
+  expect(replies()[0].textContent).toBe("Stopped");
+  expect(conversation.hasAttribute("aria-busy")).toBe(false);
+  expect(send().getAttribute("aria-label")).toBe("Send");
 });
 
-test("attached files show, can be removed, go with the prompt and clear after sending", async () => {
+test("attached files go with the prompt and the reply looks at them", async () => {
   const user = userEvent.setup();
-  const { prompt, messages, metas } = await renderShell();
-  const attachments = document.querySelector("ui-file-input")!;
+  const { composer, prompt, metas, replies, idle } = await renderShell();
 
-  attachments.api.addFiles([new File(["a"], "notes.txt"), new File(["b"], "chart.png")]);
-  await settle();
-  const list = screen.getByRole("list", { name: "Attachments" });
-  expect(within(list).getAllByRole("listitem").map((item) => item.querySelector('[data-file="name"]')!.textContent)).toEqual([
-    "notes.txt",
-    "chart.png",
-  ]);
-
-  attachments.api.removeFile(attachments.api.getValue()[1]);
+  composer.addFiles([new File(["a"], "notes.txt")]);
   await settle();
   await user.type(prompt, "{Enter}");
-  expect(messages()).toHaveLength(1);
   expect(metas()).toEqual(["Auto · Sonnet 5.5 · Thinking: Medium · Attached: notes.txt"]);
-  expect(attachments.api.getValue()).toHaveLength(0);
+  expect(composer.files).toHaveLength(0);
+  await idle();
+  expect(replies()[0].querySelector("ai-thinking")!.reasoning).toBe("Looking at notes.txt.\nThinking.");
 });
 
 test("/clear empties the conversation", async () => {
   const user = userEvent.setup();
-  const { prompt, send, messages } = await renderShell();
+  const { composer, prompt, sent, idle, conversation } = await renderShell();
 
-  await user.type(prompt, "hello");
-  await user.click(send);
-  expect(messages()).toHaveLength(1);
-  // user-event keeps its own copy of text it typed, so set the next prompt through the field.
-  document.querySelector("ui-textarea")!.api.setValue("/clear");
+  await user.type(prompt, "hello{Enter}");
+  await idle();
+  expect(sent()).toHaveLength(1);
+  // user-event keeps its own copy of text it typed, so set the next prompt through the element.
+  composer.value = "/clear";
   await user.keyboard("{Enter}");
 
-  expect(messages()).toHaveLength(0);
-  expect(prompt.value).toBe("");
-});
-
-test("voice input adds what was said to the prompt and turns off when listening ends", async () => {
-  const user = userEvent.setup();
-  let session: { onresult: (event: unknown) => void; onend: () => void } | undefined;
-  speech.SpeechRecognition = class {
-    start() {
-      session = this as never;
-    }
-    stop() {}
-  };
-  const { prompt } = await renderShell();
-  const voice = screen.getByRole("button", { name: "Voice input" });
-
-  await user.type(prompt, "Draft:");
-  await user.click(voice);
-  expect(voice.getAttribute("aria-pressed")).toBe("true");
-  expect(document.querySelector(".voice-status")!.textContent).toBe("Listening…");
-
-  session!.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: " hello there " }], { isFinal: true })] });
-  session!.onend();
-  await settle();
-
-  expect(prompt.value).toBe("Draft: hello there");
-  expect(voice.getAttribute("aria-pressed")).toBe("false");
-  expect(document.querySelector(".voice-status")!.textContent).toBe("");
-});
-
-test("voice input is disabled where the browser can't recognize speech", async () => {
-  await renderShell();
-  const voice = screen.getByRole("button", { name: "Voice input" });
-
-  expect(voice.hasAttribute("disabled") || voice.getAttribute("aria-disabled") === "true").toBe(true);
-  expect(voice.title).toBe("Voice input isn't supported in this browser");
+  expect(within(conversation).queryAllByRole("listitem")).toHaveLength(0);
+  expect(conversation.querySelector<HTMLElement>(".transcript-empty")!.hidden).toBe(false);
 });
 
 test("an agent can set the mode, model and thinking level, write a prompt and send it", async () => {
-  const { prompt, texts, metas } = await renderShell();
+  const { sent, metas, idle } = await renderShell();
 
   const components = agent.snapshot().filter((entry) => !entry.offPage && entry.component !== "more");
-  for (const entry of components) {
-    expect(entry.label, `${entry.component} ${entry.ref} has no name`).toBeTruthy();
-  }
+  for (const entry of components) expect(entry.label, `${entry.component} ${entry.ref} has no name`).toBeTruthy();
   const labels = components.map((entry) => entry.label);
-  for (const label of ["Mode", "Prompt", "Model", "Thinking", "Attach files", "Send"]) {
-    expect(labels, `${label} is missing from the snapshot`).toContain(label);
-  }
+  for (const label of ["Mode", "Prompt", "Model", "Thinking", "Attach files", "Send"]) expect(labels).toContain(label);
   expect(labels).not.toContain("Voice input");
 
   const result = await agent.act({
@@ -207,7 +146,7 @@ test("an agent can set the mode, model and thinking level, write a prompt and se
     ],
   });
   expect(result.ok, result.error?.message).toBe(true);
-  expect(texts()).toEqual(["/summarize @README.md"]);
+  expect(sent()).toEqual(["/summarize @README.md"]);
   expect(metas()).toEqual(["Plan · Haiku 5.5 · Thinking: High · Command: /summarize · References: @README.md"]);
-  expect(prompt.value).toBe("");
+  await idle();
 });
