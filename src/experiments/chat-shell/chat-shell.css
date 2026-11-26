@@ -1,14 +1,32 @@
-.chat-shell {
+.chat-app {
   --muted: color-mix(in srgb, CanvasText 68%, Canvas);
   --line: color-mix(in srgb, CanvasText 55%, Canvas);
   --soft: color-mix(in srgb, CanvasText 8%, Canvas);
   --hover: color-mix(in srgb, CanvasText 12%, Canvas);
+  --divider: color-mix(in srgb, CanvasText 14%, Canvas);
 
+  display: grid;
+  grid-template-columns: 16.5rem minmax(0, 1fr);
+  height: 100dvh;
+}
+
+/* Sidebar: the chat list on wide screens */
+
+.chat-sidebar {
+  overflow-y: auto;
+  padding: 0.75rem;
+  border-inline-end: 1px solid var(--divider);
+  background: color-mix(in srgb, CanvasText 3%, Canvas);
+}
+
+.chat-shell {
   display: grid;
   grid-template-rows: auto 1fr auto;
   box-sizing: border-box;
+  width: 100%;
   max-width: 48rem;
   height: 100dvh;
+  min-width: 0;
   margin: 0 auto;
   padding: 0 1rem;
 }
@@ -17,18 +35,25 @@
 
 .chat-header {
   display: flex;
-  align-items: baseline;
-  gap: 1rem;
-  padding: 0.75rem 0;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.5rem 0;
   border-bottom: 1px solid var(--soft);
 }
 
-.chat-header h1 {
+.chat-title {
+  flex: 1;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
   font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .back {
+  flex: none;
   color: var(--muted);
   font-size: 0.875rem;
   text-decoration: none;
@@ -37,6 +62,98 @@
 .back:hover {
   color: CanvasText;
   text-decoration: underline;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.header-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
+  background: none;
+  color: inherit;
+}
+
+.header-button:not(:disabled):hover {
+  background: var(--soft);
+}
+
+.header-button:disabled {
+  opacity: 0.4;
+}
+
+.header-button:focus-visible {
+  outline: auto;
+}
+
+.header-button svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+/* Drawer: the chat list on narrow screens */
+
+.drawer-backdrop {
+  background: color-mix(in srgb, CanvasText 35%, transparent);
+}
+
+.drawer-sheet {
+  box-sizing: border-box;
+  width: min(20rem, 88vw);
+  height: 100%;
+  overflow-y: auto;
+  padding: 0.75rem;
+  background: Canvas;
+  color: CanvasText;
+  box-shadow: 0 0 32px color-mix(in srgb, CanvasText 20%, transparent);
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.drawer-title {
+  font-weight: 600;
+}
+
+.drawer-back {
+  display: block;
+  margin-top: 1.5rem;
+  padding: 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+@media (min-width: 52.0625rem) {
+  .chats-drawer,
+  .header-new-chat {
+    display: none;
+  }
+}
+
+@media (max-width: 52rem) {
+  .chat-app {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chat-sidebar {
+    display: none;
+  }
+
+  .back {
+    display: none;
+  }
 }
 
 /* Conversation: <ai-transcript> scrolls; the page gives it room and an empty state. */

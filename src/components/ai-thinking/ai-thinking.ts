@@ -32,7 +32,7 @@ const announceDelay = 100;
  * optional reasoning that opens from the summary. See README.md beside this file.
  */
 export class AiThinkingElement extends HTMLElement {
-  static observedAttributes = ["status", "label", "timer"];
+  static observedAttributes = ["status", "label", "timer", "duration"];
 
   #strings: ThinkingStrings = defaultThinkingStrings;
   #reasoning: Node[] = [];
@@ -59,6 +59,19 @@ export class AiThinkingElement extends HTMLElement {
   }
 
   /** Shows the elapsed time, and "Thought for 12s" once done. */
+  /**
+   * How many seconds the thinking took, for a summary shown again later, like a saved chat.
+   * When set, a done summary shows it instead of the time this element measured.
+   */
+  get duration(): number | null {
+    const value = this.getAttribute("duration");
+    return value === null || Number.isNaN(Number(value)) ? null : Number(value);
+  }
+  set duration(value: number | null) {
+    if (value === null) this.removeAttribute("duration");
+    else this.setAttribute("duration", String(Math.max(0, Math.round(value))));
+  }
+
   get timer(): boolean {
     return this.hasAttribute("timer");
   }
@@ -156,7 +169,8 @@ export class AiThinkingElement extends HTMLElement {
   #summaryText() {
     const s = this.#strings;
     if (this.status === "thinking") return this.label || s.thinking;
-    return this.timer ? s.thoughtFor(s.duration(this.#seconds())) : s.done;
+    const seconds = this.duration ?? this.#seconds();
+    return this.timer ? s.thoughtFor(s.duration(seconds)) : s.done;
   }
 
   #render() {

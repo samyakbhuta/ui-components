@@ -3,6 +3,8 @@ import "./docs.css";
 import "../../components/ai-message/ai-message.ts";
 import "../../components/ai-thinking/ai-thinking.ts";
 import "../../components/ai-transcript/ai-transcript.ts";
+import "../../components/ai-chat-list/ai-chat-list.ts";
+import { highlight } from "../../components/ai-message/highlight.ts";
 import { mountPlayground } from "./playground.ts";
 import {
   type AiComposerElement,
@@ -61,7 +63,22 @@ const files = ["README.md", "package.json", "src/main.ts", "src/components/ai-co
 /** Logs each composer event under the demo, so people can see what their code would receive. */
 function logEvents(root: HTMLElement) {
   const log = root.querySelector<HTMLElement>(".event-log")!;
-  const types = ["promptsubmit", "promptstop", "modechange", "modelchange", "thinkingchange", "fileschange", "filereject", "voicestart", "voiceend"];
+  const types = [
+    "promptsubmit",
+    "promptstop",
+    "modechange",
+    "modelchange",
+    "thinkingchange",
+    "fileschange",
+    "filereject",
+    "voicestart",
+    "voiceend",
+    "chatselect",
+    "chatnew",
+    "chatrename",
+    "chatexport",
+    "chatdelete",
+  ];
   for (const type of types) {
     root.addEventListener(type, (event) => {
       const detail = (event as CustomEvent).detail;
@@ -250,6 +267,64 @@ reply.addEventListener("messageaction", (event) => {
     },
   },
   {
+    id: "syntax",
+    title: "Syntax colouring",
+    intro:
+      "Code blocks are coloured by a small built-in highlighter that never parses code as HTML. Each colour passes 4.5:1 contrast in light and dark. Set highlighter to your own function, or to null for plain code.",
+    html: `<ai-message class="syntax-sample"></ai-message>
+<button type="button" class="toggle-colouring" aria-pressed="true">Colouring on</button>`,
+    script: `message.highlighter = null // plain code
+message.highlighter = (code, language) => myHighlighter(code, language) // your own`,
+    setup: (root) => {
+      const message = root.querySelector<HTMLElementTagNameMap["ai-message"]>(".syntax-sample")!;
+      message.text = [
+        "```ts",
+        "interface Chat { id: string; title: string }",
+        "export async function load(id: string): Promise<Chat | null> {",
+        "  const response = await fetch(`/api/chats/${id}`); // one request",
+        "  return response.ok ? response.json() : null;",
+        "}",
+        "```",
+        "",
+        "```css",
+        "@media (prefers-color-scheme: dark) {",
+        "  ai-message { --ai-message-max-width: 70ch; color: #e8e8e8; }",
+        "}",
+        "```",
+        "",
+        "```bash",
+        "$ npm install --save-dev vitest # tests",
+        'echo "Built in $SECONDS seconds"',
+        "```",
+        "",
+        "```python",
+        "@dataclass",
+        "class Chat:",
+        "    title: str = \"New chat\"  # shown in the sidebar",
+        "    def rename(self, title: str) -> None:",
+        "        self.title = title",
+        "```",
+        "",
+        "```sql",
+        "SELECT title, updated_at FROM chats WHERE owner = 'me' ORDER BY updated_at DESC LIMIT 20;",
+        "```",
+        "",
+        "```diff",
+        "@@ -1,2 +1,2 @@",
+        "-<ai-composer></ai-composer>",
+        "+<ai-composer attachments voice></ai-composer>",
+        "```",
+      ].join("\n");
+      const toggle = root.querySelector<HTMLButtonElement>(".toggle-colouring")!;
+      toggle.addEventListener("click", () => {
+        const on = toggle.getAttribute("aria-pressed") !== "true";
+        message.highlighter = on ? highlight : null;
+        toggle.setAttribute("aria-pressed", String(on));
+        toggle.textContent = on ? "Colouring on" : "Colouring off";
+      });
+    },
+  },
+  {
     id: "transcript",
     title: "<ai-transcript>",
     intro:
@@ -272,6 +347,37 @@ reply.addEventListener("messageaction", (event) => {
         transcript.append(question, reply);
         const paragraphs = Array.from({ length: 8 }, (_, index) => `Paragraph ${index + 1} of reply ${count}. Scroll up while this streams: the view stays where you put it.`);
         stream(reply, paragraphs.join("\n\n"));
+      });
+    },
+  },
+  {
+    id: "chat-list",
+    title: "<ai-chat-list>",
+    intro:
+      "Saved chats for a sidebar: New chat, chats grouped by day, and Rename, Export and Delete in each chat's menu. Delete asks first. The list shows the chats you give it; saving them is up to your page.",
+    html: `<ai-chat-list class="sample-chats" actions="rename export delete" selected="today"></ai-chat-list>`,
+    script: `list.chats = [{ id: "today", title: "Web components", updatedAt: Date.now() }, …]
+list.href = (chat) => \`#chat/\${chat.id}\` // optional: chats become links
+list.addEventListener("chatnew", startNewChat)
+list.addEventListener("chatrename", (event) => saveTitle(event.detail.id, event.detail.title))
+list.addEventListener("chatdelete", (event) => removeChat(event.detail.id))`,
+    setup: (root) => {
+      const list = root.querySelector<HTMLElementTagNameMap["ai-chat-list"]>(".sample-chats")!;
+      const now = Date.now();
+      const dayLength = 24 * 60 * 60 * 1000;
+      list.chats = [
+        { id: "today", title: "Web components explained", updatedAt: now },
+        { id: "haiku", title: "A haiku about custom elements", updatedAt: now - dayLength },
+        { id: "theme", title: "Dark mode colours for the composer", updatedAt: now - 3 * dayLength },
+        { id: "trip", title: "Trip ideas for the team offsite", updatedAt: now - 40 * dayLength },
+      ];
+      let count = 0;
+      list.addEventListener("chatselect", (event) => (list.selected = event.detail.id));
+      list.addEventListener("chatnew", () => {
+        count += 1;
+        const id = `new-${count}`;
+        list.chats = [{ id, title: `New chat ${count}`, updatedAt: Date.now() }, ...list.chats];
+        list.selected = id;
       });
     },
   },
@@ -377,7 +483,7 @@ main.innerHTML = `
   <header class="docs-header">
     <a class="back" href="/showcase.html">← Showcase</a>
     <h1>AI chat components</h1>
-    <p>Live examples of <code>&lt;ai-composer&gt;</code>, <code>&lt;ai-message&gt;</code>, <code>&lt;ai-transcript&gt;</code> and <code>&lt;ai-thinking&gt;</code>. Each has a README with its full API in <code>src/components/</code>.</p>
+    <p>Live examples of <code>&lt;ai-composer&gt;</code>, <code>&lt;ai-message&gt;</code>, <code>&lt;ai-transcript&gt;</code>, <code>&lt;ai-thinking&gt;</code> and <code>&lt;ai-chat-list&gt;</code>. Each has a README with its full API in <code>src/components/</code>.</p>
     <nav aria-label="Examples"><ul>${demos.map((demo) => `<li><a href="#${demo.id}">${escape(demo.title)}</a></li>`).join("")}</ul></nav>
   </header>
   ${demos

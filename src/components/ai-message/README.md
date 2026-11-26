@@ -50,6 +50,7 @@ reply.done(); // renders what's left and fires messagecomplete
 | `from`, `format`, `streaming`, `actions` | The same as the attributes. `actions` is an array. |
 | `strings` | Words to replace; see below. |
 | `icons` | SVG markup for `copy`, `copied`, `retry` and `edit`. |
+| `highlighter` | Colours code blocks: `(code, language) => Node[] \| null`. Defaults to the built-in highlighter; `null` shows code plain. |
 | `appendText(chunk)` | Adds streamed text to the end. |
 | `done()` | Ends streaming. The same as `streaming = false`. |
 
@@ -82,6 +83,27 @@ Headings start at `<h3>` (`#` becomes `h3`, `##` becomes `h4`), so a reply's hea
 Code blocks get a **Copy** button named for their language ("Copy ts code"). Wide tables scroll sideways and can be focused, so they scroll from the keyboard too.
 
 `renderMarkdown()` and `renderPlainText()` are exported from `markdown.ts` if you need the renderer on its own.
+
+## Syntax colouring
+
+Code blocks with a language are coloured by a small built-in highlighter (`highlight.ts`). It knows JavaScript and TypeScript (`js`, `ts`, `jsx`, `tsx`), JSON, HTML and XML, CSS, shell (`bash`, `sh`, `zsh`, `console`), Python, SQL, diffs, YAML and TOML. Other languages, and code over 50,000 characters, show plain.
+
+- **Safe:** like the Markdown renderer, it never parses code as HTML. It wraps tokens in `<span data-token="keyword">` and fills them with text. Copy still copies the plain code.
+- **Quick enough to stream:** it colours by pattern, not by parsing, so it reruns on every frame while a reply streams in, and an unfinished string or comment simply runs to the end.
+- **Readable:** each colour is at least 4.5:1 against the code background in both light and dark, through `light-dark()`. In Windows high contrast mode the system colours take over.
+
+Swap in another highlighter, or turn colouring off:
+
+```ts
+message.highlighter = null; // plain code
+
+// Your own: return DOM nodes, or null to show a block plain.
+message.highlighter = (code, language) => myHighlighter(code, language);
+```
+
+If your highlighter produces an HTML string, sanitize it before turning it into nodes: model output is untrusted.
+
+The colours are custom properties you can change: `--ai-message-syntax-comment`, `-keyword`, `-string`, `-number`, `-function`, `-type`, `-tag`, `-builtin` and `-variable`. Tokens are `comment`, `string`, `keyword`, `builtin`, `number`, `type`, `function`, `property`, `tag`, `attribute`, `variable`, `inserted` and `deleted`, for your own rules like `ai-message [data-token="comment"] { font-style: normal }`.
 
 ## Translation
 
@@ -133,5 +155,7 @@ Parts: `[data-part="body"]`, `actions`, `code-block`, `code-header`, `code-langu
 
 - `ai-message.ts`: the element.
 - `markdown.ts`: the safe Markdown renderer.
+- `highlight.ts`: the syntax highlighter.
 - `ai-message.css`: its styles.
 - `ai-message.test.ts`: tests for the Markdown it covers, attempts to inject HTML and scripts, streaming, actions, slots and agent use.
+- `highlight.test.ts`: tests for each language, unfinished code, lossless output and the `highlighter` property.

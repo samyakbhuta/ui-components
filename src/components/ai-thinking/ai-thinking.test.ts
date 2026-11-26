@@ -102,3 +102,15 @@ test("every word can be replaced, and restart() starts over", () => {
   vi.advanceTimersByTime(100);
   expect(announced()).toBe("Réflexion en cours");
 });
+
+test("a saved summary shows again with duration, without announcing", () => {
+  const { thinking, label, announced } = mount('<ai-thinking status="done" timer duration="42">Checked the files.</ai-thinking>');
+  expect(label().textContent).toBe("Thought for 42s");
+  expect(label().hasAttribute("data-shimmer")).toBe(false);
+  expect(thinking.reasoning).toBe("Checked the files.");
+  vi.advanceTimersByTime(1000);
+  expect(announced()).toBe("");
+
+  thinking.duration = 75;
+  expect(label().textContent).toBe("Thought for 1m 15s");
+});

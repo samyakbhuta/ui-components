@@ -29,12 +29,13 @@ thinking.done(); // "Thought for 4s"
 | `status` | `thinking` | `thinking` shimmers; `done` stops and shows the summary. |
 | `label` | `Thinking…` | The text while thinking, like `Searching files…`. Change it as often as you like. |
 | `timer` | off | Counts the seconds while thinking, and ends with "Thought for Ns" in place of "Thought". |
+| `duration` | none | Seconds to show in a done summary instead of the time measured, for showing a saved conversation again: `<ai-thinking status="done" timer duration="12">`. A summary shown this way isn't announced. |
 
 ## Properties and methods
 
 | Member | What it does |
 | --- | --- |
-| `status`, `label`, `timer` | The same as the attributes. |
+| `status`, `label`, `timer`, `duration` | The same as the attributes. |
 | `reasoning` | The model's reasoning, as text. Set it again as more streams in. When there is reasoning, the summary becomes a button that opens it. Text written inside the element is the starting reasoning. |
 | `elapsed` | Milliseconds spent thinking so far, or in all once done. |
 | `strings` | Words to replace; see below. |

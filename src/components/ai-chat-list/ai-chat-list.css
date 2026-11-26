@@ -1,0 +1,255 @@
+/*
+ * <ai-chat-list> styles, in the `ai-chat-list` layer so unlayered page rules win.
+ */
+@layer ai-chat-list {
+  ai-chat-list {
+    --ai-chat-list-muted: color-mix(in srgb, CanvasText 68%, Canvas);
+    --ai-chat-list-hover: color-mix(in srgb, CanvasText 8%, Canvas);
+    --ai-chat-list-current: color-mix(in srgb, CanvasText 12%, Canvas);
+
+    display: block;
+    font-size: 0.875rem;
+  }
+
+  /* minmax(0, 1fr) lets long titles shorten with an ellipsis instead of widening the list. */
+  ai-chat-list [data-part="nav"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  ai-chat-list [data-part="new"] {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 2.25rem;
+    padding: 0 0.75rem;
+    border: 1px solid color-mix(in srgb, CanvasText 30%, Canvas);
+    border-radius: 0.625rem;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    text-align: start;
+  }
+
+  ai-chat-list [data-part="new"]:hover {
+    background: var(--ai-chat-list-hover);
+  }
+
+  ai-chat-list svg {
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+  }
+
+  ai-chat-list [data-part="groups"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  ai-chat-list [data-part="group-label"],
+  ai-chat-list [data-part="empty"] {
+    margin: 0 0 0.25rem;
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
+    color: var(--ai-chat-list-muted);
+  }
+
+  ai-chat-list [data-part="group-label"] {
+    font-weight: 600;
+  }
+
+  ai-chat-list [data-part="list"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.125rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  ai-chat-list [data-part="item"] {
+    display: flex;
+    align-items: center;
+    border-radius: 0.5rem;
+  }
+
+  ai-chat-list [data-part="item"]:hover {
+    background: var(--ai-chat-list-hover);
+  }
+
+  ai-chat-list [data-part="item"][data-current] {
+    background: var(--ai-chat-list-current);
+  }
+
+  ai-chat-list [data-part="item"] > ui-button {
+    display: contents;
+  }
+
+  ai-chat-list [data-part="chat"] {
+    flex: 1;
+    min-width: 0;
+    padding: 0.5rem 0.75rem;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0.5rem;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  ai-chat-list [data-part="chat"][aria-current] {
+    font-weight: 600;
+  }
+
+  ai-chat-list :is([data-part="new"], [data-part="chat"], [data-part="options"]):focus-visible {
+    outline: auto;
+    outline-offset: -2px;
+  }
+
+  ai-chat-list [data-part="rename"] {
+    flex: 1;
+    min-width: 0;
+    margin: 0.125rem;
+    padding: 0.375rem 0.625rem;
+    border: 1px solid color-mix(in srgb, CanvasText 55%, Canvas);
+    border-radius: 0.375rem;
+    background: Field;
+    color: FieldText;
+    font: inherit;
+  }
+
+  ai-chat-list [data-part="options"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    margin-inline-end: 0.125rem;
+    border: 0;
+    border-radius: 0.375rem;
+    background: none;
+    color: var(--ai-chat-list-muted);
+  }
+
+  ai-chat-list [data-part="options"]:hover,
+  ai-chat-list [data-part="options"][aria-expanded="true"] {
+    background: var(--ai-chat-list-current);
+    color: CanvasText;
+  }
+
+  /* With a mouse, the options button shows on the chat you point at, the open chat and the focused one. */
+  @media (hover: hover) {
+    ai-chat-list [data-part="item"]:not(:hover, :focus-within, [data-current]) [data-part="options"]:not([aria-expanded="true"]) {
+      opacity: 0;
+    }
+  }
+
+  ai-chat-list [data-part="popup"] {
+    box-sizing: border-box;
+    min-width: 11rem;
+    margin: 0;
+    padding: 0.25rem;
+    border: 1px solid color-mix(in srgb, CanvasText 30%, Canvas);
+    border-radius: 0.625rem;
+    background: Canvas;
+    color: CanvasText;
+    box-shadow: 0 8px 24px color-mix(in srgb, CanvasText 18%, transparent);
+  }
+
+  ai-chat-list [data-slot="menu-item"] {
+    padding: 0.375rem 0.625rem;
+    border-radius: 0.375rem;
+    cursor: default;
+  }
+
+  ai-chat-list [data-slot="menu-item"][data-highlighted] {
+    background: var(--ai-chat-list-current);
+  }
+
+  /* Readable on the highlighted row too: 4.5:1 or more in light and dark. */
+  ai-chat-list [data-slot="menu-item"][data-action="delete"] {
+    color: #a60000;
+    color: light-dark(#a60000, #ff8a80);
+  }
+
+  /* Delete confirmation */
+
+  ai-chat-list [data-part="backdrop"] {
+    position: fixed;
+    inset: 0;
+    background: color-mix(in srgb, CanvasText 35%, transparent);
+  }
+
+  ai-chat-list [data-part="dialog"] {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    box-sizing: border-box;
+    width: min(26rem, calc(100vw - 2rem));
+    padding: 1.25rem;
+    translate: -50% -50%;
+    border: 1px solid color-mix(in srgb, CanvasText 30%, Canvas);
+    border-radius: 0.875rem;
+    background: Canvas;
+    color: CanvasText;
+    box-shadow: 0 16px 48px color-mix(in srgb, CanvasText 25%, transparent);
+  }
+
+  ai-chat-list [data-part="dialog-title"] {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  ai-chat-list [data-part="dialog-description"] {
+    display: block;
+    color: var(--ai-chat-list-muted);
+  }
+
+  ai-chat-list [data-part="dialog-actions"] {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+  }
+
+  ai-chat-list [data-part="dialog-actions"] button {
+    min-height: 2.25rem;
+    padding: 0 1rem;
+    border: 1px solid color-mix(in srgb, CanvasText 30%, Canvas);
+    border-radius: 999px;
+    background: none;
+    color: inherit;
+    font: inherit;
+  }
+
+  ai-chat-list [data-part="dialog-actions"] button:focus-visible {
+    outline: auto;
+  }
+
+  ai-chat-list [data-part="confirm-delete"] {
+    border-color: transparent;
+    background: color-mix(in srgb, #c00 85%, CanvasText);
+    color: white;
+    font-weight: 600;
+  }
+
+  ai-chat-list [data-part="announcement"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

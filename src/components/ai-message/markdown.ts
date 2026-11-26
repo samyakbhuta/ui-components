@@ -15,7 +15,11 @@ export type MarkdownBlock = {
   node: HTMLElement;
 };
 
+import type { Highlighter } from "./highlight.ts";
+
 export type MarkdownOptions = {
+  /** Colours code blocks. Return null to show a block plain. */
+  highlight?: Highlighter | null;
   /** The visible text of each code block's copy button. */
   copyLabel?: string;
   /** The accessible name of each code block's copy button, given the block's language. */
@@ -317,7 +321,9 @@ function renderBlock(block: RawBlock, options: MarkdownOptions, depth: number): 
       const pre = document.createElement("pre");
       const code = document.createElement("code");
       if (block.language) code.className = `language-${block.language.replace(/[^\w+#-]/g, "")}`;
-      code.textContent = block.text;
+      const highlighted = options.highlight?.(block.text, block.language);
+      if (highlighted) code.append(...highlighted);
+      else code.textContent = block.text;
       pre.append(code);
       wrapper.append(header, pre);
       return wrapper;

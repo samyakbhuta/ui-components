@@ -9,6 +9,26 @@
     --ai-message-border: color-mix(in srgb, CanvasText 18%, Canvas);
     --ai-message-max-width: 85%;
 
+    /* Syntax colours, each at least 4.5:1 against the code background in light and dark. */
+    --ai-message-syntax-comment: #5f6670;
+    --ai-message-syntax-comment: light-dark(#5f6670, #9aa1ab);
+    --ai-message-syntax-keyword: #a1259f;
+    --ai-message-syntax-keyword: light-dark(#a1259f, #d197e8);
+    --ai-message-syntax-string: #26722a;
+    --ai-message-syntax-string: light-dark(#26722a, #9bcf7d);
+    --ai-message-syntax-number: #975b00;
+    --ai-message-syntax-number: light-dark(#975b00, #e0a36a);
+    --ai-message-syntax-function: #2b5bc4;
+    --ai-message-syntax-function: light-dark(#2b5bc4, #7cb8f5);
+    --ai-message-syntax-type: #8a5a00;
+    --ai-message-syntax-type: light-dark(#8a5a00, #e8c37a);
+    --ai-message-syntax-tag: #c22c26;
+    --ai-message-syntax-tag: light-dark(#c22c26, #f08a8f);
+    --ai-message-syntax-builtin: #0f6f85;
+    --ai-message-syntax-builtin: light-dark(#0f6f85, #6ccfe0);
+    --ai-message-syntax-variable: #b0371c;
+    --ai-message-syntax-variable: light-dark(#b0371c, #f0a080);
+
     display: grid;
     justify-items: start;
     gap: 0.25rem;
@@ -135,6 +155,46 @@
 
   ai-message pre code {
     font-family: ui-monospace, monospace;
+  }
+
+  /* Syntax colours */
+
+  ai-message [data-token="comment"] {
+    color: var(--ai-message-syntax-comment);
+    font-style: italic;
+  }
+
+  ai-message [data-token="keyword"] {
+    color: var(--ai-message-syntax-keyword);
+  }
+
+  ai-message [data-token="string"],
+  ai-message [data-token="inserted"] {
+    color: var(--ai-message-syntax-string);
+  }
+
+  ai-message :is([data-token="number"], [data-token="attribute"]) {
+    color: var(--ai-message-syntax-number);
+  }
+
+  ai-message :is([data-token="function"], [data-token="property"]) {
+    color: var(--ai-message-syntax-function);
+  }
+
+  ai-message [data-token="type"] {
+    color: var(--ai-message-syntax-type);
+  }
+
+  ai-message :is([data-token="tag"], [data-token="deleted"]) {
+    color: var(--ai-message-syntax-tag);
+  }
+
+  ai-message [data-token="builtin"] {
+    color: var(--ai-message-syntax-builtin);
+  }
+
+  ai-message [data-token="variable"] {
+    color: var(--ai-message-syntax-variable);
   }
 
   /* Tables */

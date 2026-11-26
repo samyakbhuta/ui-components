@@ -1,6 +1,9 @@
 import "@ui-sdk/web/button";
 import "./ai-message.css";
+import { type Highlighter, highlight } from "./highlight.ts";
 import { type MarkdownBlock, renderMarkdown, renderPlainText } from "./markdown.ts";
+
+export type { Highlighter } from "./highlight.ts";
 
 export type MessageAction = "copy" | "retry" | "edit";
 
@@ -88,6 +91,7 @@ export class AiMessageElement extends HTMLElement {
   #frame = 0;
   #strings: MessageStrings = defaultMessageStrings;
   #icons: MessageIcons = defaultMessageIcons;
+  #highlighter: Highlighter | null = highlight;
   #feedback = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
   #observer = new MutationObserver((records) => this.#adopt(records));
 
@@ -142,6 +146,18 @@ export class AiMessageElement extends HTMLElement {
   set strings(value: Partial<MessageStrings>) {
     this.#strings = { ...defaultMessageStrings, ...value };
     if (this.#rendered) this.#renderAll();
+  }
+
+  /**
+   * Colours code blocks. Defaults to the built-in highlighter; set your own `(code, language) => Node[] | null`,
+   * or null to show code plain.
+   */
+  get highlighter(): Highlighter | null {
+    return this.#highlighter;
+  }
+  set highlighter(value: Highlighter | null) {
+    this.#highlighter = value;
+    if (this.#rendered) this.#renderBody(true);
   }
 
   get icons(): MessageIcons {
@@ -249,7 +265,11 @@ export class AiMessageElement extends HTMLElement {
     this.#frame = 0;
     const blocks: MarkdownBlock[] =
       this.format === "markdown"
-        ? renderMarkdown(this.#source, { copyLabel: this.#strings.copyCode, copyName: this.#strings.copyCodeName })
+        ? renderMarkdown(this.#source, {
+            copyLabel: this.#strings.copyCode,
+            copyName: this.#strings.copyCodeName,
+            highlight: this.#highlighter,
+          })
         : renderPlainText(this.#source);
     const current = [...body.children] as Rendered[];
     let keep = 0;
