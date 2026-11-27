@@ -11,6 +11,8 @@ export type ChatSummary = {
   title: string;
   /** When it last changed, in milliseconds. Chats with it are sorted newest first and grouped by day. */
   updatedAt?: number;
+  /** A short note shown beside the title, like "Needs your answer". Screen readers hear it after the title. */
+  status?: string;
 };
 
 export type ChatListAction = "rename" | "export" | "delete";
@@ -283,8 +285,23 @@ export class AiChatListElement extends BaseElement {
     target.dataset.part = "chat";
     if (target instanceof HTMLAnchorElement) target.href = href!;
     else target.type = "button";
-    target.textContent = title;
+    const name = document.createElement("span");
+    name.dataset.part = "title";
+    name.textContent = title;
+    target.append(name);
     target.title = title;
+    const status = chat.status?.trim();
+    if (status) {
+      // Shown in the row, but read as the chat's description so its name stays its title.
+      const badge = document.createElement("span");
+      badge.dataset.part = "status";
+      badge.id = `${this.#id}-status-${chat.id}`;
+      badge.setAttribute("aria-hidden", "true");
+      badge.textContent = status;
+      target.append(badge);
+      target.setAttribute("aria-describedby", badge.id);
+      item.toggleAttribute("data-status", true);
+    }
     target.addEventListener("click", (event: Event) => {
       if (!(event instanceof MouseEvent)) return;
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;

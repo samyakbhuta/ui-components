@@ -23,6 +23,8 @@ export type QuestionAnswer = QuestionAnswerDetail | { skipped: true };
 
 /** Every word `<ai-question>` shows or announces. Override any of them through `strings`. */
 export type QuestionStrings = {
+  /** The line at the top while the question waits for an answer. It also describes the choices. */
+  waiting: string;
   other: string;
   otherPlaceholder: string;
   /** The text box's accessible name. */
@@ -36,6 +38,7 @@ export type QuestionStrings = {
 };
 
 export const defaultQuestionStrings: QuestionStrings = {
+  waiting: "Waiting for your answer",
   other: "Other",
   otherPlaceholder: "Type your own answer",
   otherLabel: "Your own answer",
@@ -305,6 +308,17 @@ export class AiQuestionElement extends BaseElement {
     // it a second time.
     const body = document.createElement("div");
     body.dataset.part = "body";
+    // Says the agent is waiting on this person, until they answer.
+    const status = document.createElement("p");
+    status.dataset.part = "status";
+    status.id = `${this.#id}-status`;
+    const dot = document.createElement("span");
+    dot.dataset.part = "status-dot";
+    dot.setAttribute("aria-hidden", "true");
+    const words = document.createElement("span");
+    words.dataset.part = "status-text";
+    status.append(dot, words);
+    body.append(status);
     const legend = document.createElement("p");
     legend.dataset.part = "legend";
     legend.id = `${this.#id}-legend`;
@@ -320,7 +334,6 @@ export class AiQuestionElement extends BaseElement {
     const group = document.createElement(multiple ? "ui-checkbox-group" : "ui-radio-group") as Group;
     group.dataset.part = "options";
     group.setAttribute("aria-labelledby", legend.id);
-    if (multiple) group.setAttribute("aria-describedby", hint.id);
     const choices = this.#choices();
     choices.forEach((choice, index) => group.append(this.#option(choice.value, choice.label, choice.description, choice.disabled, index)));
     if (this.other) {
@@ -440,6 +453,14 @@ export class AiQuestionElement extends BaseElement {
 
     const hint = this.querySelector<HTMLElement>("[data-part='hint']");
     if (hint) hint.textContent = s.multipleHint(max);
+
+    // While it waits, the status line describes the choices too; once answered, it's gone.
+    const status = this.querySelector<HTMLElement>("[data-part='status']")!;
+    status.hidden = answered;
+    status.querySelector("[data-part='status-text']")!.textContent = s.waiting;
+    const described = [!answered && status.id, this.multiple && hint?.id].filter(Boolean).join(" ");
+    if (described) group.setAttribute("aria-describedby", described);
+    else group.removeAttribute("aria-describedby");
 
     const input = this.querySelector<HTMLInputElement>("[data-part='other-input'] input");
     if (input) {

@@ -34,7 +34,7 @@ list.addEventListener("chatexport", (event) => exportChat(event.detail.id));
 
 | Member | What it does |
 | --- | --- |
-| `chats` | The chats to list: `{ id, title, updatedAt? }`. With `updatedAt` on every chat, they're sorted newest first and grouped by day; otherwise they're listed as given. |
+| `chats` | The chats to list: `{ id, title, updatedAt?, status? }`. With `updatedAt` on every chat, they're sorted newest first and grouped by day; otherwise they're listed as given. `status` is a short note shown under the title, after a dot, like `Needs your answer` for a chat waiting on the person. Screen readers hear it after the chat's name. |
 | `selected` | The id of the open chat. Its item is highlighted and marked `aria-current`. |
 | `actions` | Which actions the options menu offers, from `rename`, `export` and `delete`, separated by spaces. Defaults to `rename delete`; `actions=""` leaves the menu out. |
 | `href` | A function that gives each chat an address. Chats become links, so they open in a new tab and work with Back. Without it, chats are buttons. |
@@ -85,7 +85,7 @@ list.strings = {
 
 ## Styling
 
-The CSS sits in the `ai-chat-list` cascade layer. Custom properties: `--ai-chat-list-muted`, `--ai-chat-list-hover` and `--ai-chat-list-current`. Parts: `[data-part="nav"]`, `new`, `groups`, `group`, `group-label`, `list`, `item` (with `data-current` on the open chat), `chat`, `options`, `menu`, `popup`, `rename`, `empty`, and the dialog's `backdrop`, `dialog`, `dialog-title`, `dialog-description`, `dialog-actions`, `cancel` and `confirm-delete`.
+The CSS sits in the `ai-chat-list` cascade layer. Custom properties: `--ai-chat-list-muted`, `--ai-chat-list-hover`, `--ai-chat-list-current` and `--ai-chat-list-status`. Parts: `[data-part="nav"]`, `new`, `groups`, `group`, `group-label`, `list`, `item` (with `data-current` on the open chat, and `data-status` on one with a `status`), `chat`, `title`, `status`, `options`, `menu`, `popup`, `rename`, `empty`, and the dialog's `backdrop`, `dialog`, `dialog-title`, `dialog-description`, `dialog-actions`, `cancel` and `confirm-delete`.
 
 Long titles shorten with an ellipsis; the full title is in the tooltip. With a mouse, the options button shows on the chat you point at, the open chat and the focused one; on touch screens it always shows.
 

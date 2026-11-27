@@ -8,12 +8,15 @@ export type TranscriptStrings = {
   jump: string;
   /** What screen readers hear when a reply finishes. Return "" to say nothing. */
   reply: (text: string) => string;
+  /** Read after the reply for each `<ai-question>` in it still waiting for an answer. */
+  waiting: (question: string) => string;
 };
 
 export const defaultTranscriptStrings: TranscriptStrings = {
   label: "Conversation",
   jump: "Jump to latest",
   reply: (text) => text,
+  waiting: (question) => `${question} Waiting for your answer.`,
 };
 
 /** How close to the bottom, in pixels, still counts as "at the bottom". */
@@ -173,11 +176,18 @@ export class AiTranscriptElement extends BaseElement {
     this.#syncBusy();
     const body = message.querySelector("[data-part='body']");
     const text = (body ?? message).textContent?.trim() ?? "";
+    // A question the reply asks is read after it, so people know the agent is waiting on them.
+    const questions = [...message.querySelectorAll("ai-question:not([answered])")]
+      .map((question) => question.getAttribute("question")?.trim() ?? "")
+      .filter(Boolean);
+    const words = [text && this.#strings.reply(text), ...questions.map((question) => this.#strings.waiting(question))]
+      .filter(Boolean)
+      .join(" ");
     const announcement = this.#announcement;
-    if (!text) return;
+    if (!words) return;
     // Clear first, so the same words twice in a row are still read out.
     announcement.textContent = "";
-    requestAnimationFrame(() => (announcement.textContent = this.#strings.reply(text)));
+    requestAnimationFrame(() => (announcement.textContent = words));
   }
 }
 

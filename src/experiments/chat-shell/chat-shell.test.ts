@@ -516,3 +516,41 @@ test("a saved chat shows its questions answered, and an open one can still be an
   expect(again.replies()[1].text).toContain("Lisbon it is.");
   expect(new ChatStore().list()[0].messages[1].question?.answer).toEqual({ skipped: true });
 });
+
+test("while a question waits, the box, the list and a background tab say so, and typing answers it", async () => {
+  const user = userEvent.setup();
+  const { composer, prompt, sent, replies, list, idle } = await renderShell();
+  composer.thinking = "off";
+  await settle();
+  await user.click(screen.getByRole("button", { name: suggestions[5] }));
+  await idle();
+  expect(prompt.placeholder).toBe("Answer the question above, or type your answer");
+  expect(within(list).getByRole("link", { name: "Plan a weekend trip for me", description: "Needs your answer" })).toBeDefined();
+
+  const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+  document.dispatchEvent(new Event("visibilitychange"));
+  expect(document.title).toBe("Waiting for you · Plan a weekend trip for me · AI chat");
+  hidden.mockReturnValue(false);
+  document.dispatchEvent(new Event("visibilitychange"));
+  expect(document.title).toBe("Plan a weekend trip for me · AI chat");
+  hidden.mockRestore();
+
+  // Typing a choice's name in the box chooses it, rather than starting something new.
+  await user.type(prompt, "rome{Enter}");
+  await idle();
+  expect(sent()).toEqual(["Plan a weekend trip for me", "rome"]);
+  const first = replies()[0].querySelector("ai-question")!;
+  expect(first.answer).toEqual({ value: "Rome", labels: ["Rome"], other: null });
+  expect(replies()[1].text).toContain("Rome it is.");
+
+  // Anything else is an answer of one's own.
+  // user-event keeps its own copy of text it typed, so set the next answer through the element.
+  composer.value = "Street art";
+  await user.click(prompt);
+  await user.keyboard("{Enter}");
+  await idle();
+  expect(replies()[1].querySelector("ai-question")!.answer).toEqual({ value: ["Street art"], labels: ["Street art"], other: "Street art" });
+  expect(replies()[2].text).toContain("street art");
+  expect(prompt.placeholder).toBe("Ask anything…");
+  expect(within(list).getByRole("link", { name: "Plan a weekend trip for me" }).hasAttribute("aria-describedby")).toBe(false);
+});

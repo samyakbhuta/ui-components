@@ -34,7 +34,9 @@ test("one choice: radios named by the question, and Send once one is chosen", as
   const { question, answers, view, send } = await mount(`<ai-question question="Where should the trip start?"></ai-question>`, (q) => {
     q.options = cities;
   });
-  const group = view.getByRole("radiogroup", { name: "Where should the trip start?" });
+  // Until it's answered, it says the agent is waiting, and that describes the choices too.
+  const group = view.getByRole("radiogroup", { name: "Where should the trip start?", description: "Waiting for your answer" });
+  expect(question.querySelector<HTMLElement>("[data-part='status']")!.hidden).toBe(false);
   expect(within(group).getAllByRole("radio")).toHaveLength(3);
   expect(view.getByRole("radio", { name: "Lisbon", description: "Cheapest flights" })).toBeTruthy();
   expect(isDisabled(send())).toBe(true);
@@ -55,6 +57,8 @@ test("one choice: radios named by the question, and Send once one is chosen", as
   expect(line.textContent).toBe("Answered: Rome");
   expect(document.activeElement).toBe(line);
   expect(view.getByRole("status").textContent).toBe("Answered: Rome");
+  expect(question.querySelector<HTMLElement>("[data-part='status']")!.hidden).toBe(true);
+  expect(group.hasAttribute("aria-describedby")).toBe(false);
 
   // Answered: the choices stay readable, but nothing changes.
   await user.click(view.getByRole("radio", { name: "Paris" }));
@@ -91,7 +95,7 @@ test("several choices: checkboxes, a hint, and max disables the rest", async () 
   const { question, answers, view, send } = await mount(`<ai-question question="Which sights?" multiple max="2" other></ai-question>`, (q) => {
     q.options = ["Museums", "Food", "Beaches", "Nightlife"];
   });
-  expect(view.getByRole("group", { name: "Which sights?", description: "Choose up to 2." })).toBeTruthy();
+  expect(view.getByRole("group", { name: "Which sights?", description: "Waiting for your answer Choose up to 2." })).toBeTruthy();
   await user.click(view.getByRole("checkbox", { name: "Beaches" }));
   await user.click(view.getByRole("checkbox", { name: "Museums" }));
   await settle();
@@ -148,10 +152,10 @@ test("words can be replaced, and the question and choices are text, never HTML",
   const { view } = await mount(`<ai-question multiple other></ai-question>`, (q) => {
     q.question = '<img src=x onerror="alert(1)">Pick';
     q.options = ['<b onclick="alert(1)">Bold</b>'];
-    q.strings = { other: "Autre", send: "Envoyer", multipleHint: () => "Plusieurs choix" };
+    q.strings = { waiting: "En attente de votre réponse", other: "Autre", send: "Envoyer", multipleHint: () => "Plusieurs choix" };
   });
   expect(document.querySelector("ai-question img, ai-question b")).toBeNull();
-  expect(view.getByRole("group", { name: '<img src=x onerror="alert(1)">Pick', description: "Plusieurs choix" })).toBeTruthy();
+  expect(view.getByRole("group", { name: '<img src=x onerror="alert(1)">Pick', description: "En attente de votre réponse Plusieurs choix" })).toBeTruthy();
   expect(view.getByRole("checkbox", { name: '<b onclick="alert(1)">Bold</b>' })).toBeTruthy();
   expect(view.getByRole("checkbox", { name: "Autre" })).toBeTruthy();
   expect(view.getByRole("button", { name: "Envoyer" })).toBeTruthy();

@@ -554,9 +554,10 @@ message.highlighter = (code, language) => myHighlighter(code, language) // your 
     id: "chat-list",
     title: "<ai-chat-list>",
     intro:
-      "Saved chats for a sidebar: New chat, chats grouped by day, and Rename, Export and Delete in each chat's menu. Delete asks first. The list shows the chats you give it; saving them is up to your page.",
+      "Saved chats for a sidebar: New chat, chats grouped by day, and Rename, Export and Delete in each chat's menu. Delete asks first. A chat's status shows under its title, like Needs your answer. The list shows the chats you give it; saving them is up to your page.",
     html: `<ai-chat-list class="sample-chats" actions="rename export delete" selected="today"></ai-chat-list>`,
     script: `list.chats = [{ id: "today", title: "Web components", updatedAt: Date.now() }, …]
+list.chats = [{ id: "haiku", title: "A haiku", status: "Needs your answer" }] // shown under the title, like for a chat waiting on you
 list.href = (chat) => \`#chat/\${chat.id}\` // optional: chats become links
 list.addEventListener("chatnew", startNewChat)
 list.addEventListener("chatrename", (event) => saveTitle(event.detail.id, event.detail.title))
@@ -567,7 +568,7 @@ list.addEventListener("chatdelete", (event) => removeChat(event.detail.id))`,
       const dayLength = 24 * 60 * 60 * 1000;
       list.chats = [
         { id: "today", title: "Web components explained", updatedAt: now },
-        { id: "haiku", title: "A haiku about custom elements", updatedAt: now - dayLength },
+        { id: "haiku", title: "A haiku about custom elements", updatedAt: now - dayLength, status: "Needs your answer" },
         { id: "theme", title: "Dark mode colours for the composer", updatedAt: now - 3 * dayLength },
         { id: "trip", title: "Trip ideas for the team offsite", updatedAt: now - 40 * dayLength },
       ];

@@ -25,6 +25,23 @@ question.addEventListener("questionanswer", (event) => {
 });
 ```
 
+## Telling people the agent is waiting on them
+
+Until it's answered, the question says so in three ways:
+- **On screen:** a "Waiting for your answer" line at the top, with a pulsing dot, and an accent border. The dot stays still with reduced motion.
+- **To screen readers:**
+  - The line describes the choices, so moving into them reads "Which city should the trip start in?, radio group, Waiting for your answer".
+  - Inside an [`<ai-transcript>`](../ai-transcript/README.md), the question is read out after the reply's text when the reply finishes, followed by "Waiting for your answer". Put the question in the message before calling `done()`.
+- **Once answered:** the line, the dot and the accent go.
+
+Around it, your app can say so too:
+- set the composer's `placeholder` to something like "Answer the question above, or type your answer", and treat what's typed as the answer;
+- give the chat a `status` in [`<ai-chat-list>`](../ai-chat-list/README.md), like "Needs your answer".
+
+The chat shell in this repo does both, and also starts the tab's title with "Waiting for you" while the tab is in the background.
+
+## Answering
+
 Send stays disabled until there's an answer to send:
 - one choice;
 - at least one with `multiple`;
@@ -99,6 +116,7 @@ function askUser(call: { question: string; options: string[]; multiple?: boolean
 
 | String | Default |
 | --- | --- |
+| `waiting` | `Waiting for your answer` |
 | `other` | `Other` |
 | `otherPlaceholder` | `Type your own answer` |
 | `otherLabel` | `Your own answer`: the text box's accessible name |
@@ -127,6 +145,7 @@ The CSS sits in the `ai-question` cascade layer.
 
 **Custom properties:**
 - `--ai-question-border`
+- `--ai-question-waiting`: the "Waiting for your answer" line and the border until it's answered
 - `--ai-question-control`: the outlines of radios and checkboxes
 - `--ai-question-hover`
 - `--ai-question-muted`
@@ -134,7 +153,7 @@ The CSS sits in the `ai-question` cascade layer.
 - `--ai-question-accent-text`
 - `--ai-question-radius`
 
-**Parts:** `[data-part="body"]`, `legend`, `hint`, `options`, `option`, `choice` (the label around a control and its text), `label`, `description`, `other`, `other-input`, `actions`, `send`, `skip`, `answer` and `announcement`. `ai-question[answered]` styles an answered question.
+**Parts:** `[data-part="body"]`, `status` (the waiting line), `status-dot`, `status-text`, `legend`, `hint`, `options`, `option`, `choice` (the label around a control and its text), `label`, `description`, `other`, `other-input`, `actions`, `send`, `skip`, `answer` and `announcement`. `ai-question[answered]` styles an answered question, and `ai-question:not([answered])` one that's waiting.
 
 ## Tests
 

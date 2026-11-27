@@ -34,7 +34,7 @@ test.describe("on the docs page", () => {
 
   test("several choices: max disables the rest until one is unchecked", async ({ page }) => {
     const question = page.locator("#question .plans-question");
-    await expect(question.getByRole("group", { name: "What would you like to do there?" })).toHaveAccessibleDescription("Choose up to 2.");
+    await expect(question.getByRole("group", { name: "What would you like to do there?" })).toHaveAccessibleDescription("Waiting for your answer Choose up to 2.");
     await question.getByRole("checkbox", { name: "Food" }).click();
     await question.getByRole("checkbox", { name: "Museums" }).click();
     await expect(question.getByRole("checkbox", { name: "Beaches" })).toBeDisabled();
@@ -58,6 +58,8 @@ test.describe("on the docs page", () => {
       return {
         canvas,
         legend: style("[data-part='legend']").color,
+        waiting: style("[data-part='status']").color,
+        border: getComputedStyle(root).borderTopColor,
         hint: style("[data-part='hint']").color,
         control: style("ui-checkbox:not([data-checked])").borderTopColor,
         checked: style("ui-checkbox[data-checked]").backgroundColor,
@@ -68,6 +70,8 @@ test.describe("on the docs page", () => {
     });
     expect(contrastRatio(colours.legend, colours.canvas)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(colours.hint, colours.canvas)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(colours.waiting, colours.canvas)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(colours.border, colours.canvas)).toBeGreaterThanOrEqual(3);
     // Controls are graphics: 3:1 against the page.
     expect(contrastRatio(colours.control, colours.canvas)).toBeGreaterThanOrEqual(3);
     expect(contrastRatio(colours.checked, colours.canvas)).toBeGreaterThanOrEqual(3);
@@ -100,6 +104,35 @@ test.describe("in the chat shell", () => {
     const answers = page.locator("ai-question [data-part='answer']");
     await expect(answers).toHaveText(["Answered: Lisbon", "Answered: Food, Beaches"]);
     await expect(page.getByRole("radio", { name: "Lisbon" })).toBeChecked();
+  });
+
+  test("while a question waits, the card, the box and the sidebar say so, and the badge is readable @theme", async ({ page }) => {
+    await page.getByRole("button", { name: "Plan a weekend trip for me" }).click();
+    await waitForReply(page);
+    const question = page.locator("ai-question");
+    await expect(question.locator("[data-part='status']")).toHaveText("Waiting for your answer");
+    await expect(question.getByRole("radiogroup")).toHaveAccessibleDescription("Waiting for your answer");
+    await expect(page.getByRole("textbox", { name: "Prompt" })).toHaveAttribute("placeholder", "Answer the question above, or type your answer");
+    const chat = page.locator("ai-chat-list").getByRole("link", { name: "Plan a weekend trip for me" });
+    await expect(chat).toHaveAccessibleDescription("Needs your answer");
+    const badge = await chat.locator("[data-part='status']").evaluate((element) => {
+      let node: Element | null = element;
+      let background = "rgba(0, 0, 0, 0)";
+      while (node && background === "rgba(0, 0, 0, 0)") {
+        background = getComputedStyle(node).backgroundColor;
+        node = node.parentElement;
+      }
+      return { color: getComputedStyle(element).color, background };
+    });
+    expect(contrastRatio(badge.color, badge.background)).toBeGreaterThanOrEqual(4.5);
+
+    // Typing in the box answers it, and the waiting signs go away.
+    await page.getByRole("textbox", { name: "Prompt" }).fill("Porto");
+    await page.keyboard.press("Enter");
+    await waitForReply(page);
+    await expect(question.first().locator("[data-part='answer']")).toHaveText("Answered: Porto");
+    await expect(page.locator("ai-message:not([from='user'])").last()).toContainText("Porto it is.");
+    await expect(page.locator("ai-question:not([answered])")).toHaveCount(1);
   });
 
   test("a question fits a phone screen", async ({ page }) => {

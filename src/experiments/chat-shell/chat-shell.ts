@@ -96,6 +96,27 @@ export const tripQuestions: Record<number, StoredQuestion> = {
   },
 };
 
+const waitingPlaceholder = "Answer the question above, or type your answer";
+
+/** Whether a chat's last reply asks a question that hasn't been answered. */
+const waitsForAnswer = (messages: StoredMessage[]) => {
+  const last = messages.at(-1);
+  return last?.from === "assistant" && last.question !== undefined && !last.question.answer;
+};
+
+/** An answer typed in the composer: the choice it names, or else an answer of one's own. */
+export function typedAnswer(question: { options: StoredQuestion["options"]; multiple: boolean }, text: string) {
+  const typed = text.trim();
+  const choices = question.options.map((option) =>
+    typeof option === "string" ? { value: option, label: option } : { value: option.value, label: option.label ?? option.value },
+  );
+  const match = choices.find((choice) => choice.label.toLowerCase() === typed.toLowerCase());
+  const answer = match
+    ? { value: match.value, labels: [match.label], other: null }
+    : { value: typed, labels: [typed], other: typed };
+  return question.multiple ? { ...answer, value: [answer.value] } : answer;
+}
+
 /** What the pretend trip planner says at each step: ask, ask again, then plan. */
 export function tripReply(step: number, answer: string, city: string) {
   if (step === 1) return "Happy to help plan a weekend away! First, a couple of questions.";
@@ -341,15 +362,28 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
 
   // ---- Saving and opening chats ---------------------------------------------------------------
 
+  /** The newest reply's question, while it waits for an answer. */
+  const openQuestion = () =>
+    messages().at(-1)?.querySelector<HTMLElementTagNameMap["ai-question"]>("ai-question:not([answered])") ?? null;
+
   function showTitle() {
     const title = current.title || "New chat";
     heading.textContent = title;
-    document.title = `${title} · AI chat`;
+    // While the agent waits on an answer, say so in the box, and in the tab's title when it's in the background.
+    const waiting = openQuestion() !== null;
+    if (waiting) composer.setAttribute("placeholder", waitingPlaceholder);
+    else composer.removeAttribute("placeholder");
+    document.title = `${waiting && document.hidden ? "Waiting for you · " : ""}${title} · AI chat`;
     exportButton.disabled = current.messages.length === 0;
   }
 
   function refreshList() {
-    list.chats = store.list().map(({ id, title, updatedAt }) => ({ id, title, updatedAt }));
+    list.chats = store.list().map(({ id, title, updatedAt, messages }) => ({
+      id,
+      title,
+      updatedAt,
+      status: waitsForAnswer(messages) ? "Needs your answer" : undefined,
+    }));
     list.selected = store.get(current.id) ? current.id : null;
   }
 
@@ -636,7 +670,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
         call.done(pretendFile(reference.label));
       }
       // Stream a few characters at a time, the way a model's tokens arrive.
-      const city = trip === 2 && detail.text !== "Surprise me" ? detail.text : (firstAnswer() ?? "Lisbon");
+      const city = firstAnswer() ?? "Lisbon";
       const text = trip ? tripReply(trip, detail.text, city) : pretendReply(detail);
       const end = failing(detail.text) ? Math.floor(text.length / 3) : text.length;
       for (let index = 0; index < end; index += 6) {
@@ -685,8 +719,17 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       save();
       return;
     }
+    // With a question open, what's typed answers it, as if chosen or typed into Other.
+    const asking = openQuestion();
+    if (asking) {
+      asking.answer = typedAnswer(asking, detail.text);
+      const step = Number(asking.dataset.step);
+      return send(detail, step ? step + 1 : undefined);
+    }
     send(detail, planning(detail.text) ? 1 : undefined);
   });
+
+  document.addEventListener("visibilitychange", showTitle, { signal: page.signal });
 
   /** Shows what was sent as your message, and starts the reply. */
   function send(detail: PromptSubmitDetail, trip?: number) {

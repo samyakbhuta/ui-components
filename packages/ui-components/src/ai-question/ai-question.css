@@ -10,6 +10,8 @@
     --ai-question-accent: CanvasText;
     --ai-question-accent-text: Canvas;
     --ai-question-radius: 0.75rem;
+    --ai-question-waiting: #2b5bc4;
+    --ai-question-waiting: light-dark(#2b5bc4, #8fb0ff);
 
     display: block;
     box-sizing: border-box;
@@ -19,6 +21,37 @@
     border: 1px solid var(--ai-question-border);
     border-radius: var(--ai-question-radius);
     font-size: 0.9375rem;
+  }
+
+  /* While it waits for an answer: an accent border and a line saying so. */
+  ai-question:not([answered]) {
+    border-color: var(--ai-question-waiting);
+    box-shadow: 0 0 0 1px var(--ai-question-waiting);
+  }
+
+  ai-question [data-part="status"] {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0 0 0.375rem;
+    color: var(--ai-question-waiting);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  ai-question [data-part="status-dot"] {
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: currentColor;
+    animation: ai-question-pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes ai-question-pulse {
+    50% {
+      opacity: 0.3;
+    }
   }
 
   ai-question [data-part="legend"] {
@@ -207,7 +240,21 @@
     white-space: nowrap;
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    ai-question [data-part="status-dot"] {
+      animation: none;
+    }
+  }
+
   @media (forced-colors: active) {
+    ai-question:not([answered]) {
+      border-color: Highlight;
+    }
+
+    ai-question [data-part="status"] {
+      color: CanvasText;
+    }
+
     ai-question ui-checkbox[data-checked] {
       background: Highlight;
       border-color: Highlight;
