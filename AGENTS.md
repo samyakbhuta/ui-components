@@ -36,25 +36,26 @@ When you change a component's API, update its README, its tests, the live exampl
 - Each component adds its CSS to the page through `adoptStyles()` and registers through `define()`, both in `src/styles.ts`. Keep it that way, so the package needs no CSS setup and is safe to import on a server (`src/server-import.test.ts`).
 - Every file that registers an element must stay covered by `sideEffects` in the package's `package.json`, both `dist/` and `src/`, or bundlers tree-shake the registration away and the tags stay empty.
 - New entry points need a one-line file in `packages/ui-components/src/` (like `ai-composer.ts`), an entry in its `vite.config.ts`, and an `exports` entry in its `package.json`.
-- Don't publish without the owner's go-ahead. To check a release, run `npm publish --dry-run` in `packages/ui-components/`. Publish betas with `npm publish --tag beta`: npm 10 doesn't always apply `publishConfig.tag`, so `scripts/check-tag.mjs` refuses to publish a prerelease under `latest`.
+- Don't publish from your machine: CircleCI stages releases and the owner approves them (see Releasing). To check what a release would contain, run `npm publish --dry-run --tag beta` in `packages/ui-components/`. `scripts/check-tag.mjs` refuses to publish a prerelease under `latest`, since npm 10 doesn't always apply `publishConfig.tag`.
 
 ## Releasing
 
-The package is on npm as `@samyakbhuta/ui-components`. Releases go out from CircleCI through npm trusted publishing (the `release` workflow in `.circleci/config.yml`), so no npm token is stored anywhere.
+The package is on npm as `@samyakbhuta/ui-components`. CircleCI stages each release through npm trusted publishing (the `release` workflow in `.circleci/config.yml`), and the owner approves it with 2FA. No npm token is stored anywhere, and CircleCI's trusted publisher can only stage, not publish.
 
 1. Bump `version` in `packages/ui-components/package.json`. Use `X.Y.Z-beta.N` while ui-sdk is in beta.
 2. Date its entry in `packages/ui-components/CHANGELOG.md`, and merge to `main`.
 3. Tag the merge commit `ui-components-v<version>` and push the tag.
+4. The owner approves the staged version on npmjs.com (Staged Packages) or with `npm stage approve <stage-id>`. Only then is it on npm.
 
 The workflow:
 
 - checks that the tag matches the version;
 - runs the type-check, unit tests and package build;
-- publishes, under `beta` for a version with a hyphen and under `latest` otherwise.
+- stages the version with `npm stage publish`, under `beta` for a version with a hyphen and under `latest` otherwise.
 
 npm gives a package's first version the `latest` tag whatever `--tag` says, and it won't remove `latest` while that's the only version. So `latest` also points at 0.1.0-beta.0 until the first stable release replaces it.
 
-npm only accepts a trusted publisher for a package that already exists, so the first release used a temporary `NPM_TOKEN` saved in CircleCI's project settings. The job uses that token while it's set and trusted publishing otherwise. Once CircleCI is the package's trusted publisher, delete `NPM_TOKEN` from CircleCI and revoke the token on npm.
+npm only accepts a trusted publisher for a package that already exists, so the first release was published with a temporary token, which has been removed. Don't add an npm token to CircleCI: it would let releases skip the owner's approval.
 
 ## Testing
 
