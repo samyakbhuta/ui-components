@@ -14,4 +14,4 @@ Web Components built with [ui-sdk](https://www.npmjs.com/package/@ui-sdk/web), p
 
 `.github/workflows/ci.yml` runs the type-check, unit tests and browser tests on pull requests and on `main`, and uploads the browser test report.
 
-See `AGENTS.md` for how the project is put together.
+To use the components in another app, see [docs/using-the-components.md](docs/using-the-components.md). See `AGENTS.md` for how the project is put together.
