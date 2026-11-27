@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.3 (2026-11-27)
 
 - Types for React, Vue and Svelte. Add `import type {} from "@samyakbhuta/ui-components/react"` (or `/vue`, `/svelte`) once, and every tag is typed in JSX or templates: its props, the values they take, and its events with their `detail`. The map underneath, `CustomElements`, is exported from `@samyakbhuta/ui-components/elements` for other frameworks.
 - `<ai-composer>` has `attachments`, `voice` and `pasteAsFile` properties, the same as the attributes. Frameworks set a property when there is one, so `attachments={false}` now turns attachments off in Vue and Svelte instead of on.
