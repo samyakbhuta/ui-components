@@ -31,7 +31,25 @@ export type StoredMessage = {
   version?: number;
   /** A question the reply asked, with its answer once given. */
   question?: StoredQuestion;
+  /** An approval the reply asked for, with the decision once made. */
+  approval?: StoredApproval;
+  /** Which scripted conversation of the pretend model the reply belongs to, so Retry continues it. */
+  script?: StoredScript;
 };
+
+/** An `<ai-approval>`: what it asked to do, and the decision once made. */
+export type StoredApproval = {
+  name: string;
+  label?: string;
+  description?: string;
+  input?: unknown;
+  always?: boolean;
+  reason?: boolean;
+  decision?: { decision: "allow" | "always" | "deny"; reason: string | null };
+};
+
+/** A step of one of the pretend model's scripted conversations: the trip planner, or the cleanup. */
+export type StoredScript = { trip?: number; cleanup?: "ask" | "allowed" | "denied"; reason?: string };
 
 /** An `<ai-question>`: its question, its choices, and the answer, or `{ skipped: true }`. */
 export type StoredQuestion = {
@@ -54,6 +72,8 @@ export type StoredChat = {
   createdAt: number;
   updatedAt: number;
   messages: StoredMessage[];
+  /** Tools chosen with Always allow in this chat, which don't ask again. */
+  allowed?: string[];
 };
 
 const storageKey = "chat-shell:chats";
@@ -164,6 +184,7 @@ export function chatToMarkdown(chat: StoredChat, { exportedAt = new Date(), loca
     parts.push("", message.text.trim() || "*(no text)*");
     if (message.error !== undefined) parts.push("", `> **Error:** ${message.error || "Something went wrong."}`);
     if (message.question) parts.push("", ...questionToMarkdown(message.question));
+    if (message.approval) parts.push("", ...approvalToMarkdown(message.approval));
     if (message.sources?.length) parts.push("", ...message.sources.map((source, index) => `[${index + 1}]: ${source.url} "${source.title.replace(/"/g, "'")}"`));
     versions?.forEach((text, index) => {
       if (index + 1 !== version) parts.push("", `*Version ${index + 1} of ${versions.length}:*`, "", text.trim() || "*(no text)*");
@@ -185,6 +206,29 @@ function questionToMarkdown(question: StoredQuestion) {
   else if (question.other) lines.push("- [ ] Other");
   lines.push("", !answer ? "*Not answered.*" : "skipped" in answer ? "*Skipped.*" : `*Answered: ${answer.labels.join(", ")}*`);
   return lines;
+}
+
+/** An approval: what it asked to run, in a code block, then the decision. */
+function approvalToMarkdown(approval: StoredApproval) {
+  const input = approval.input === undefined ? "" : typeof approval.input === "string" ? approval.input : JSON.stringify(approval.input, null, 2);
+  // A fence longer than any run of backticks in the input, so the input can't end it.
+  const fence = "`".repeat(Math.max(3, ...[...input.matchAll(/`+/g)].map((run) => run[0].length + 1)));
+  const decision = approval.decision;
+  const outcome = !decision
+    ? "*Not decided.*"
+    : decision.decision === "allow"
+      ? "*Allowed once.*"
+      : decision.decision === "always"
+        ? "*Always allowed.*"
+        : decision.reason
+          ? `*Denied: ${decision.reason}*`
+          : "*Denied.*";
+  return [
+    `**${(approval.label || `Allow ${approval.name}?`).replace(/\n/g, " ")}** · \`${approval.name}\``,
+    ...(input ? ["", fence, input, fence] : []),
+    "",
+    outcome,
+  ];
 }
 
 /** A file name from a title, like "web-components-explained.md". */

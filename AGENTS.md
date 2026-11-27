@@ -26,6 +26,7 @@ Our own components live in the package `packages/ui-components/` (`@samyakbhuta/
 - `<ai-sources>` (`packages/ui-components/src/ai-sources/README.md`): the sources a reply cites. Inside an `<ai-message>`, it turns `[1]` markers into links with a preview. Only `http:` and `https:` addresses become links. Keep it that way.
 - `<ai-suggestions>` (`packages/ui-components/src/ai-suggestions/README.md`): prompts to send with one press, through the `<ai-composer>` named by `for`.
 - `<ai-question>` (`packages/ui-components/src/ai-question/README.md`): a question the model asks, with radio buttons or checkboxes and an optional "Other" text box. Questions, choices and typed answers are text only. Keep it that way.
+- `<ai-approval>` (`packages/ui-components/src/ai-approval/README.md`): an agent asks permission before it acts, with Allow once, Always allow and Deny. What the tool would get is shown as text only. Keep it that way, so people see exactly what they allow.
 - `<ai-chat-list>` (`packages/ui-components/src/ai-chat-list/README.md`): the list of saved chats for a sidebar, with Rename, Export and Delete. The chat shell keeps its chats in `src/experiments/chat-shell/chat-store.ts`.
 
 When you change a component's API, update its README, its tests, the live examples in `src/experiments/ai-composer/main.ts` (`/experiments/ai-composer.html`), `packages/ui-components/CHANGELOG.md`, and its props or events in `packages/ui-components/src/elements.ts`.

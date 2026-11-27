@@ -5,6 +5,8 @@
 - New `<ai-question>`: a question the model asks, with choices to pick from. Radio buttons offer one choice, and `multiple` gives checkboxes, with `max` to cap how many. `other` adds a last choice with a text box for an answer of one's own, and `skippable` adds Skip. Once answered, it shows the answer and keeps the choices readable. `answer` restores a saved one. It fires `questionanswer` and `questionskip`.
 - `<ai-question>` shows that the agent is waiting on an answer. Until it's answered, it has a "Waiting for your answer" line, with a pulsing dot that stays still with reduced motion, and an accent border. The line also describes the choices for screen readers.
 - `<ai-transcript>` reads out any `<ai-question>` still waiting in a finished reply, after the reply's text: "Which city? Waiting for your answer." The wording is in the new `strings.waiting`.
+- New `<ai-approval>`: an agent asks permission before it acts, like running a command. It offers Allow once and Deny, and Always allow with `always`. With `reason`, a text box says what to do instead, sent with Deny. What the tool would get is shown as text. It has the same waiting signs as `<ai-question>`, then shows the decision in words and colour. It fires `approvaldecision`, and `decision` restores a saved one.
+- `<ai-transcript>` reads out an `<ai-approval>` still waiting in a finished reply, too: "Run a command Waiting for your approval." The wording is in the new `strings.approval`.
 - `<ai-chat-list>`: a chat can have a `status`, like "Needs your answer", shown under its title. Screen readers hear it after the chat's name.
 
 ## 0.1.0-beta.3 (2026-11-27)

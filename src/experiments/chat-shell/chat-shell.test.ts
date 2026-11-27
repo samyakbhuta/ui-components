@@ -554,3 +554,81 @@ test("while a question waits, the box, the list and a background tab say so, and
   expect(prompt.placeholder).toBe("Ask anything…");
   expect(within(list).getByRole("link", { name: "Plan a weekend trip for me" }).hasAttribute("aria-describedby")).toBe(false);
 });
+
+test("cleaning up asks for approval first; Allow once runs the command and the chat saves the decision", async () => {
+  const user = userEvent.setup();
+  const { composer, prompt, sent, replies, list, idle } = await renderShell();
+  composer.thinking = "off";
+  await settle();
+  await user.click(screen.getByRole("button", { name: suggestions[6] }));
+  await idle();
+  const approval = replies()[0].querySelector("ai-approval")!;
+  expect(within(document.body).getByRole("group", { name: "Run a command", description: "Waiting for your approval" })).toBe(approval);
+  expect(approval.querySelector("[data-part='input']")!.textContent).toBe("rm -rf dist");
+  expect(prompt.placeholder).toBe("Allow or deny above, or tell it what to do instead");
+  expect(within(list).getByRole("link", { name: "Clean up my project's build folder", description: "Needs your approval" })).toBeDefined();
+  // Nothing has run yet.
+  expect(replies()[0].querySelector("ai-tool-call")).toBeNull();
+
+  await user.click(within(approval).getByRole("button", { name: "Allow once" }));
+  await idle();
+  // The agent carries on in a new reply, without a message from you.
+  expect(sent()).toEqual(["Clean up my project's build folder"]);
+  const call = replies()[1].querySelector("ai-tool-call")!;
+  expect(call.status).toBe("done");
+  expect(call.summary).toBe("Ran rm -rf dist");
+  expect(replies()[1].text).toContain("The build folder is gone");
+  expect(prompt.placeholder).toBe("Ask anything…");
+
+  const [saved] = new ChatStore().list();
+  expect(saved.messages[1].approval?.decision).toEqual({ decision: "allow", reason: null });
+  const { chatToMarkdown } = await import("./chat-store.ts");
+  expect(chatToMarkdown(saved)).toContain("**Run a command** · `run_command`\n\n```\nrm -rf dist\n```\n\n*Allowed once.*");
+});
+
+test("Always allow skips the approval next time in that chat; Deny and typing in the box stop it", async () => {
+  const user = userEvent.setup();
+  const { composer, prompt, sent, replies, idle } = await renderShell();
+  composer.thinking = "off";
+  await settle();
+  await user.click(screen.getByRole("button", { name: suggestions[6] }));
+  await idle();
+  await user.click(within(replies()[0]).getByRole("button", { name: "Always allow" }));
+  await idle();
+  expect(new ChatStore().list()[0].allowed).toEqual(["run_command"]);
+
+  // Asked again in the same chat, it runs straight away and says why.
+  await user.type(prompt, "Clean up again{Enter}");
+  await idle();
+  const again = replies()[2];
+  expect(again.querySelector("ai-approval")).toBeNull();
+  expect(again.querySelector("ai-tool-call")!.status).toBe("done");
+  expect(again.querySelector(".message-meta")!.textContent).toBe("Allowed without asking: you chose Always allow for run_command");
+
+  // In a new chat it asks again; Deny with a reason, from the card.
+  await user.click(screen.getByRole("button", { name: "New chat" }));
+  await settle();
+  composer.value = "Clean up my project's build folder";
+  await user.click(prompt);
+  await user.keyboard("{Enter}");
+  await idle();
+  const approval = replies()[0].querySelector("ai-approval")!;
+  await user.type(within(approval).getByRole("textbox", { name: "What should it do instead?" }), "Only clear dist/cache{Enter}");
+  await idle();
+  expect(approval.querySelector("[data-part='decision']")!.textContent).toBe("Denied: Only clear dist/cache");
+  expect(replies()[1].querySelector("ai-tool-call")).toBeNull();
+  expect(replies()[1].text).toContain("You said: *Only clear dist/cache*.");
+
+  // Typing in the message box while it asks denies it, with what was typed.
+  composer.value = "Clean up my project's build folder";
+  await user.click(prompt);
+  await user.keyboard("{Enter}");
+  await idle();
+  composer.value = "Wait, back it up first";
+  await user.click(prompt);
+  await user.keyboard("{Enter}");
+  await idle();
+  expect(sent().slice(-2)).toEqual(["Clean up my project's build folder", "Wait, back it up first"]);
+  expect(replies()[2].querySelector("ai-approval")!.decision).toEqual({ decision: "deny", reason: "Wait, back it up first" });
+  expect(replies()[3].text).toContain("You said: *Wait, back it up first*.");
+});

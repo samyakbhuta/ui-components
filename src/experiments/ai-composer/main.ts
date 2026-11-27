@@ -6,6 +6,7 @@ import "@samyakbhuta/ui-components/ai-tool-call";
 import "@samyakbhuta/ui-components/ai-sources";
 import "@samyakbhuta/ui-components/ai-suggestions";
 import "@samyakbhuta/ui-components/ai-question";
+import "@samyakbhuta/ui-components/ai-approval";
 import "@samyakbhuta/ui-components/ai-transcript";
 import "@samyakbhuta/ui-components/ai-chat-list";
 import { highlight } from "@samyakbhuta/ui-components/highlight";
@@ -87,6 +88,7 @@ function logEvents(root: HTMLElement) {
     "messageversion",
     "questionanswer",
     "questionskip",
+    "approvaldecision",
   ];
   for (const type of types) {
     root.addEventListener(type, (event) => {
@@ -467,6 +469,31 @@ question.answer = savedAnswer // shows a saved answer, like when a chat opens ag
     },
   },
   {
+    id: "approval",
+    title: "<ai-approval>",
+    intro:
+      "An agent asks permission before it acts. Allow once and Deny are always there; always adds Always allow, for apps that remember it, and reason adds a box to say what to do instead, sent with Deny. What the tool would get shows as text, never HTML.",
+    html: `<ai-approval class="command-approval" name="run_command" label="Run a command" description="This deletes files in your project, and can't be undone." always reason></ai-approval>
+<ai-approval class="email-approval" name="send_email"></ai-approval>
+<button type="button" class="reset-approvals">Ask again</button>`,
+    script: `approval.input = "rm -rf dist"
+approval.addEventListener("approvaldecision", (event) => {
+  if (event.detail.decision === "deny") tellAgent(event.detail.reason)
+  else runTool()
+})
+approval.decision = savedDecision // shows a saved decision, like when a chat opens again`,
+    setup: (root) => {
+      root.querySelector<HTMLElementTagNameMap["ai-approval"]>(".command-approval")!.input = "rm -rf dist";
+      root.querySelector<HTMLElementTagNameMap["ai-approval"]>(".email-approval")!.input = {
+        to: "team@example.com",
+        subject: "Release notes",
+      };
+      root.querySelector(".reset-approvals")!.addEventListener("click", () => {
+        for (const approval of root.querySelectorAll("ai-approval")) approval.decision = null;
+      });
+    },
+  },
+  {
     id: "syntax",
     title: "Syntax colouring",
     intro:
@@ -684,7 +711,7 @@ main.innerHTML = `
   <header class="docs-header">
     <a class="back" href="/showcase.html">← Showcase</a>
     <h1>AI chat components</h1>
-    <p>Live examples of <code>&lt;ai-composer&gt;</code>, <code>&lt;ai-message&gt;</code>, <code>&lt;ai-transcript&gt;</code>, <code>&lt;ai-thinking&gt;</code>, <code>&lt;ai-tool-call&gt;</code>, <code>&lt;ai-sources&gt;</code>, <code>&lt;ai-suggestions&gt;</code>, <code>&lt;ai-question&gt;</code> and <code>&lt;ai-chat-list&gt;</code>. Each has a README with its full API in <code>packages/ui-components/</code>.</p>
+    <p>Live examples of <code>&lt;ai-composer&gt;</code>, <code>&lt;ai-message&gt;</code>, <code>&lt;ai-transcript&gt;</code>, <code>&lt;ai-thinking&gt;</code>, <code>&lt;ai-tool-call&gt;</code>, <code>&lt;ai-sources&gt;</code>, <code>&lt;ai-suggestions&gt;</code>, <code>&lt;ai-question&gt;</code>, <code>&lt;ai-approval&gt;</code> and <code>&lt;ai-chat-list&gt;</code>. Each has a README with its full API in <code>packages/ui-components/</code>.</p>
     <nav aria-label="Examples"><ul>${demos.map((demo) => `<li><a href="#${demo.id}">${escape(demo.title)}</a></li>`).join("")}</ul></nav>
   </header>
   ${demos

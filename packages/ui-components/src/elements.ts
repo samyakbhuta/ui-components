@@ -28,6 +28,7 @@ import type {
   MessageStrings,
 } from "./ai-message/ai-message.ts";
 import type { AiSourcesElement, Source, SourcesEvents, SourcesStrings } from "./ai-sources/ai-sources.ts";
+import type { AiApprovalElement, ApprovalDecisionDetail, ApprovalEvents, ApprovalStrings } from "./ai-approval/ai-approval.ts";
 import type { AiQuestionElement, QuestionAnswer, QuestionEvents, QuestionOption, QuestionStrings } from "./ai-question/ai-question.ts";
 import type { AiSuggestionsElement, Suggestion, SuggestionsEvents, SuggestionsStrings } from "./ai-suggestions/ai-suggestions.ts";
 import type { AiThinkingElement, ThinkingStatus, ThinkingStrings } from "./ai-thinking/ai-thinking.ts";
@@ -147,6 +148,19 @@ export interface AiQuestionProps {
   answer?: QuestionAnswer | null;
 }
 
+export interface AiApprovalProps {
+  name?: string;
+  label?: string;
+  description?: string;
+  always?: boolean;
+  reason?: boolean;
+  disabled?: boolean;
+  input?: unknown;
+  reasonText?: string;
+  decision?: ApprovalDecisionDetail | null;
+  strings?: Partial<ApprovalStrings>;
+}
+
 export interface AiChatListProps {
   chats?: ChatSummary[];
   selected?: string | null;
@@ -166,6 +180,7 @@ export interface CustomElements {
   "ai-sources": { element: AiSourcesElement; props: AiSourcesProps; events: SourcesEvents };
   "ai-suggestions": { element: AiSuggestionsElement; props: AiSuggestionsProps; events: SuggestionsEvents };
   "ai-question": { element: AiQuestionElement; props: AiQuestionProps; events: QuestionEvents };
+  "ai-approval": { element: AiApprovalElement; props: AiApprovalProps; events: ApprovalEvents };
   "ai-chat-list": { element: AiChatListElement; props: AiChatListProps; events: ChatListEvents };
 }
 

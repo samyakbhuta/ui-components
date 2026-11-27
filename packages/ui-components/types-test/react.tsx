@@ -51,6 +51,14 @@ export const valid = (
       onquestionanswer={(event) => event.detail.labels.join(", ")}
       onquestionskip={() => {}}
     />
+    <ai-approval
+      name="run_command"
+      label="Run a command"
+      input={{ command: "rm -rf dist" }}
+      always
+      reason
+      onapprovaldecision={(event) => (event.detail.decision === "deny" ? event.detail.reason : null)}
+    />
     <ai-chat-list chats={[{ id: "1", title: "Chat" }]} selected="1" onchatselect={(event) => event.detail.id} />
   </>
 );
@@ -73,6 +81,8 @@ export const invalid = (
     <ai-sources onpromptsubmit={() => {}} />
     {/* @ts-expect-error the detail of questionanswer has no `text` */}
     <ai-question onquestionanswer={(event) => event.detail.text} />
+    {/* @ts-expect-error a decision is allow, always or deny */}
+    <ai-approval decision={{ decision: "maybe", reason: null }} />
     {/* @ts-expect-error sources need a title and a url */}
     <ai-sources sources={[{ title: "No address" }]} />
   </>
