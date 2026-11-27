@@ -13,3 +13,6 @@ playwright/.cache/
 packages/ui-components/dist/
 packages/ui-components/docs/
 *.tgz
+
+# Netlify CLI: the linked site ID
+.netlify
