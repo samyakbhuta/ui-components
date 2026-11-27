@@ -13,6 +13,6 @@ Web Components built with [ui-sdk](https://www.npmjs.com/package/@ui-sdk/web), p
 | `npm run typecheck` | Type-checks the site, the package and the browser tests. |
 | `npm run build:package` | Builds the package into `packages/ui-components/dist/`. |
 
-CircleCI (`.circleci/config.yml`) runs the type-check, unit tests and browser tests on every push and pull request, and keeps the browser test report. A `ui-components-v<version>` tag also publishes the package to npm.
+CircleCI (`.circleci/config.yml`) runs the type-check, unit tests and browser tests on every push and pull request, and keeps the browser test report. A `ui-components-v<version>` tag also stages the package on npm, where it goes live once the owner approves it.
 
 To use the components in another app, see [docs/using-the-components.md](docs/using-the-components.md). See `AGENTS.md` for how the project is put together.

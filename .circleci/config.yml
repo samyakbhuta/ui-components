@@ -1,7 +1,8 @@
 version: 2.1
 
-# Checks run on every push. A tag like ui-components-v0.1.0-beta.1 also publishes
-# @samyakbhuta/ui-components to npm with trusted publishing (OIDC), so no npm token is stored.
+# Checks run on every push. A tag like ui-components-v0.1.0-beta.1 also stages
+# @samyakbhuta/ui-components on npm with trusted publishing (OIDC), so no npm token is stored.
+# A staged version goes live only once the owner approves it on npm with 2FA.
 
 functions:
   node: github.com/circleci-functions/setup-node@v0.6.0
@@ -57,7 +58,7 @@ jobs:
             # A version with a hyphen (0.2.0-beta.1) is a prerelease and goes out under the beta tag.
             case "$version" in *-*) tag=beta ;; *) tag=latest ;; esac
             echo "export NPM_DIST_TAG=$tag" >> "$BASH_ENV"
-      # Trusted publishing needs npm 11.5.1 or later, which comes with Node 24.
+      # `npm stage publish` needs npm 11.15.0 or later, which comes with Node 24.
       - node:
           with:
             node-version: "24"
@@ -66,21 +67,14 @@ jobs:
           name: Build the package
           command: npm run build:package
       - run:
-          name: Publish
+          name: Stage the release
           working_directory: packages/ui-components
           command: |
             npm --version
-            if [ -n "$NPM_TOKEN" ]; then
-              # First release only: npm accepts a trusted publisher once the package exists, so the
-              # first publish uses a token saved in CircleCI's project settings. Remove it afterwards.
-              echo "Publishing with NPM_TOKEN."
-              echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-            else
-              # npm swaps this OIDC token for a short-lived publish token.
-              echo "Publishing with trusted publishing (OIDC)."
-              export NPM_ID_TOKEN=$(circleci run oidc get --claims '{"aud":"npm:registry.npmjs.org"}')
-            fi
-            npm publish --tag "$NPM_DIST_TAG"
+            # npm swaps this OIDC token for a short-lived token that can stage a version but not publish it.
+            export NPM_ID_TOKEN=$(circleci run oidc get --claims '{"aud":"npm:registry.npmjs.org"}')
+            npm stage publish --tag "$NPM_DIST_TAG"
+            echo "Staged. Approve it on npmjs.com (Staged Packages) or with: npm stage approve <stage-id>"
 
 workflows:
   checks:
