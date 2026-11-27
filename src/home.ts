@@ -19,3 +19,17 @@ tabs.addEventListener("valuechange", (event) => {
 });
 
 addCopyButtons(document.querySelector(".home")!);
+
+// The version `@beta` installs today, from jsDelivr's mirror of npm, which pages can read. The
+// site deploys from main, which can be ahead of npm, so it doesn't use its own package.json.
+const latest = document.querySelector<HTMLElement>(".home-version")!;
+fetch("https://data.jsdelivr.com/v1/package/resolve/npm/@samyakbhuta/ui-components@beta")
+  .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
+  .then(({ version }: { version?: string }) => {
+    if (!version || !/^[\w.+-]+$/.test(version)) return;
+    latest.querySelector("a")!.textContent = version;
+    latest.hidden = false;
+  })
+  .catch(() => {
+    // Offline or blocked: the line stays hidden.
+  });
