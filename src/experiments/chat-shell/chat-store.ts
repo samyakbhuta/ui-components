@@ -19,6 +19,8 @@ export type StoredMessage = {
   meta?: string;
   prompt?: StoredPrompt;
   thinking?: { seconds: number; reasoning: string };
+  /** What the reply cited. */
+  sources?: { title: string; url: string; description?: string; site?: string }[];
   /** Tools the reply used, like reading a referenced file. */
   tools?: StoredToolCall[];
   /** Why the reply failed. */
@@ -146,6 +148,7 @@ export function chatToMarkdown(chat: StoredChat, { exportedAt = new Date(), loca
     }
     parts.push("", message.text.trim() || "*(no text)*");
     if (message.error !== undefined) parts.push("", `> **Error:** ${message.error || "Something went wrong."}`);
+    if (message.sources?.length) parts.push("", ...message.sources.map((source, index) => `[${index + 1}]: ${source.url} "${source.title.replace(/"/g, "'")}"`));
     versions?.forEach((text, index) => {
       if (index + 1 !== version) parts.push("", `*Version ${index + 1} of ${versions.length}:*`, "", text.trim() || "*(no text)*");
     });

@@ -3,6 +3,8 @@ import "./docs.css";
 import "@samyakbhuta/ui-components/ai-message";
 import "@samyakbhuta/ui-components/ai-thinking";
 import "@samyakbhuta/ui-components/ai-tool-call";
+import "@samyakbhuta/ui-components/ai-sources";
+import "@samyakbhuta/ui-components/ai-suggestions";
 import "@samyakbhuta/ui-components/ai-transcript";
 import "@samyakbhuta/ui-components/ai-chat-list";
 import { highlight } from "@samyakbhuta/ui-components/highlight";
@@ -79,6 +81,7 @@ function logEvents(root: HTMLElement) {
     "chatrename",
     "chatexport",
     "chatdelete",
+    "suggestionselect",
     "messagefeedback",
     "messageversion",
   ];
@@ -370,6 +373,68 @@ call.done(results) // or call.fail("Timed out after 30s")`,
     },
   },
   {
+    id: "sources",
+    title: "<ai-sources>",
+    intro:
+      "The sources a reply drew on. In a message, its [1] markers become links to them, with a preview on hover or focus. max shows the first few, and the rest open from Show more.",
+    html: `<ai-message class="cited-reply">
+  Custom elements are part of the HTML Standard [3], and get callbacks when they join or leave the page [2]. Shadow DOM keeps their styles apart [1]. In code, \`items[1]\` stays as written.
+  <ai-sources slot="footer" max="2"></ai-sources>
+</ai-message>`,
+    script: `const sources = document.createElement("ai-sources")
+sources.slot = "footer"
+sources.max = 2
+sources.sources = [
+  { title: "Web components", url: "https://developer.mozilla.org/…", description: "…" },
+  …
+]
+reply.append(sources)`,
+    setup: (root) => {
+      root.querySelector("ai-sources")!.sources = [
+        {
+          title: "Web components",
+          url: "https://developer.mozilla.org/docs/Web/API/Web_components",
+          description: "A suite of technologies for creating reusable custom elements.",
+        },
+        {
+          title: "Using custom elements",
+          url: "https://developer.mozilla.org/docs/Web/API/Web_components/Using_custom_elements",
+          description: "How to define a custom element, and the lifecycle callbacks it gets.",
+        },
+        {
+          title: "Custom elements",
+          url: "https://html.spec.whatwg.org/multipage/custom-elements.html",
+          site: "HTML Standard",
+          description: "The specification for defining and upgrading custom elements.",
+        },
+      ];
+    },
+  },
+  {
+    id: "suggestions",
+    title: "<ai-suggestions>",
+    intro:
+      "Prompts people can send with one press. The first set sends through the composer it names with for; the second, a stacked list of follow-ups, only fills the box to edit first.",
+    html: `<ai-suggestions for="suggestions-composer">
+  <ul>
+    <li>What's a custom element?</li>
+    <li>Write a haiku about web components</li>
+  </ul>
+</ai-suggestions>
+<ai-suggestions class="follow-up-list" for="suggestions-composer" action="fill" layout="list" label="Follow-up questions"></ai-suggestions>
+<ai-composer id="suggestions-composer" label="Prompt with suggestions"></ai-composer>`,
+    script: `followUps.suggestions = [
+  "Show me a smaller example",
+  { label: "Explain the README", value: "/explain @README.md", description: "Section by section" },
+]`,
+    setup: (root) => {
+      root.querySelector<HTMLElementTagNameMap["ai-suggestions"]>(".follow-up-list")!.suggestions = [
+        "Show me a smaller example",
+        { label: "Explain the README", value: "/explain @README.md", description: "Section by section" },
+      ];
+    },
+  },
+  {
     id: "syntax",
     title: "Syntax colouring",
     intro:
@@ -586,7 +651,7 @@ main.innerHTML = `
   <header class="docs-header">
     <a class="back" href="/showcase.html">← Showcase</a>
     <h1>AI chat components</h1>
-    <p>Live examples of <code>&lt;ai-composer&gt;</code>, <code>&lt;ai-message&gt;</code>, <code>&lt;ai-transcript&gt;</code>, <code>&lt;ai-thinking&gt;</code>, <code>&lt;ai-tool-call&gt;</code> and <code>&lt;ai-chat-list&gt;</code>. Each has a README with its full API in <code>packages/ui-components/</code>.</p>
+    <p>Live examples of <code>&lt;ai-composer&gt;</code>, <code>&lt;ai-message&gt;</code>, <code>&lt;ai-transcript&gt;</code>, <code>&lt;ai-thinking&gt;</code>, <code>&lt;ai-tool-call&gt;</code>, <code>&lt;ai-sources&gt;</code>, <code>&lt;ai-suggestions&gt;</code> and <code>&lt;ai-chat-list&gt;</code>. Each has a README with its full API in <code>packages/ui-components/</code>.</p>
     <nav aria-label="Examples"><ul>${demos.map((demo) => `<li><a href="#${demo.id}">${escape(demo.title)}</a></li>`).join("")}</ul></nav>
   </header>
   ${demos

@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.2 (2026-11-27)
 
+- New `<ai-sources>`: the numbered list of sources a reply drew on. Inside an `<ai-message>`, the reply's `[1]` markers become links to them, with a preview on hover or keyboard focus. Markers in code and links stay as written, and only `http:` and `https:` addresses become links. `max` shows the first few, with "Show N more".
+- New `<ai-suggestions>`: prompts people can send with one press, like starters for an empty chat or follow-up questions. `for` names the `<ai-composer>` they go to, and `action="fill"` puts one in the box to edit first.
+- `<ai-message>` links its citations whenever its `<ai-sources>` changes, including while it streams.
 - Fix: the `hidden` attribute now hides every component, and the parts inside them. Each component's own `display` used to win over it, so `<ai-message>`'s actions stayed visible while a reply streamed, and `hidden` on `<ai-tool-call>` or `<ai-thinking>` did nothing.
 
 ## 0.1.0-beta.1 (2026-11-27)

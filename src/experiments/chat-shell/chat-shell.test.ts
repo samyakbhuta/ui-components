@@ -431,3 +431,33 @@ test("an older version hides the newest one's tool calls, and the newest shows t
   await user.click(within(reply).getByRole("button", { name: "Next version" }));
   expect(calls()).toEqual([false]);
 });
+
+test("a reply that cites sources links its markers to them, and saves and exports them", async () => {
+  const user = userEvent.setup();
+  const { composer, replies, idle } = await renderShell();
+  composer.thinking = "off";
+  await settle();
+  await user.click(screen.getByRole("button", { name: suggestions[4] }));
+  await idle();
+  const [reply] = replies();
+  expect(within(reply).getByRole("link", { name: "Source 1: Web components" })).toBeDefined();
+  expect(within(reply).getByRole("list", { name: "Sources" })).toBeDefined();
+  const [saved] = new ChatStore().list();
+  expect(saved.messages[1].sources).toHaveLength(3);
+});
+
+test("the newest reply offers follow-up questions, and one sends", async () => {
+  const user = userEvent.setup();
+  const { composer, prompt, sent, replies, idle } = await renderShell();
+  composer.thinking = "off";
+  await settle();
+  await user.type(prompt, "Write a haiku about web components{Enter}");
+  await idle();
+  const offer = within(replies()[0]).getByRole("list", { name: "Follow-up questions" });
+  await user.click(within(offer).getByRole("button", { name: "Write another one" }));
+  await idle();
+  expect(sent()).toEqual(["Write a haiku about web components", "Write another one"]);
+  // Only the newest reply keeps its follow-ups.
+  expect(replies()[0].querySelector("ai-suggestions")).toBeNull();
+  expect(replies()[1].querySelector("ai-suggestions")).not.toBeNull();
+});

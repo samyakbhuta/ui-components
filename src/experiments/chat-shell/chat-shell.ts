@@ -5,6 +5,9 @@ import "@samyakbhuta/ui-components/ai-composer";
 import "@samyakbhuta/ui-components/ai-message";
 import "@samyakbhuta/ui-components/ai-thinking";
 import "@samyakbhuta/ui-components/ai-tool-call";
+import "@samyakbhuta/ui-components/ai-sources";
+import "@samyakbhuta/ui-components/ai-suggestions";
+import type { Source } from "@samyakbhuta/ui-components/ai-sources";
 import "@samyakbhuta/ui-components/ai-transcript";
 import {
   type ComposerCommands,
@@ -65,7 +68,36 @@ export const suggestions = [
   "/explain @src/main.ts",
   "Write a haiku about web components",
   "Show me a reply that fails",
+  "What are web components? Cite your sources",
 ];
+
+/** Asking for sources makes the pretend model cite these. */
+const citing = (text: string) => /\b(?:cite|sources?)\b/i.test(text);
+
+export const pretendSources: Source[] = [
+  {
+    title: "Web components",
+    url: "https://developer.mozilla.org/docs/Web/API/Web_components",
+    description: "A suite of technologies for creating reusable custom elements, with their functionality kept away from the rest of your code.",
+  },
+  {
+    title: "Using custom elements",
+    url: "https://developer.mozilla.org/docs/Web/API/Web_components/Using_custom_elements",
+    description: "How to define a custom element, and the lifecycle callbacks it gets.",
+  },
+  {
+    title: "Custom elements",
+    url: "https://html.spec.whatwg.org/multipage/custom-elements.html",
+    site: "HTML Standard",
+    description: "The specification for defining and upgrading custom elements.",
+  },
+];
+
+/** Follow-up questions offered under the newest reply. */
+const followUps = (detail: PromptSubmitDetail) =>
+  /haiku/i.test(detail.text)
+    ? ["Write another one", "Make it about shadow DOM"]
+    : ["Show me a smaller example", "How do I test this?"];
 
 /** Asking for a failure makes the pretend model stop half way, to show an error. */
 const failing = (text: string) => /\bfails?\b/i.test(text);
@@ -96,6 +128,17 @@ const icons = {
 export function pretendReply(detail: PromptSubmitDetail) {
   const model = labelOf(defaultModels, detail.model);
   const mode = labelOf(defaultModes, detail.mode);
+  if (citing(detail.text)) {
+    return [
+      "Web components are a set of browser features for making your own reusable HTML elements [1].",
+      "",
+      "- **Custom elements** let you define a tag, like `<ai-message>`, and react when it joins or leaves the page [2].",
+      "- **Shadow DOM** keeps an element's markup and styles apart from the page's.",
+      "- The rules for defining and upgrading elements are in the HTML Standard [3].",
+      "",
+      `— pretend **${model}**`,
+    ].join("\n");
+  }
   if (/haiku/i.test(detail.text)) {
     return `Custom tags bloom —\n*shadow roots hold quiet light,*\nslots wait to be filled.\n\n— pretend **${model}**`;
   }
@@ -186,12 +229,10 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
           <div slot="empty" class="transcript-empty">
             <h2>What can I help with?</h2>
             <p>Type <kbd>/</kbd> for commands or <kbd>@</kbd> to reference a file. Drop or paste files to attach them, and press <kbd>↑</kbd> for earlier prompts.</p>
-            <ul class="suggestions" aria-label="Suggestions">
-              ${suggestions.map((text) => `<li><button type="button" class="suggestion">${text}</button></li>`).join("")}
-            </ul>
+            <ai-suggestions class="starters" for="chat-composer"></ai-suggestions>
           </div>
         </ai-transcript>
-        <ai-composer class="composer" attachments voice history persist="chat-shell" paste-as-file max-length="8000"
+        <ai-composer id="chat-composer" class="composer" attachments voice history persist="chat-shell" paste-as-file max-length="8000"
           default-mode="auto" default-model="sonnet-5.5" default-thinking="medium"></ai-composer>
       </div>
     </div>
@@ -213,6 +254,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   composer.thinkingLevels = defaultThinkingLevels;
   composer.commands = commands;
   composer.references = references;
+  root.querySelector("ai-suggestions")!.suggestions = suggestions;
 
   // On narrow screens the chat list lives in a drawer; on wide ones, in the sidebar.
   const narrow = window.matchMedia?.("(max-width: 52rem)");
@@ -294,6 +336,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
             ? { seconds: thinking.duration ?? Math.round(thinking.elapsed / 1000), reasoning: thinking.reasoning }
             : undefined,
           tools: tools.length ? tools : undefined,
+          sources: message.querySelector("ai-sources")?.sources,
           error: message.error ?? undefined,
           feedback: message.feedback ?? undefined,
           versions: texts && texts.length > 1 ? [...texts] : undefined,
@@ -342,6 +385,27 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     return message;
   }
 
+  function sourcesFor(list: Source[]) {
+    const sources = document.createElement("ai-sources");
+    sources.slot = "footer";
+    sources.max = 2;
+    sources.sources = list;
+    return sources;
+  }
+
+  /** Follow-up questions go under the newest reply only. */
+  function offerFollowUps(message: AiMessageElement, questions: string[]) {
+    for (const old of transcript.querySelectorAll("ai-suggestions.follow-ups")) old.remove();
+    const offer = document.createElement("ai-suggestions");
+    offer.className = "follow-ups";
+    offer.slot = "footer";
+    offer.layout = "list";
+    offer.setAttribute("label", "Follow-up questions");
+    offer.for = "chat-composer";
+    offer.suggestions = questions;
+    message.append(offer);
+  }
+
   function toolCall(name: string, label: string, input: unknown) {
     const call = document.createElement("ai-tool-call");
     call.slot = "header";
@@ -388,6 +452,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       }
       message.append(call);
     }
+    if (stored.sources?.length) message.append(sourcesFor(stored.sources));
     if (stored.meta) message.append(meta(stored.meta));
     showWork(message, message.version === message.versions);
     return message;
@@ -501,6 +566,10 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
         message.appendText(text.slice(index, Math.min(index + 6, end)));
       }
       if (end < text.length) message.error = "The connection dropped. Press Retry to try again.";
+      else {
+        if (citing(detail.text)) message.append(sourcesFor(pretendSources));
+        offerFollowUps(message, followUps(detail));
+      }
     } catch {
       thinking?.remove();
       for (const call of message.querySelectorAll("ai-tool-call")) if (call.status === "running") call.fail("Stopped");
@@ -576,13 +645,6 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   // The event comes before the rating changes, so it can be cancelled; save once it has.
   transcript.addEventListener("messagefeedback", () => queueMicrotask(save));
 
-  transcript.addEventListener("click", (event) => {
-    const suggestion = (event.target as Element).closest(".suggestion");
-    if (!suggestion || composer.busy) return;
-    composer.value = suggestion.textContent ?? "";
-    composer.submit();
-    composer.focus();
-  });
 
   // ---- The chat list, the header and export ---------------------------------------------------
 
