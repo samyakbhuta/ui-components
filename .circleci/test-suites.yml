@@ -1,0 +1,12 @@
+---
+name: unit
+discover: npx vitest list --filesOnly
+run: npx vitest run --reporter=junit --outputFile="<< outputs.junit >>" --bail 0 << test.atoms >>
+options:
+  store-test-results: true
+---
+name: e2e
+discover: cd e2e && find . -type f -name '*.spec.ts' | sed 's|^\./||' | sort
+run: PLAYWRIGHT_JUNIT_OUTPUT_FILE="<< outputs.junit >>" npx playwright test --reporter=junit,html << test.atoms >>
+options:
+  store-test-results: true
