@@ -13,7 +13,7 @@ They're standard Web Components, so they work in a plain HTML page and in React,
 ## What you need
 
 - **A bundler**, like Vite, webpack, Rspack, Parcel or esbuild. The package ships plain JavaScript with its CSS built in and its TypeScript types included, so it needs no TypeScript or CSS configuration. The examples below use Vite.
-- **ui-sdk**: `@ui-sdk/web` and its peer `@ui-sdk/core`, installed beside the package so all the components share one copy. The package is built against `0.1.0-beta.17`. ui-sdk is in beta, so pin that version until you've checked a newer one.
+- **ui-sdk**: `@ui-sdk/web` and its peer `@ui-sdk/core`, installed beside the package so all the components share one copy. The package is built against `0.1.0-beta.18`. ui-sdk is in beta, so pin that version until you've checked a newer one.
 - **A current browser.** The styles use `color-mix()`, `light-dark()`, `:has()` and container queries, which Chrome, Edge, Firefox and Safari have supported for some time.
 
 ## Option 1: install the package
@@ -23,7 +23,7 @@ They're standard Web Components, so they work in a plain HTML page and in React,
 Once the package is published:
 
 ```bash
-npm install @samyakbhuta/ui-components @ui-sdk/web@0.1.0-beta.17 @ui-sdk/core@0.1.0-beta.17
+npm install @samyakbhuta/ui-components @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18
 ```
 
 Until then, build it from this repo and install the file it makes:
@@ -37,7 +37,7 @@ cd packages/ui-components && npm pack
 ```
 
 ```bash
-npm install /path/to/samyakbhuta-ui-components-0.1.0-beta.0.tgz @ui-sdk/web@0.1.0-beta.17 @ui-sdk/core@0.1.0-beta.17
+npm install /path/to/samyakbhuta-ui-components-0.1.0-beta.0.tgz @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18
 ```
 
 Run the last command in your app, with the path to the `.tgz` file that `npm pack` printed.

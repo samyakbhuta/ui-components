@@ -15,7 +15,7 @@ Web Components for AI chat apps, built on [ui-sdk](https://www.npmjs.com/package
 The package expects ui-sdk beside it, so every component shares one copy:
 
 ```bash
-npm install @samyakbhuta/ui-components @ui-sdk/web@0.1.0-beta.17 @ui-sdk/core@0.1.0-beta.17
+npm install @samyakbhuta/ui-components @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18
 ```
 
 ## Use
