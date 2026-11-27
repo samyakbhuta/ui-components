@@ -31,6 +31,8 @@ Our own components live in the package `packages/ui-components/` (`@samyakbhuta/
 
 The site's front page, `index.html`, introduces the package and lists every component, each linking to its live example on the docs page. Netlify deploys the site from `main` to https://uisdk-components.netlify.app. A new component needs a card there too, and `e2e/home.spec.ts` counts them.
 
+The front page's quick start is also a project of its own, `examples/quick-start/`, installed from npm, which "Open in StackBlitz" and `npx degit samyakbhuta/ui-components/examples/quick-start` start from. `src/home.test.ts` fails unless the two match word for word, and the starter uses the ui-sdk version the package is built against; change both together. The front page reads the newest version from jsDelivr, since npm's registry doesn't let other sites read it; the browser tests answer for jsDelivr, so they don't need the network.
+
 When you change a component's API, update its README, its tests, the live examples in `src/experiments/ai-composer/main.ts` (`/experiments/ai-composer.html`), `packages/ui-components/CHANGELOG.md`, and its props or events in `packages/ui-components/src/elements.ts`.
 
 `elements.ts` is the map of every tag's props and events that `react.ts`, `vue.ts` and `svelte.ts` turn into JSX and template types. `elements.test.ts` fails when an attribute or writable property is missing from it. Type a prop as its setter takes it. Frameworks set a property whenever the element has one, so a property must accept what a framework passes for the attribute of the same name, like `true` for a bare attribute or a string of words. The type tests in `packages/ui-components/types-test/` run with `npm run typecheck`; each `@ts-expect-error` there must stay an error.

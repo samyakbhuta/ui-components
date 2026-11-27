@@ -2,7 +2,7 @@
 
 Web Components for AI chat apps, built on [ui-sdk](https://www.npmjs.com/package/@ui-sdk/web). They work in plain HTML and in React, Vue, Svelte and Angular.
 
-**[Try them live](https://uisdk-components.netlify.app)**: a chat demo, and a live example of every component.
+**[Try them live](https://uisdk-components.netlify.app)**: a chat demo, and a live example of every component. Or [open a starter in StackBlitz](https://stackblitz.com/github/samyakbhuta/ui-components/tree/main/examples/quick-start).
 
 | Element | What it is |
 | --- | --- |
