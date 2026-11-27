@@ -40,7 +40,7 @@ When you change a component's API, update its README, its tests, the live exampl
 
 ## Releasing
 
-The package is on npm as `@samyakbhuta/ui-components`. Releases go out from GitHub Actions through npm trusted publishing (`.github/workflows/release.yml`), so no npm token is stored anywhere.
+The package is on npm as `@samyakbhuta/ui-components`. Releases go out from CircleCI through npm trusted publishing (the `release` workflow in `.circleci/config.yml`), so no npm token is stored anywhere.
 
 1. Bump `version` in `packages/ui-components/package.json`. Use `X.Y.Z-beta.N` while ui-sdk is in beta.
 2. Date its entry in `packages/ui-components/CHANGELOG.md`, and merge to `main`.
@@ -59,4 +59,4 @@ The workflow:
 - `npm run typecheck` checks both `src/` and `e2e/`.
 - Every browser test fails on a console error, an uncaught error or a dialog, so a reply whose text runs as script fails the suite.
 - Playwright is pinned to 1.63.0. It uses an installed Chromium for that version when `PLAYWRIGHT_BROWSERS_PATH` points at one; otherwise run `npx playwright install chromium` once, or set `PLAYWRIGHT_CHROMIUM_PATH` to a Chromium binary.
-- When you change how something behaves, update its browser test as well as its unit test. `.github/workflows/ci.yml` runs the type-check, unit tests and browser tests on pull requests and on `main`.
+- When you change how something behaves, update its browser test as well as its unit test. CircleCI (`.circleci/config.yml`) runs the type-check, unit tests and browser tests on every push. GitHub Actions is not used.

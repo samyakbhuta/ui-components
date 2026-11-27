@@ -1,0 +1,93 @@
+version: 2.1
+
+# Checks run on every push. A tag like ui-components-v0.1.0-beta.1 also publishes
+# @samyakbhuta/ui-components to npm with trusted publishing (OIDC), so no npm token is stored.
+
+jobs:
+  checks:
+    docker:
+      # Has Chromium for the pinned Playwright 1.63.0 already installed.
+      - image: mcr.microsoft.com/playwright:v1.63.0-noble
+    resource_class: medium
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - npm-v1-{{ checksum "package-lock.json" }}
+      - run: npm ci
+      - save_cache:
+          key: npm-v1-{{ checksum "package-lock.json" }}
+          paths:
+            - ~/.npm
+      - run:
+          name: Type-check
+          command: npm run typecheck
+      - run:
+          name: Unit tests
+          command: npx vitest run
+      - run:
+          name: Build the package
+          command: npm run build:package
+      # Builds the site, serves it with vite preview, and runs e2e/ in light and dark.
+      - run:
+          name: Browser tests
+          command: npm run test:e2e
+      - store_artifacts:
+          path: playwright-report
+          destination: playwright-report
+      - store_artifacts:
+          path: test-results
+          destination: test-results
+
+  publish:
+    docker:
+      # Trusted publishing needs npm 11.5.1 or later, which comes with Node 24.
+      - image: cimg/node:24.22
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: Check the tag matches the package version
+          command: |
+            version=$(node -p 'require("./packages/ui-components/package.json").version')
+            if [ "$CIRCLE_TAG" != "ui-components-v$version" ]; then
+              echo "Tag $CIRCLE_TAG doesn't match package version $version." >&2
+              exit 1
+            fi
+            # A version with a hyphen (0.2.0-beta.1) is a prerelease and goes out under the beta tag.
+            case "$version" in *-*) tag=beta ;; *) tag=latest ;; esac
+            echo "export NPM_DIST_TAG=$tag" >> "$BASH_ENV"
+      - run: npm ci
+      - run:
+          name: Build the package
+          command: npm run build:package
+      - run:
+          name: Publish
+          working-directory: packages/ui-components
+          command: |
+            npm --version
+            # npm swaps this OIDC token for a short-lived publish token and adds provenance.
+            export NPM_ID_TOKEN=$(circleci run oidc get --claims '{"aud":"npm:registry.npmjs.org"}')
+            npm publish --tag "$NPM_DIST_TAG"
+
+workflows:
+  checks:
+    jobs:
+      - checks
+
+  release:
+    jobs:
+      - checks:
+          filters:
+            tags:
+              only: /^ui-components-v.*/
+            branches:
+              ignore: /.*/
+      - publish:
+          requires:
+            - checks
+          filters:
+            tags:
+              only: /^ui-components-v.*/
+            branches:
+              ignore: /.*/
