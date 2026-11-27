@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0-beta.0 (unreleased)
+## 0.1.0-beta.0 (2026-11-27)
 
 The first release, built on ui-sdk `0.1.0-beta.17`:
 

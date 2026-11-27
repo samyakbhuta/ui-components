@@ -38,6 +38,20 @@ When you change a component's API, update its README, its tests, the live exampl
 - New entry points need a one-line file in `packages/ui-components/src/` (like `ai-composer.ts`), an entry in its `vite.config.ts`, and an `exports` entry in its `package.json`.
 - Don't publish without the owner's go-ahead. To check a release, run `npm publish --dry-run` in `packages/ui-components/`. Publish betas with `npm publish --tag beta`: npm 10 doesn't always apply `publishConfig.tag`, so `scripts/check-tag.mjs` refuses to publish a prerelease under `latest`.
 
+## Releasing
+
+The package is on npm as `@samyakbhuta/ui-components`. Releases go out from GitHub Actions through npm trusted publishing (`.github/workflows/release.yml`), so no npm token is stored anywhere.
+
+1. Bump `version` in `packages/ui-components/package.json`. Use `X.Y.Z-beta.N` while ui-sdk is in beta.
+2. Date its entry in `packages/ui-components/CHANGELOG.md`, and merge to `main`.
+3. Tag the merge commit `ui-components-v<version>` and push the tag.
+
+The workflow:
+
+- checks that the tag matches the version;
+- runs the type-check, unit tests and package build;
+- publishes, under `beta` for a version with a hyphen and under `latest` otherwise.
+
 ## Testing
 
 - `npm test` runs the unit tests: Vitest in jsdom, in `*.test.ts` files beside the code.

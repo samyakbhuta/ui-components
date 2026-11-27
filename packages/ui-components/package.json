@@ -73,8 +73,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/samyakbhuta/uisdk.git",
+    "url": "git+https://github.com/samyakbhuta/ui-components.git",
     "directory": "packages/ui-components"
+  },
+  "homepage": "https://github.com/samyakbhuta/ui-components/tree/main/packages/ui-components#readme",
+  "bugs": {
+    "url": "https://github.com/samyakbhuta/ui-components/issues"
   },
   "publishConfig": {
     "access": "public",
