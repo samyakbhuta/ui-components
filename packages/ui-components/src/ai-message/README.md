@@ -161,6 +161,9 @@ message.strings = { copy: "Copier", copied: "Copié", retry: "Réessayer", edit:
 
 ## Slots
 
+Put an [`<ai-sources>`](../ai-sources/README.md) in the footer and the reply's `[1]` markers become links to its sources, with a preview on hover or focus.
+
+
 Children with `slot="header"` go above the text, and `slot="footer"` below it, whether they're there at the start or added later. Put an [`<ai-thinking>`](../ai-thinking/README.md) in the header and details like the model in the footer:
 
 ```html

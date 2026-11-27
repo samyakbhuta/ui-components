@@ -23,6 +23,8 @@ Our own components live in the package `packages/ui-components/` (`@samyakbhuta/
 - `<ai-transcript>` (`packages/ui-components/src/ai-transcript/README.md`): the scrolling conversation, which follows streaming replies and announces finished ones.
 - `<ai-thinking>` (`packages/ui-components/src/ai-thinking/README.md`): the "Thinking…" indicator for a conversation.
 - `<ai-tool-call>` (`packages/ui-components/src/ai-tool-call/README.md`): one step an agent takes, like a web search, with its input and result. It shows tool output as text only. Keep it that way.
+- `<ai-sources>` (`packages/ui-components/src/ai-sources/README.md`): the sources a reply cites. Inside an `<ai-message>`, it turns `[1]` markers into links with a preview. Only `http:` and `https:` addresses become links. Keep it that way.
+- `<ai-suggestions>` (`packages/ui-components/src/ai-suggestions/README.md`): prompts to send with one press, through the `<ai-composer>` named by `for`.
 - `<ai-chat-list>` (`packages/ui-components/src/ai-chat-list/README.md`): the list of saved chats for a sidebar, with Rename, Export and Delete. The chat shell keeps its chats in `src/experiments/chat-shell/chat-store.ts`.
 
 When you change a component's API, update its README, its tests, the live examples in `src/experiments/ai-composer/main.ts` (`/experiments/ai-composer.html`), and `packages/ui-components/CHANGELOG.md`.

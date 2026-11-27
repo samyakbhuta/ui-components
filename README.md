@@ -1,6 +1,6 @@
 # ui-sdk experiments
 
-Web Components built with [ui-sdk](https://www.npmjs.com/package/@ui-sdk/web), plus a showcase of experiments: an AI chat app and the components it's made of (`<ai-composer>`, `<ai-message>`, `<ai-transcript>`, `<ai-thinking>`, `<ai-tool-call>` and `<ai-chat-list>`). The components are packaged as `@samyakbhuta/ui-components` in `packages/ui-components/`, each with its own README.
+Web Components built with [ui-sdk](https://www.npmjs.com/package/@ui-sdk/web), plus a showcase of experiments: an AI chat app and the components it's made of (`<ai-composer>`, `<ai-message>`, `<ai-transcript>`, `<ai-thinking>`, `<ai-tool-call>`, `<ai-sources>`, `<ai-suggestions>` and `<ai-chat-list>`). The components are packaged as `@samyakbhuta/ui-components` in `packages/ui-components/`, each with its own README.
 
 ## Scripts
 

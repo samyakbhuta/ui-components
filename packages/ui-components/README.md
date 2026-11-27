@@ -9,6 +9,8 @@ Web Components for AI chat apps, built on [ui-sdk](https://www.npmjs.com/package
 | `<ai-transcript>` | The scrolling conversation. Follows a streaming reply, offers Jump to latest, and tells screen readers about each finished reply. |
 | `<ai-thinking>` | The "Thinking…" indicator, with an optional timer and reasoning. |
 | `<ai-tool-call>` | One step an agent takes, like a web search: running, done or failed, and opens to show its input and result. |
+| `<ai-sources>` | The sources a reply drew on. Turns a message's `[1]` markers into links, with a preview on hover. |
+| `<ai-suggestions>` | Prompts to send with one press: starters for an empty chat, or follow-up questions. |
 | `<ai-chat-list>` | The list of saved chats for a sidebar, with Rename, Export and Delete. |
 
 ## Install
@@ -24,7 +26,7 @@ npm install @samyakbhuta/ui-components @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.
 Importing a component registers its tag and adds its styles to the page; there's no CSS to set up. Import everything, or only what you use:
 
 ```ts
-import "@samyakbhuta/ui-components"; // all six
+import "@samyakbhuta/ui-components"; // all eight
 import "@samyakbhuta/ui-components/ai-composer"; // or one at a time
 ```
 

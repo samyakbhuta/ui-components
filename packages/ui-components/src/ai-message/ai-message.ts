@@ -114,6 +114,32 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
+/** Turns `[1]` in text, outside code and links, into the citation for that number, when there is one. */
+function cite(root: Node, citation: (number: number) => HTMLElement | null) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) =>
+      /\[\d{1,3}\]/.test(node.nodeValue ?? "") && !node.parentElement?.closest("code, pre, a, [data-part='code-block']")
+        ? NodeFilter.FILTER_ACCEPT
+        : NodeFilter.FILTER_REJECT,
+  });
+  const texts: Text[] = [];
+  while (walker.nextNode()) texts.push(walker.currentNode as Text);
+  for (const text of texts) {
+    const value = text.nodeValue!;
+    const parts: Node[] = [];
+    let last = 0;
+    for (const match of value.matchAll(/\[(\d{1,3})\]/g)) {
+      const marker = citation(Number(match[1]));
+      if (!marker) continue;
+      parts.push(document.createTextNode(value.slice(last, match.index)), marker);
+      last = match.index! + match[0].length;
+    }
+    if (!parts.length) continue;
+    parts.push(document.createTextNode(value.slice(last)));
+    text.replaceWith(...parts);
+  }
+}
+
 /** Removes the indentation shared by every line, for Markdown written inside indented HTML. */
 function dedent(text: string) {
   const lines = text.replace(/^(?:[ \t]*\n)+|\s+$/g, "").split("\n");
@@ -316,6 +342,7 @@ export class AiMessageElement extends BaseElement {
     );
     this.#rendered = true;
     this.addEventListener("click", this.#onCodeCopy);
+    this.addEventListener("sourceschange", () => this.#renderBody(true));
     this.#renderAll();
     this.#observer.observe(this, { childList: true });
   }
@@ -460,8 +487,10 @@ export class AiMessageElement extends BaseElement {
       while (keep < blocks.length && keep < current.length && current[keep].aiSource === blocks[keep].source) keep++;
     }
     for (const stale of current.slice(keep)) stale.remove();
+    const sources = this.querySelector<HTMLElement & { citation?: (number: number) => HTMLElement | null }>(":scope > ai-sources");
     for (const block of blocks.slice(keep)) {
       (block.node as Rendered).aiSource = block.source;
+      if (typeof sources?.citation === "function") cite(block.node, (number) => sources.citation!(number));
       body.append(block.node);
     }
   }

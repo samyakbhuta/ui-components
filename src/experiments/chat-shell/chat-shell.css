@@ -177,32 +177,16 @@
   color: var(--muted);
 }
 
-.suggestions {
-  display: flex;
-  flex-wrap: wrap;
+.starters {
+  margin-top: 1.25rem;
+}
+
+.starters [data-part="list"] {
   justify-content: center;
-  gap: 0.5rem;
-  margin: 1.25rem 0 0;
-  padding: 0;
-  list-style: none;
 }
 
-.suggestion {
-  padding: 0.5rem 0.875rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-size: 0.875rem;
-}
-
-.suggestion:hover {
-  background: var(--soft);
-}
-
-.suggestion:focus-visible {
-  outline: auto;
+.follow-ups {
+  margin-top: 0.25rem;
 }
 
 kbd {
