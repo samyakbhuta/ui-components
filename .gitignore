@@ -2,3 +2,14 @@ node_modules
 dist
 *.local
 .DS_Store
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Built by `npm run build:package`
+packages/ui-components/dist/
+packages/ui-components/docs/
+*.tgz

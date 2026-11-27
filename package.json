@@ -7,11 +7,17 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p e2e",
+    "build:package": "vite build --config packages/ui-components/vite.config.ts && tsc -p packages/ui-components/tsconfig.build.json && custom-elements-manifest analyze --globs \"packages/ui-components/src/ai-*/ai-*.ts\" --exclude \"**/*.test.ts\" --outdir packages/ui-components/dist && node packages/ui-components/scripts/finish-build.mjs"
   },
   "devDependencies": {
+    "@custom-elements-manifest/analyzer": "^0.11.0",
+    "@playwright/test": "1.63.0",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/user-event": "^14.6.13",
+    "@types/node": "^22.20.7",
     "jsdom": "^31.0.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
@@ -20,5 +26,6 @@
   "dependencies": {
     "@ui-sdk/core": "^0.1.0-beta.17",
     "@ui-sdk/web": "^0.1.0-beta.17"
-  }
+  },
+  "customElements": "packages/ui-components/dist/custom-elements.json"
 }

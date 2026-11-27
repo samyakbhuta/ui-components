@@ -1,0 +1,356 @@
+.docs {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+}
+
+.docs-header h1 {
+  margin: 0.5rem 0;
+  font-size: 1.75rem;
+}
+
+.docs-header nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.back {
+  color: color-mix(in srgb, CanvasText 68%, Canvas);
+  font-size: 0.875rem;
+}
+
+.demo {
+  margin-top: 2.5rem;
+  scroll-margin-top: 1rem;
+}
+
+.demo h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.25rem;
+}
+
+.demo > p {
+  margin: 0 0 1rem;
+}
+
+.demo-stage {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid color-mix(in srgb, CanvasText 20%, Canvas);
+  border-radius: 0.75rem;
+}
+
+.event-log {
+  min-height: 1.25rem;
+  margin: 0.5rem 0;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, CanvasText 68%, Canvas);
+}
+
+.demo-code summary {
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.demo-code pre {
+  overflow-x: auto;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, CanvasText 6%, Canvas);
+  font-size: 0.8125rem;
+}
+
+.mini-transcript {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mini-transcript:empty {
+  display: none;
+}
+
+.mini-transcript p {
+  margin: 0.25rem 0 0;
+}
+
+.branded {
+  --ai-composer-accent: #6d28d9;
+  --ai-composer-accent-text: white;
+  --ai-composer-radius: 0.5rem;
+  --ai-composer-border: 2px solid #6d28d9;
+  --ai-composer-max-height: 20rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .branded {
+    --ai-composer-accent: #c4b5fd;
+    --ai-composer-accent-text: #1e1b4b;
+    --ai-composer-border: 2px solid #c4b5fd;
+  }
+}
+
+/* Shows what people with Reduce motion turned on see, whatever this browser's setting. */
+.reduced-motion-preview [data-shimmer] {
+  background: none;
+  color: var(--ai-thinking-color);
+  animation: ai-thinking-fade 3s ease-in-out infinite alternate;
+}
+
+kbd {
+  padding: 0 0.3em;
+  border: 1px solid color-mix(in srgb, CanvasText 55%, Canvas);
+  border-radius: 0.25rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.875em;
+}
+
+/* Playground */
+
+.playground {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.playground-controls {
+  display: grid;
+  gap: 1rem;
+}
+
+.playground-switches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.playground-switches legend {
+  margin-bottom: 0.5rem;
+  padding: 0;
+  font-weight: 600;
+}
+
+.playground-switches label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.playground-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  font-size: 0.875rem;
+}
+
+.playground-setting {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.playground-setting input[type="text"] {
+  width: 10rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid color-mix(in srgb, CanvasText 55%, Canvas);
+  border-radius: 0.375rem;
+  background: Field;
+  color: FieldText;
+  font: inherit;
+}
+
+.playground-setting input[type="color"] {
+  width: 2rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, CanvasText 55%, Canvas);
+  border-radius: 0.375rem;
+  background: none;
+}
+
+/* ui-sdk Switch */
+
+[data-slot="switch"] {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: 2.25rem;
+  height: 1.25rem;
+  padding: 0.125rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: color-mix(in srgb, CanvasText 35%, Canvas);
+  cursor: default;
+}
+
+[data-slot="switch"][data-checked] {
+  background: CanvasText;
+}
+
+[data-slot="switch"]:focus-visible {
+  outline: auto;
+  outline-offset: 2px;
+}
+
+[data-slot="switch-thumb"] {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: Canvas;
+  transition: translate 150ms;
+}
+
+[data-slot="switch-thumb"][data-checked] {
+  translate: 1rem 0;
+}
+
+[dir="rtl"] [data-slot="switch-thumb"][data-checked] {
+  translate: -1rem 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="switch-thumb"] {
+    transition: none;
+  }
+}
+
+/* ui-sdk Slider */
+
+[data-slot="slider"] {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+[data-slot="slider-control"] {
+  display: flex;
+  align-items: center;
+  width: 8rem;
+  height: 1.5rem;
+}
+
+[data-slot="slider-track"] {
+  position: relative;
+  width: 100%;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, CanvasText 25%, Canvas);
+}
+
+[data-slot="slider-indicator"] {
+  height: 100%;
+  border-radius: 999px;
+  background: CanvasText;
+}
+
+[data-slot="slider-thumb"] {
+  top: 50%;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid CanvasText;
+  border-radius: 50%;
+  background: Canvas;
+  box-sizing: border-box;
+  translate: -50% -50%;
+}
+
+[data-slot="slider-thumb"]:has(:focus-visible) {
+  outline: auto;
+  outline-offset: 2px;
+}
+
+[data-slot="slider-value"] {
+  min-width: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Playground segmented control, outside a composer */
+
+.playground [data-slot="segmented-control"] {
+  position: relative;
+  display: inline-flex;
+  isolation: isolate;
+  padding: 0.125rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, CanvasText 8%, Canvas);
+}
+
+.playground [data-slot="segmented-control-item"] {
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  cursor: default;
+}
+
+.playground [data-slot="segmented-control-item"][data-checked] {
+  font-weight: 600;
+}
+
+.playground [data-slot="segmented-control-item"]:focus-visible {
+  outline: auto;
+}
+
+.playground [data-slot="segmented-control-indicator"] {
+  position: absolute;
+  z-index: -1;
+  top: var(--segmented-control-indicator-top);
+  left: var(--segmented-control-indicator-left);
+  width: var(--segmented-control-indicator-width);
+  height: var(--segmented-control-indicator-height);
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, CanvasText 55%, Canvas);
+  border-radius: 999px;
+  background: Canvas;
+}
+
+.playground-code [data-part="body"] {
+  max-width: 100%;
+}
+
+/* Messages and transcript examples */
+
+.short-transcript {
+  height: 16rem;
+  padding: 0.75rem;
+  border: 1px solid color-mix(in srgb, CanvasText 20%, Canvas);
+  border-radius: 0.5rem;
+}
+
+.short-transcript > [slot="empty"] {
+  color: color-mix(in srgb, CanvasText 68%, Canvas);
+}
+
+.sample-chats {
+  max-width: 18rem;
+}
+
+.replay,
+.add-reply,
+.toggle-colouring {
+  justify-self: start;
+  padding: 0.375rem 0.875rem;
+  border: 1px solid color-mix(in srgb, CanvasText 55%, Canvas);
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.replay:hover,
+.add-reply:hover,
+.toggle-colouring:hover {
+  background: color-mix(in srgb, CanvasText 8%, Canvas);
+}

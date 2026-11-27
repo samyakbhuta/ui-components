@@ -1,0 +1,107 @@
+import { settle } from "@ui-sdk/core/testing";
+import { expect, test } from "vitest";
+import "../ai-message/ai-message.ts";
+import "./ai-transcript.ts";
+import type { AiTranscriptElement } from "./ai-transcript.ts";
+
+async function mount(markup = "<ai-transcript></ai-transcript>") {
+  document.body.insertAdjacentHTML("beforeend", markup);
+  const transcript = document.body.lastElementChild as AiTranscriptElement;
+  await settle();
+  return {
+    transcript,
+    // The transcript's own status region; each message has one too.
+    announced: () => [...transcript.children].find((child) => (child as HTMLElement).dataset.part === "announcement")!.textContent,
+    parts: () => [...transcript.children].map((child) => (child as HTMLElement).dataset.part ?? child.tagName.toLowerCase()),
+  };
+}
+
+const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+
+test("it's a named, focusable region that isn't a live region itself", async () => {
+  const { transcript } = await mount();
+  expect(transcript.getAttribute("role")).toBe("region");
+  expect(transcript.getAttribute("aria-label")).toBe("Conversation");
+  expect(transcript.tabIndex).toBe(0);
+  expect(transcript.hasAttribute("aria-live")).toBe(false);
+
+  transcript.strings = { label: "Chat", jump: "Latest" };
+  expect(transcript.getAttribute("aria-label")).toBe("Chat");
+  expect(transcript.querySelector("[data-part='jump']")!.textContent).toBe("Latest");
+
+  const named = await mount('<ai-transcript aria-label="Support chat"></ai-transcript>');
+  expect(named.transcript.getAttribute("aria-label")).toBe("Support chat");
+});
+
+test("its own parts stay after the messages", async () => {
+  const { transcript, parts } = await mount('<ai-transcript><p slot="empty">Ask me anything</p></ai-transcript>');
+  transcript.append(document.createElement("ai-message"), document.createElement("ai-message"));
+  await settle();
+  expect(parts()).toEqual(["p", "ai-message", "ai-message", "jump-bar", "announcement"]);
+});
+
+test("it's busy while a message streams, and reads each finished reply out once", async () => {
+  const { transcript, announced } = await mount();
+  const user = Object.assign(document.createElement("ai-message"), { from: "user" as const, text: "Hi" });
+  const reply = document.createElement("ai-message");
+  reply.streaming = true;
+  transcript.append(user, reply);
+  await settle();
+  expect(transcript.getAttribute("aria-busy")).toBe("true");
+
+  reply.appendText("Hello **there**.");
+  reply.done();
+  await frame();
+  expect(transcript.hasAttribute("aria-busy")).toBe(false);
+  expect(announced()).toBe("Hello there.");
+
+  transcript.strings = { reply: (text) => `Reply: ${text}` };
+  const second = document.createElement("ai-message");
+  second.streaming = true;
+  transcript.append(second);
+  second.text = "Again.";
+  second.done();
+  await frame();
+  expect(announced()).toBe("Reply: Again.");
+});
+
+test('announce="none" keeps replies quiet', async () => {
+  const { transcript, announced } = await mount('<ai-transcript announce="none"></ai-transcript>');
+  const reply = document.createElement("ai-message");
+  reply.streaming = true;
+  transcript.append(reply);
+  reply.text = "Quiet";
+  reply.done();
+  await frame();
+  expect(announced()).toBe("");
+});
+
+test("it follows new content until scrolled up, and a new message of yours follows again", async () => {
+  const { transcript } = await mount();
+  expect(transcript.following).toBe(true);
+
+  // jsdom has no layout, so give the element sizes to scroll with.
+  let top = 0;
+  Object.defineProperties(transcript, {
+    scrollHeight: { get: () => 1000, configurable: true },
+    clientHeight: { get: () => 300, configurable: true },
+    scrollTop: { get: () => top, set: (value: number) => (top = Math.min(value, 700)), configurable: true },
+  });
+  transcript.scrollToLatest();
+  expect(top).toBe(700);
+
+  top = 400;
+  transcript.dispatchEvent(new Event("scroll"));
+  expect(transcript.following).toBe(false);
+  expect((transcript.querySelector("[data-part='jump']") as HTMLElement).hidden).toBe(false);
+
+  transcript.append(document.createElement("ai-message"));
+  await settle();
+  expect(top).toBe(400);
+
+  transcript.append(Object.assign(document.createElement("ai-message"), { from: "user" as const }));
+  await settle();
+  expect(transcript.following).toBe(true);
+  expect(top).toBe(700);
+  expect((transcript.querySelector("[data-part='jump']") as HTMLElement).hidden).toBe(true);
+});
