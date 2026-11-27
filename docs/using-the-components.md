@@ -11,7 +11,7 @@ This guide is for developers who want to use the components from this repo in th
 - `<ai-suggestions>`: prompts to send with one press
 - `<ai-chat-list>`: the sidebar of saved chats
 
-They're standard Web Components, so they work in a plain HTML page and in React, Vue, Svelte or Angular. They're packaged as `@samyakbhuta/ui-components`. Each component's full API is in its README, in the package's `docs/` folder and in `packages/ui-components/src/` in this repo. This guide covers getting them into your app.
+They're standard Web Components, so they work in a plain HTML page and in React, Vue, Svelte or Angular, with types for React, Vue and Svelte templates. They're packaged as `@samyakbhuta/ui-components`. Each component's full API is in its README, in the package's `docs/` folder and in `packages/ui-components/src/` in this repo. This guide covers getting them into your app.
 
 ## What you need
 
@@ -23,27 +23,13 @@ They're standard Web Components, so they work in a plain HTML page and in React,
 
 ### 1. Install it
 
-Once the package is published:
-
 ```bash
-npm install @samyakbhuta/ui-components @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18
+npm install @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18
 ```
 
-Until then, build it from this repo and install the file it makes:
+Install the `beta` tag. `latest` still points at the first beta, 0.1.0-beta.0, which lacks `<ai-tool-call>`, `<ai-sources>` and `<ai-suggestions>`.
 
-```bash
-npm run build:package
-```
-
-```bash
-cd packages/ui-components && npm pack
-```
-
-```bash
-npm install /path/to/samyakbhuta-ui-components-0.1.0-beta.0.tgz @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18
-```
-
-Run the last command in your app, with the path to the `.tgz` file that `npm pack` printed.
+To try a change that isn't released yet, run `npm run build:package` in this repo, then `npm pack` in `packages/ui-components/`, and install the `.tgz` file it prints instead.
 
 ### 2. Let the page follow light and dark mode
 
@@ -96,6 +82,8 @@ Then use the tags:
 | `@samyakbhuta/ui-components/ai-chat-list` | `<ai-chat-list>` |
 | `@samyakbhuta/ui-components/markdown` | `renderMarkdown()` and `renderPlainText()` on their own |
 | `@samyakbhuta/ui-components/highlight` | The syntax highlighter on its own |
+| `@samyakbhuta/ui-components/react`, `/vue`, `/svelte` | Types only: every tag's props and events in JSX or templates. See [Types for JSX and templates](#types-for-jsx-and-templates). |
+| `@samyakbhuta/ui-components/elements` | Types only: `CustomElements`, the map of each tag's element class, props and events, for typing another framework |
 | `@samyakbhuta/ui-components/ai-composer.css` (and the others) | Each component's stylesheet, for use inside a shadow root |
 
 The package also ships `custom-elements.json`, a Custom Elements Manifest that editors and tools like Storybook can read for tag, property and event autocomplete.
@@ -345,7 +333,7 @@ The browser tests in `e2e/` test this repo's pages, so use them as examples for 
 
 ## Keeping up to date
 
-The package follows semantic versioning, with a changelog in `CHANGELOG.md`. While it's in beta (`0.1.0-beta.x`), any release can change the API, so pin an exact version and read the changelog before you upgrade.
+The package follows semantic versioning, with a [changelog](https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/CHANGELOG.md). While it's in beta (`0.1.0-beta.x`), any release can change the API, so pin an exact version and read the changelog before you upgrade.
 
 ## Option 2: copy the source instead
 
@@ -364,7 +352,8 @@ Copied code doesn't update itself. When this repo changes, compare the folders a
 | The tag renders nothing | The component was never imported. Import it once in your entry. |
 | It looks unstyled | It's inside a shadow root, where page styles don't reach. Add the component's stylesheet there, like `@samyakbhuta/ui-components/ai-composer.css`. |
 | It stays light in dark mode | Add `color-scheme: light dark` to `:root`. |
-| `HTMLElement is not defined` | It was imported on the server. See [Server-side rendering](#server-side-rendering). |
+| `HTMLElement is not defined` on a server | Only with copied source: copy `styles.ts` with the components, which makes importing on a server safe. See [Server-side rendering](#server-side-rendering). |
+| TypeScript doesn't know `<ai-composer>` in JSX or a template | Add `import type {} from "@samyakbhuta/ui-components/react"` (or `/vue`, `/svelte`) once. See [Types for JSX and templates](#types-for-jsx-and-templates). |
 | TypeScript: "An import path can only end with a '.ts' extension…" | Only with copied source. Turn on `allowImportingTsExtensions` with `moduleResolution: "bundler"`. |
 | Vue warns "Failed to resolve component: ai-composer" | Add `isCustomElement` for `ai-` and `ui-` tags. |
 | A list like `models` does nothing | It was passed as an attribute. Set it as a property (see your framework's section). |

@@ -15,10 +15,10 @@ Web Components for AI chat apps, built on [ui-sdk](https://www.npmjs.com/package
 
 ## Install
 
-The package expects ui-sdk beside it, so every component shares one copy:
+The package expects ui-sdk beside it, so every component shares one copy. Install the `beta` tag: `latest` still points at the first beta, 0.1.0-beta.0, which lacks the newer components.
 
 ```bash
-npm install @samyakbhuta/ui-components @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18
+npm install @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18
 ```
 
 ## Use
@@ -68,6 +68,8 @@ Add this to your page's CSS so the components follow light and dark mode:
 ## Docs
 
 Each component's full API is in this package's `docs/` folder: `ai-composer.md`, `ai-message.md`, `ai-transcript.md`, `ai-thinking.md`, `ai-tool-call.md`, `ai-sources.md`, `ai-suggestions.md` and `ai-chat-list.md`.
+
+What changed in each release is in the [changelog](https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/CHANGELOG.md).
 
 ## License
 

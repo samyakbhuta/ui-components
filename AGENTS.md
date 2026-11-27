@@ -50,7 +50,7 @@ The package is on npm as `@samyakbhuta/ui-components`. CircleCI stages each rele
 
 1. Bump `version` in `packages/ui-components/package.json`. Use `X.Y.Z-beta.N` while ui-sdk is in beta.
 2. Date its entry in `packages/ui-components/CHANGELOG.md`, and merge to `main`.
-3. Tag the merge commit `ui-components-v<version>` and push the tag.
+3. Create a GitHub release on the merge commit with the tag `ui-components-v<version>`, and paste that version's changelog entry as its notes. The tag starts the release workflow.
 4. The owner approves the staged version on npmjs.com (Staged Packages) or with `npm stage approve <stage-id>`. Only then is it on npm.
 
 The workflow:
