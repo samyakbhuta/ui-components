@@ -15,7 +15,7 @@ Web Components for AI chat apps, built on [ui-sdk](https://www.npmjs.com/package
 
 ## Install
 
-The package expects ui-sdk beside it, so every component shares one copy. Install the `beta` tag: `latest` still points at the first beta, 0.1.0-beta.0, which lacks the newer components.
+The package expects ui-sdk beside it, so every component shares one copy. Install the `beta` tag, which always points at the newest beta; `latest` can lag behind it for a while.
 
 ```bash
 npm install @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18

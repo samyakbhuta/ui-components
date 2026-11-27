@@ -52,6 +52,7 @@ The package is on npm as `@samyakbhuta/ui-components`. CircleCI stages each rele
 2. Date its entry in `packages/ui-components/CHANGELOG.md`, and merge to `main`.
 3. Create a GitHub release on the merge commit with the tag `ui-components-v<version>`, and paste that version's changelog entry as its notes. The tag starts the release workflow.
 4. The owner approves the staged version on npmjs.com (Staged Packages) or with `npm stage approve <stage-id>`. Only then is it on npm.
+5. While the package is in beta, the owner also moves `latest` to it, so a plain `npm install` gets it: `npm dist-tag add @samyakbhuta/ui-components@<version> latest`, with 2FA. CircleCI can't: its trusted publisher can only stage.
 
 The workflow:
 
@@ -59,7 +60,7 @@ The workflow:
 - runs the type-check, unit tests and package build;
 - stages the version with `npm stage publish`, under `beta` for a version with a hyphen and under `latest` otherwise.
 
-npm gives a package's first version the `latest` tag whatever `--tag` says, and it won't remove `latest` while that's the only version. So `latest` also points at 0.1.0-beta.0 until the first stable release replaces it.
+A beta is staged under `beta` only, so `latest` stays where it was until step 5. Docs tell people to install `@beta`, which is right whether or not `latest` has caught up.
 
 npm only accepts a trusted publisher for a package that already exists, so the first release was published with a temporary token, which has been removed. Don't add an npm token to CircleCI: it would let releases skip the owner's approval.
 

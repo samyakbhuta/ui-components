@@ -27,7 +27,7 @@ They're standard Web Components, so they work in a plain HTML page and in React,
 npm install @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18
 ```
 
-Install the `beta` tag. `latest` still points at the first beta, 0.1.0-beta.0, which lacks `<ai-tool-call>`, `<ai-sources>` and `<ai-suggestions>`.
+The `beta` tag always points at the newest beta. A release only moves `latest` when the owner moves it by hand, so `latest` can lag behind for a while.
 
 To try a change that isn't released yet, run `npm run build:package` in this repo, then `npm pack` in `packages/ui-components/`, and install the `.tgz` file it prints instead.
 
