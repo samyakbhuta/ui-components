@@ -70,8 +70,16 @@ jobs:
           working_directory: packages/ui-components
           command: |
             npm --version
-            # npm swaps this OIDC token for a short-lived publish token and adds provenance.
-            export NPM_ID_TOKEN=$(circleci run oidc get --claims '{"aud":"npm:registry.npmjs.org"}')
+            if [ -n "$NPM_TOKEN" ]; then
+              # First release only: npm accepts a trusted publisher once the package exists, so the
+              # first publish uses a token saved in CircleCI's project settings. Remove it afterwards.
+              echo "Publishing with NPM_TOKEN."
+              echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+            else
+              # npm swaps this OIDC token for a short-lived publish token.
+              echo "Publishing with trusted publishing (OIDC)."
+              export NPM_ID_TOKEN=$(circleci run oidc get --claims '{"aud":"npm:registry.npmjs.org"}')
+            fi
             npm publish --tag "$NPM_DIST_TAG"
 
 workflows:
