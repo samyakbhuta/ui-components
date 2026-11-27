@@ -122,4 +122,10 @@
       animation: none;
     }
   }
+
+  /* The element's own display would otherwise beat the hidden attribute. */
+  ai-thinking[hidden],
+  ai-thinking [hidden] {
+    display: none !important;
+  }
 }

@@ -401,4 +401,10 @@
       display: none;
     }
   }
+
+  /* The element's own display would otherwise beat the hidden attribute. */
+  ai-composer[hidden],
+  ai-composer [hidden] {
+    display: none !important;
+  }
 }

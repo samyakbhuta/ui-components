@@ -73,4 +73,10 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
+
+  /* The element's own display would otherwise beat the hidden attribute. */
+  ai-transcript[hidden],
+  ai-transcript [hidden] {
+    display: none !important;
+  }
 }

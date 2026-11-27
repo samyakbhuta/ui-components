@@ -105,3 +105,43 @@ test("when storage is full, the oldest chats are dropped to make room", () => {
   expect(calls).toBe(2);
   expect(new ChatStore().list().map((saved) => saved.id)).toEqual(["new"]);
 });
+
+test("the export includes tool calls, ratings, errors and the other versions of a reply", () => {
+  const markdown = chatToMarkdown(
+    {
+      ...chat,
+      messages: [
+        { from: "user", text: "Explain @src/main.ts", meta: "Auto" },
+        {
+          from: "assistant",
+          text: "Second try",
+          tools: [
+            { name: "read_file", summary: "Read src/main.ts", input: { path: "src/main.ts" }, output: "…" },
+            { name: "run_tests", summary: "", error: "2 tests failed" },
+          ],
+          feedback: "good",
+          versions: ["First try", "Second try"],
+          version: 2,
+          error: "The connection dropped.",
+        },
+      ],
+    },
+    { exportedAt: new Date(2026, 10, 26), locale: "en-GB" },
+  );
+  expect(markdown).toContain(
+    [
+      "**Assistant** · Version 2 of 2 · Rated good",
+      "",
+      "- Read src/main.ts",
+      "- `run_tests` failed: 2 tests failed",
+      "",
+      "Second try",
+      "",
+      "> **Error:** The connection dropped.",
+      "",
+      "*Version 1 of 2:*",
+      "",
+      "First try",
+    ].join("\n"),
+  );
+});

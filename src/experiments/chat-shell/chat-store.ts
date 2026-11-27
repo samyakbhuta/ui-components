@@ -131,12 +131,24 @@ export function chatToMarkdown(chat: StoredChat, { exportedAt = new Date(), loca
   const parts = [`# ${chat.title.replace(/\n/g, " ")}`, "", `*Exported from AI chat on ${date}.*`];
   for (const message of chat.messages) {
     const label = message.from === "user" ? "**You**" : "**Assistant**";
+    const versions = message.versions && message.versions.length > 1 ? message.versions : undefined;
+    const version = versions ? (message.version ?? versions.length) : 1;
     const details = [
       message.from === "user" ? message.meta : undefined,
       message.thinking ? `Thought for ${message.thinking.seconds}s` : undefined,
+      versions ? `Version ${version} of ${versions.length}` : undefined,
+      message.feedback ? `Rated ${message.feedback === "good" ? "good" : "bad"}` : undefined,
       message.from === "assistant" ? message.meta : undefined,
     ].filter(Boolean);
-    parts.push("", "---", "", [label, ...details].join(" · "), "", message.text.trim() || "*(no text)*");
+    parts.push("", "---", "", [label, ...details].join(" · "));
+    if (message.tools?.length) {
+      parts.push("", ...message.tools.map((tool) => (tool.error !== undefined ? `- \`${tool.name}\` failed: ${tool.error || "no reason given"}` : `- ${tool.summary || `Ran \`${tool.name}\``}`)));
+    }
+    parts.push("", message.text.trim() || "*(no text)*");
+    if (message.error !== undefined) parts.push("", `> **Error:** ${message.error || "Something went wrong."}`);
+    versions?.forEach((text, index) => {
+      if (index + 1 !== version) parts.push("", `*Version ${index + 1} of ${versions.length}:*`, "", text.trim() || "*(no text)*");
+    });
   }
   return `${parts.join("\n")}\n`;
 }

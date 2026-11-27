@@ -435,4 +435,10 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
+
+  /* The element's own display would otherwise beat the hidden attribute. */
+  ai-message[hidden],
+  ai-message [hidden] {
+    display: none !important;
+  }
 }
