@@ -87,6 +87,7 @@ Then use the tags:
 | `@samyakbhuta/ui-components/markdown` | `renderMarkdown()` and `renderPlainText()` on their own |
 | `@samyakbhuta/ui-components/highlight` | The syntax highlighter on its own |
 | `@samyakbhuta/ui-components/react`, `/vue`, `/svelte` | Types only: every tag's props and events in JSX or templates. See [Types for JSX and templates](#types-for-jsx-and-templates). |
+| `@samyakbhuta/ui-components/vscode.html-custom-data.json`, `/web-types.json` | Editor data: completion and hover docs in VS Code and JetBrains IDEs. See [Editor support](#editor-support). |
 | `@samyakbhuta/ui-components/elements` | Types only: `CustomElements`, the map of each tag's element class, props and events, for typing another framework |
 | `@samyakbhuta/ui-components/ai-composer.css` (and the others) | Each component's stylesheet, for use inside a shadow root |
 
@@ -176,6 +177,23 @@ Things you get without writing any code:
 - Send turns into Stop while `busy` is set.
 
 To turn on Mode, Model, Thinking, `/` commands and `@` references, see the composer's README (`docs/ai-composer.md` in the package). The docs page in this repo (`npm run dev`, then `/experiments/ai-composer.html`) has a playground that writes the setup code for you.
+
+## Editor support
+
+Your editor can complete each tag, its attributes and their values (like `submit-on` → `enter` or `mod-enter`), and show their docs on hover, in plain HTML too.
+
+- **VS Code:** add this to `.vscode/settings.json` in your project, then reload the window:
+
+  ```json
+  {
+    "html.customData": ["./node_modules/@samyakbhuta/ui-components/dist/vscode.html-custom-data.json"]
+  }
+  ```
+
+- **WebStorm and other JetBrains IDEs:** nothing to do. They read the package's `web-types` file on their own, which also lists each element's events.
+- **Other tools**, like Storybook, can read the Custom Elements Manifest, `custom-elements.json`.
+
+For JSX and templates, see [Types for JSX and templates](#types-for-jsx-and-templates).
 
 ## Using them with a framework
 

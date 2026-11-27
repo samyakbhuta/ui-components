@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Editor support. VS Code can complete each tag, its attributes and their values, and show their docs on hover, with one setting: `"html.customData": ["./node_modules/@samyakbhuta/ui-components/dist/vscode.html-custom-data.json"]`. JetBrains IDEs read the new `web-types` file on their own, which also lists each element's events. Both are generated from the code, the types and the READMEs at build time.
+- `<ai-transcript>` lists `announce` in `observedAttributes`, so editors and frameworks know about it, and `announce="none"` is typed.
 - New `<ai-question>`: a question the model asks, with choices to pick from. Radio buttons offer one choice, and `multiple` gives checkboxes, with `max` to cap how many. `other` adds a last choice with a text box for an answer of one's own, and `skippable` adds Skip. Once answered, it shows the answer and keeps the choices readable. `answer` restores a saved one. It fires `questionanswer` and `questionskip`.
 - `<ai-question>` shows that the agent is waiting on an answer. Until it's answered, it has a "Waiting for your answer" line, with a pulsing dot that stays still with reduced motion, and an accent border. The line also describes the choices for screen readers.
 - `<ai-transcript>` reads out any `<ai-question>` still waiting in a finished reply, after the reply's text: "Which city? Waiting for your answer." The wording is in the new `strings.waiting`.

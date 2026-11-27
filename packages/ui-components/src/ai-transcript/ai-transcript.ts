@@ -35,6 +35,9 @@ type Message = HTMLElement & { from?: string; streaming?: boolean };
  * @customElement ai-transcript
  */
 export class AiTranscriptElement extends BaseElement {
+  /** Read when a reply finishes, so there's nothing to do when it changes. Listed for editors and frameworks. */
+  static observedAttributes = ["announce"];
+
   #strings: TranscriptStrings = defaultTranscriptStrings;
   #stuck = true;
   #lastTop = 0;

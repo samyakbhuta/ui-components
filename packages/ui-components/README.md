@@ -62,6 +62,7 @@ Add this to your page's CSS so the components follow light and dark mode:
 ## Good to know
 
 - **Types:** included. `document.querySelector("ai-composer")` is typed, and so are the events, like `promptsubmit`.
+- **Editor support:** WebStorm and other JetBrains IDEs complete the tags, their attributes and values, and show their docs, on their own. In VS Code, add `"html.customData": ["./node_modules/@samyakbhuta/ui-components/dist/vscode.html-custom-data.json"]` to `.vscode/settings.json`.
 - **React, Vue and Svelte:** add `import type {} from "@samyakbhuta/ui-components/react"` (or `/vue`, `/svelte`) once, and every tag is typed in JSX or templates: its props, their values, and its events with their `detail`. React needs version 19, which sets properties and listens to custom events.
 - **Server rendering:** importing on a server does nothing, so it's safe in Next.js, Nuxt, SvelteKit or Astro. The elements come alive in the browser.
 - **Styles:** they're added to the document once. Inside a shadow root, add the matching stylesheet there too: `@samyakbhuta/ui-components/ai-composer.css`. Each component's CSS sits in a cascade layer, so your own rules win.

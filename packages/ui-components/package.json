@@ -15,6 +15,7 @@
     "./src/**/*.ts"
   ],
   "customElements": "dist/custom-elements.json",
+  "web-types": "./dist/web-types.json",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -82,7 +83,9 @@
     },
     "./*.css": "./dist/css/*.css",
     "./package.json": "./package.json",
-    "./custom-elements.json": "./dist/custom-elements.json"
+    "./custom-elements.json": "./dist/custom-elements.json",
+    "./vscode.html-custom-data.json": "./dist/vscode.html-custom-data.json",
+    "./web-types.json": "./dist/web-types.json"
   },
   "files": [
     "dist",

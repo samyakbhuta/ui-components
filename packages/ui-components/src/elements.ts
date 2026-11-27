@@ -95,6 +95,9 @@ export interface AiMessageProps {
 
 export interface AiTranscriptProps {
   strings?: Partial<TranscriptStrings>;
+  // Attributes
+  /** "none" stops reading finished replies out. */
+  announce?: "none";
 }
 
 export interface AiThinkingProps {
