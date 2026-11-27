@@ -101,6 +101,23 @@ function logEvents(root: HTMLElement) {
   }
 }
 
+/**
+ * A demo's "Reset demo" button, shown once something in it has been answered or decided.
+ * `reset` puts the demo back and returns where focus should go, since the button then hides.
+ */
+function resetDemo(root: HTMLElement, settled: string, events: string[], reset: () => HTMLElement | null) {
+  const button = root.querySelector<HTMLButtonElement>(".reset-demo")!;
+  const sync = () => (button.hidden = !root.querySelector(settled));
+  // The events come before the element shows it's settled, so check once it has.
+  for (const type of events) root.addEventListener(type, () => queueMicrotask(sync));
+  button.addEventListener("click", () => {
+    const next = reset();
+    sync();
+    next?.focus();
+  });
+  sync();
+}
+
 const demos: Demo[] = [
   {
     id: "playground",
@@ -453,7 +470,7 @@ reply.append(sources)`,
     <li>Nightlife</li>
   </ul>
 </ai-question>
-<button type="button" class="reset-questions">Ask again</button>`,
+<button type="button" class="reset-demo">Reset demo</button>`,
     script: `question.options = ["Paris", "Rome", { value: "Lisbon", description: "The cheapest flights this month" }]
 question.addEventListener("questionanswer", (event) => send(event.detail.labels.join(", ")))
 question.answer = savedAnswer // shows a saved answer, like when a chat opens again`,
@@ -463,8 +480,9 @@ question.answer = savedAnswer // shows a saved answer, like when a chat opens ag
         "Rome",
         { value: "Lisbon", description: "The cheapest flights this month" },
       ];
-      root.querySelector(".reset-questions")!.addEventListener("click", () => {
+      resetDemo(root, "ai-question[answered]", ["questionanswer", "questionskip"], () => {
         for (const question of root.querySelectorAll("ai-question")) question.reset();
+        return root.querySelector<HTMLElement>("ai-question ui-radio");
       });
     },
   },
@@ -475,7 +493,7 @@ question.answer = savedAnswer // shows a saved answer, like when a chat opens ag
       "An agent asks permission before it acts. Allow once and Deny are always there; always adds Always allow, for apps that remember it, and reason adds a box to say what to do instead, sent with Deny. What the tool would get shows as text, never HTML.",
     html: `<ai-approval class="command-approval" name="run_command" label="Run a command" description="This deletes files in your project, and can't be undone." always reason></ai-approval>
 <ai-approval class="email-approval" name="send_email"></ai-approval>
-<button type="button" class="reset-approvals">Ask again</button>`,
+<button type="button" class="reset-demo">Reset demo</button>`,
     script: `approval.input = "rm -rf dist"
 approval.addEventListener("approvaldecision", (event) => {
   if (event.detail.decision === "deny") tellAgent(event.detail.reason)
@@ -488,8 +506,9 @@ approval.decision = savedDecision // shows a saved decision, like when a chat op
         to: "team@example.com",
         subject: "Release notes",
       };
-      root.querySelector(".reset-approvals")!.addEventListener("click", () => {
+      resetDemo(root, "ai-approval[decided]", ["approvaldecision"], () => {
         for (const approval of root.querySelectorAll("ai-approval")) approval.decision = null;
+        return root.querySelector<HTMLElement>("ai-approval [data-part='allow'] button");
       });
     },
   },

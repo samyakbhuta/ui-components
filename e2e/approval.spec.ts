@@ -11,6 +11,7 @@ test.describe("on the docs page", () => {
     const approval = page.locator("#approval .command-approval");
     await expect(approval).toHaveAccessibleName("Run a command");
     await expect(approval).toHaveAccessibleDescription("Waiting for your approval");
+    await expect(page.locator("#approval").getByRole("button", { name: "Reset demo" })).toBeHidden();
 
     await approval.getByRole("textbox", { name: "What should it do instead?" }).focus();
     await page.keyboard.press("Shift+Tab");
@@ -26,7 +27,10 @@ test.describe("on the docs page", () => {
     await expect(approval.getByRole("status")).toHaveText("Denied. Instead, you suggested: “Only clear dist/cache”");
     await expect(approval.getByRole("button")).toHaveCount(0);
 
-    await page.locator("#approval").getByRole("button", { name: "Ask again" }).click();
+    const reset = page.locator("#approval").getByRole("button", { name: "Reset demo" });
+    await reset.click();
+    await expect(reset).toBeHidden();
+    await expect(approval.getByRole("button", { name: "Allow once" })).toBeFocused();
     await approval.getByRole("button", { name: "Always allow" }).press("Enter");
     await expect(page.locator("#approval .event-log")).toHaveText('approvaldecision {"decision":"always","reason":null}');
   });
