@@ -52,6 +52,8 @@ The workflow:
 - runs the type-check, unit tests and package build;
 - publishes, under `beta` for a version with a hyphen and under `latest` otherwise.
 
+npm gives a package's first version the `latest` tag whatever `--tag` says, and it won't remove `latest` while that's the only version. So `latest` also points at 0.1.0-beta.0 until the first stable release replaces it.
+
 npm only accepts a trusted publisher for a package that already exists, so the first release used a temporary `NPM_TOKEN` saved in CircleCI's project settings. The job uses that token while it's set and trusted publishing otherwise. Once CircleCI is the package's trusted publisher, delete `NPM_TOKEN` from CircleCI and revoke the token on npm.
 
 ## Testing

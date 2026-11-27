@@ -1,5 +1,6 @@
 // Runs before `npm publish`: a prerelease like 0.1.0-beta.0 must not become `latest`,
 // or a plain `npm install` would hand people the beta. Publish betas with --tag beta.
+// (The registry tagged the very first version, 0.1.0-beta.0, `latest` anyway; npm always does.)
 import { readFile } from "node:fs/promises";
 
 const { version } = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
