@@ -12,6 +12,6 @@ npx degit samyakbhuta/ui-components/examples/quick-start my-chat
 cd my-chat && npm install && npm run dev
 ```
 
-Or open it in your browser, with nothing to install: [StackBlitz](https://stackblitz.com/github/samyakbhuta/ui-components/tree/main/examples/quick-start).
+Or try it in your browser, with nothing to install: **Open in StackBlitz** on https://uisdk-components.netlify.app.
 
 Every component, with live examples: https://uisdk-components.netlify.app
