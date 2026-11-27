@@ -124,3 +124,70 @@
 .home-footer p {
   margin: 0.75rem 0 0;
 }
+
+/* Package manager tabs above the install command. */
+.home-install-tabs ui-tabs-list {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.home-install-tabs ui-tabs-tab button {
+  min-height: 2rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  background: none;
+  color: var(--home-muted);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.home-install-tabs ui-tabs-tab button[data-selected] {
+  border-color: var(--home-border);
+  background: var(--home-code);
+  color: CanvasText;
+  font-weight: 600;
+}
+
+.home-install-tabs ui-tabs-tab button:focus-visible {
+  outline: 2px solid CanvasText;
+  outline-offset: 2px;
+}
+
+/* Until the tabs load, show npm only. */
+ui-tabs:not(:defined) ui-tabs-panel:not([value="npm"]),
+.home-install-tabs ui-tabs-panel[hidden] {
+  display: none;
+}
+
+.home-code {
+  margin: 0.75rem 0;
+  max-height: 28rem;
+  overflow: auto;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--home-border);
+  border-radius: 0.5rem;
+  background: var(--home-code);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+/* Each card: the name and API on one line, the description under them. */
+.home-components li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  column-gap: 0.75rem;
+}
+
+.home-components li p {
+  grid-column: 1 / -1;
+}
+
+.home-components a.home-api {
+  color: var(--home-muted);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}

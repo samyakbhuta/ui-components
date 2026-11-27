@@ -10,6 +10,7 @@ import "@samyakbhuta/ui-components/ai-approval";
 import "@samyakbhuta/ui-components/ai-transcript";
 import "@samyakbhuta/ui-components/ai-chat-list";
 import { highlight } from "@samyakbhuta/ui-components/highlight";
+import { addCopyButtons } from "../copy-code.ts";
 import { mountPlayground } from "./playground.ts";
 import {
   type AiComposerElement,
@@ -760,6 +761,9 @@ for (const demo of demos) {
   demo.setup?.(section);
   logEvents(section);
 }
+
+// Each example's code gets a Copy button.
+addCopyButtons(document, ".demo-code pre");
 
 // For the browser console: try composer.value = "…" or composer.busy = true.
 (window as unknown as { composers: AiComposerElement[] }).composers = [...document.querySelectorAll("ai-composer")];
