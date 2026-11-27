@@ -1,6 +1,6 @@
 # `<ai-transcript>`
 
-The scrolling conversation. It follows a reply as it streams while you're at the bottom, stays where you put it when you scroll up to read, and offers **Jump to latest**. Screen readers hear each finished reply once, not every word as it arrives.
+The scrolling conversation. It follows a reply as it streams while you're at the bottom, stays where you put it when you scroll up to read, and offers **Jump to latest**. Screen readers hear each finished reply once, not every word as it arrives. If the reply asks an [`<ai-question>`](../ai-question/README.md), they hear the question too, and that it's waiting for their answer.
 
 Its children are your messages, usually [`<ai-message>`](../ai-message/README.md) elements.
 
@@ -40,7 +40,7 @@ The element is the scroll container, so give it a height, or put it in a grid or
 | `announce="none"` | Stops reading finished replies out. |
 | `aria-label` | Names the conversation. It defaults to `strings.label`. |
 | `following` (read-only) | `true` while it follows new content. |
-| `strings` | Words to replace: `label` (`Conversation`), `jump` (`Jump to latest`) and `reply(text)`, what's read out for a finished reply. |
+| `strings` | Words to replace: `label` (`Conversation`), `jump` (`Jump to latest`), `reply(text)`, what's read out for a finished reply, and `waiting(question)`, read after it for each [`<ai-question>`](../ai-question/README.md) in the reply still waiting for an answer (`${question} Waiting for your answer.`). |
 | `scrollToLatest({ smooth })` | Scrolls to the newest message and follows again. |
 
 ```ts

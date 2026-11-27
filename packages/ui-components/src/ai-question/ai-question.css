@@ -1,0 +1,274 @@
+/*
+ * <ai-question> styles, in the `ai-question` layer so unlayered page rules win.
+ */
+@layer ai-question {
+  ai-question {
+    --ai-question-border: color-mix(in srgb, CanvasText 22%, Canvas);
+    --ai-question-control: color-mix(in srgb, CanvasText 55%, Canvas);
+    --ai-question-hover: color-mix(in srgb, CanvasText 6%, Canvas);
+    --ai-question-muted: color-mix(in srgb, CanvasText 68%, Canvas);
+    --ai-question-accent: CanvasText;
+    --ai-question-accent-text: Canvas;
+    --ai-question-radius: 0.75rem;
+    --ai-question-waiting: #2b5bc4;
+    --ai-question-waiting: light-dark(#2b5bc4, #8fb0ff);
+
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 36rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--ai-question-border);
+    border-radius: var(--ai-question-radius);
+    font-size: 0.9375rem;
+  }
+
+  /* While it waits for an answer: an accent border and a line saying so. */
+  ai-question:not([answered]) {
+    border-color: var(--ai-question-waiting);
+    box-shadow: 0 0 0 1px var(--ai-question-waiting);
+  }
+
+  ai-question [data-part="status"] {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0 0 0.375rem;
+    color: var(--ai-question-waiting);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  ai-question [data-part="status-dot"] {
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: currentColor;
+    animation: ai-question-pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes ai-question-pulse {
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  ai-question [data-part="legend"] {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  ai-question [data-part="hint"] {
+    margin: 0.125rem 0 0;
+    color: var(--ai-question-muted);
+    font-size: 0.8125rem;
+  }
+
+  ai-question [data-part="options"] {
+    display: grid;
+    gap: 0.125rem;
+    margin-top: 0.5rem;
+  }
+
+  ai-question [data-part="option"] {
+    display: grid;
+    padding: 0.375rem 0.5rem;
+    margin-inline: -0.5rem;
+    border-radius: 0.5rem;
+  }
+
+  ai-question [data-part="choice"] {
+    display: flex;
+    gap: 0.625rem;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  ai-question [data-part="option"]:hover:not(:has([data-disabled], [data-readonly])) {
+    background: var(--ai-question-hover);
+  }
+
+  ai-question [data-part="option"]:has([data-disabled]) {
+    opacity: 0.55;
+  }
+
+  ai-question [data-part="option"]:has(:is([data-disabled], [data-readonly])) [data-part="choice"] {
+    cursor: default;
+  }
+
+  ai-question [data-part="description"] {
+    padding-inline-start: 1.75rem;
+    color: var(--ai-question-muted);
+    font-size: 0.8125rem;
+  }
+
+  /* The controls: a ring for radios, a rounded square for checkboxes. */
+  ai-question :is(ui-radio, ui-checkbox) {
+    display: inline-grid;
+    place-items: center;
+    width: 1.125rem;
+    height: 1.125rem;
+    box-sizing: border-box;
+    border: 2px solid var(--ai-question-control);
+    background: Canvas;
+    color: var(--ai-question-accent-text);
+  }
+
+  ai-question ui-radio {
+    border-radius: 50%;
+  }
+
+  ai-question ui-checkbox {
+    border-radius: 0.3rem;
+  }
+
+  ai-question :is(ui-radio, ui-checkbox)[data-checked] {
+    border-color: var(--ai-question-accent);
+  }
+
+  ai-question ui-checkbox[data-checked] {
+    background: var(--ai-question-accent);
+  }
+
+  ai-question :is(ui-radio, ui-checkbox):focus-visible {
+    outline: 2px solid var(--ai-question-accent);
+    outline-offset: 2px;
+  }
+
+  ai-question ui-radio-indicator {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--ai-question-accent);
+  }
+
+  ai-question ui-checkbox-indicator {
+    display: grid;
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  ai-question ui-checkbox-indicator svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Other: its choice, then a text box under the label. */
+  ai-question [data-part="other-input"] {
+    display: block;
+    margin: 0.125rem 0 0.25rem 1.75rem;
+  }
+
+  ai-question [data-part="other-input"] input {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0.4rem 0.625rem;
+    border: 1px solid var(--ai-question-border);
+    border-radius: 0.5rem;
+    background: Canvas;
+    color: CanvasText;
+    font: inherit;
+    font-size: 0.875rem;
+  }
+
+  ai-question [data-part="other-input"] input:focus-visible {
+    outline: 2px solid var(--ai-question-accent);
+    outline-offset: 1px;
+  }
+
+  ai-question [data-part="other-input"] input:read-only {
+    background: none;
+  }
+
+  ai-question [data-part="other-input"] input:disabled {
+    opacity: 0.55;
+  }
+
+  ai-question [data-part="actions"] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  ai-question [data-part="actions"] button {
+    min-height: 2.25rem;
+    padding: 0.4rem 1rem;
+    border: 1px solid var(--ai-question-border);
+    border-radius: 1.25rem;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+
+  ai-question [data-part="send"] button {
+    border-color: var(--ai-question-accent);
+    background: var(--ai-question-accent);
+    color: var(--ai-question-accent-text);
+  }
+
+  ai-question [data-part="actions"] button:focus-visible {
+    outline: 2px solid var(--ai-question-accent);
+    outline-offset: 2px;
+  }
+
+  ai-question [data-part="actions"] button:disabled {
+    cursor: default;
+    opacity: 0.45;
+  }
+
+  ai-question [data-part="answer"] {
+    margin: 0.75rem 0 0;
+    color: var(--ai-question-muted);
+    font-size: 0.875rem;
+  }
+
+  ai-question [data-part="answer"]:focus-visible {
+    outline: 2px solid var(--ai-question-accent);
+    outline-offset: 2px;
+  }
+
+  ai-question [data-part="announcement"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    ai-question [data-part="status-dot"] {
+      animation: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    ai-question:not([answered]) {
+      border-color: Highlight;
+    }
+
+    ai-question [data-part="status"] {
+      color: CanvasText;
+    }
+
+    ai-question ui-checkbox[data-checked] {
+      background: Highlight;
+      border-color: Highlight;
+      color: HighlightText;
+    }
+
+    ai-question ui-radio-indicator {
+      background: Highlight;
+    }
+  }
+
+  /* The element's own display would otherwise beat the hidden attribute. */
+  ai-question[hidden],
+  ai-question [hidden] {
+    display: none !important;
+  }
+}

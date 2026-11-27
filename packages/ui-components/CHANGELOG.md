@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- New `<ai-question>`: a question the model asks, with choices to pick from. Radio buttons offer one choice, and `multiple` gives checkboxes, with `max` to cap how many. `other` adds a last choice with a text box for an answer of one's own, and `skippable` adds Skip. Once answered, it shows the answer and keeps the choices readable. `answer` restores a saved one. It fires `questionanswer` and `questionskip`.
+- `<ai-question>` shows that the agent is waiting on an answer. Until it's answered, it has a "Waiting for your answer" line, with a pulsing dot that stays still with reduced motion, and an accent border. The line also describes the choices for screen readers.
+- `<ai-transcript>` reads out any `<ai-question>` still waiting in a finished reply, after the reply's text: "Which city? Waiting for your answer." The wording is in the new `strings.waiting`.
+- `<ai-chat-list>`: a chat can have a `status`, like "Needs your answer", shown under its title. Screen readers hear it after the chat's name.
+
 ## 0.1.0-beta.3 (2026-11-27)
 
 - Types for React, Vue and Svelte. Add `import type {} from "@samyakbhuta/ui-components/react"` (or `/vue`, `/svelte`) once, and every tag is typed in JSX or templates: its props, the values they take, and its events with their `detail`. The map underneath, `CustomElements`, is exported from `@samyakbhuta/ui-components/elements` for other frameworks.

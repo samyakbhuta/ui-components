@@ -5,6 +5,7 @@ import "@samyakbhuta/ui-components/ai-thinking";
 import "@samyakbhuta/ui-components/ai-tool-call";
 import "@samyakbhuta/ui-components/ai-sources";
 import "@samyakbhuta/ui-components/ai-suggestions";
+import "@samyakbhuta/ui-components/ai-question";
 import "@samyakbhuta/ui-components/ai-transcript";
 import "@samyakbhuta/ui-components/ai-chat-list";
 import { highlight } from "@samyakbhuta/ui-components/highlight";
@@ -84,6 +85,8 @@ function logEvents(root: HTMLElement) {
     "suggestionselect",
     "messagefeedback",
     "messageversion",
+    "questionanswer",
+    "questionskip",
   ];
   for (const type of types) {
     root.addEventListener(type, (event) => {
@@ -435,6 +438,35 @@ reply.append(sources)`,
     },
   },
   {
+    id: "question",
+    title: "<ai-question>",
+    intro:
+      "A question the model asks, with choices. One choice uses radio buttons; multiple uses checkboxes, and max caps how many. other adds a last choice with a text box for an answer of one's own. Once sent, it shows the answer and the choices stay readable.",
+    html: `<ai-question class="city-question" question="Which city should the trip start in?" other skippable></ai-question>
+<ai-question class="plans-question" question="What would you like to do there?" multiple max="2" other>
+  <ul>
+    <li>Museums</li>
+    <li>Food</li>
+    <li>Beaches</li>
+    <li>Nightlife</li>
+  </ul>
+</ai-question>
+<button type="button" class="reset-questions">Ask again</button>`,
+    script: `question.options = ["Paris", "Rome", { value: "Lisbon", description: "The cheapest flights this month" }]
+question.addEventListener("questionanswer", (event) => send(event.detail.labels.join(", ")))
+question.answer = savedAnswer // shows a saved answer, like when a chat opens again`,
+    setup: (root) => {
+      root.querySelector<HTMLElementTagNameMap["ai-question"]>(".city-question")!.options = [
+        "Paris",
+        "Rome",
+        { value: "Lisbon", description: "The cheapest flights this month" },
+      ];
+      root.querySelector(".reset-questions")!.addEventListener("click", () => {
+        for (const question of root.querySelectorAll("ai-question")) question.reset();
+      });
+    },
+  },
+  {
     id: "syntax",
     title: "Syntax colouring",
     intro:
@@ -522,9 +554,10 @@ message.highlighter = (code, language) => myHighlighter(code, language) // your 
     id: "chat-list",
     title: "<ai-chat-list>",
     intro:
-      "Saved chats for a sidebar: New chat, chats grouped by day, and Rename, Export and Delete in each chat's menu. Delete asks first. The list shows the chats you give it; saving them is up to your page.",
+      "Saved chats for a sidebar: New chat, chats grouped by day, and Rename, Export and Delete in each chat's menu. Delete asks first. A chat's status shows under its title, like Needs your answer. The list shows the chats you give it; saving them is up to your page.",
     html: `<ai-chat-list class="sample-chats" actions="rename export delete" selected="today"></ai-chat-list>`,
     script: `list.chats = [{ id: "today", title: "Web components", updatedAt: Date.now() }, …]
+list.chats = [{ id: "haiku", title: "A haiku", status: "Needs your answer" }] // shown under the title, like for a chat waiting on you
 list.href = (chat) => \`#chat/\${chat.id}\` // optional: chats become links
 list.addEventListener("chatnew", startNewChat)
 list.addEventListener("chatrename", (event) => saveTitle(event.detail.id, event.detail.title))
@@ -535,7 +568,7 @@ list.addEventListener("chatdelete", (event) => removeChat(event.detail.id))`,
       const dayLength = 24 * 60 * 60 * 1000;
       list.chats = [
         { id: "today", title: "Web components explained", updatedAt: now },
-        { id: "haiku", title: "A haiku about custom elements", updatedAt: now - dayLength },
+        { id: "haiku", title: "A haiku about custom elements", updatedAt: now - dayLength, status: "Needs your answer" },
         { id: "theme", title: "Dark mode colours for the composer", updatedAt: now - 3 * dayLength },
         { id: "trip", title: "Trip ideas for the team offsite", updatedAt: now - 40 * dayLength },
       ];
@@ -651,7 +684,7 @@ main.innerHTML = `
   <header class="docs-header">
     <a class="back" href="/showcase.html">← Showcase</a>
     <h1>AI chat components</h1>
-    <p>Live examples of <code>&lt;ai-composer&gt;</code>, <code>&lt;ai-message&gt;</code>, <code>&lt;ai-transcript&gt;</code>, <code>&lt;ai-thinking&gt;</code>, <code>&lt;ai-tool-call&gt;</code>, <code>&lt;ai-sources&gt;</code>, <code>&lt;ai-suggestions&gt;</code> and <code>&lt;ai-chat-list&gt;</code>. Each has a README with its full API in <code>packages/ui-components/</code>.</p>
+    <p>Live examples of <code>&lt;ai-composer&gt;</code>, <code>&lt;ai-message&gt;</code>, <code>&lt;ai-transcript&gt;</code>, <code>&lt;ai-thinking&gt;</code>, <code>&lt;ai-tool-call&gt;</code>, <code>&lt;ai-sources&gt;</code>, <code>&lt;ai-suggestions&gt;</code>, <code>&lt;ai-question&gt;</code> and <code>&lt;ai-chat-list&gt;</code>. Each has a README with its full API in <code>packages/ui-components/</code>.</p>
     <nav aria-label="Examples"><ul>${demos.map((demo) => `<li><a href="#${demo.id}">${escape(demo.title)}</a></li>`).join("")}</ul></nav>
   </header>
   ${demos

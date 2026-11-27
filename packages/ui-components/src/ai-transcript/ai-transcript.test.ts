@@ -1,6 +1,7 @@
 import { settle } from "@ui-sdk/core/testing";
 import { expect, test } from "vitest";
 import "../ai-message/ai-message.ts";
+import "../ai-question/ai-question.ts";
 import "./ai-transcript.ts";
 import type { AiTranscriptElement } from "./ai-transcript.ts";
 
@@ -63,6 +64,30 @@ test("it's busy while a message streams, and reads each finished reply out once"
   second.done();
   await frame();
   expect(announced()).toBe("Reply: Again.");
+});
+
+test("a reply that asks a question is read out with it, so people know it's waiting on them", async () => {
+  const { transcript, announced } = await mount();
+  const reply = document.createElement("ai-message");
+  reply.streaming = true;
+  transcript.append(reply);
+  reply.text = "First, a question.";
+  const question = document.createElement("ai-question");
+  question.slot = "footer";
+  question.question = "Which city?";
+  question.options = ["Paris", "Rome"];
+  reply.append(question);
+  reply.done();
+  await frame();
+  expect(announced()).toBe("First, a question. Which city? Waiting for your answer.");
+
+  // An answered question isn't read out again.
+  question.answer = { value: "Rome", labels: ["Rome"], other: null };
+  transcript.strings = { waiting: (asked) => `Question: ${asked}` };
+  reply.streaming = true;
+  reply.done();
+  await frame();
+  expect(announced()).toBe("First, a question.");
 });
 
 test('announce="none" keeps replies quiet', async () => {

@@ -1,7 +1,7 @@
 {
   "name": "@samyakbhuta/ui-components",
   "version": "0.1.0-beta.3",
-  "description": "Web Components for AI chat apps, built on ui-sdk: a composer, messages with safe Markdown and coloured code, a streaming transcript, a thinking indicator, agent tool calls, cited sources, prompt suggestions and a list of saved chats.",
+  "description": "Web Components for AI chat apps, built on ui-sdk: a composer, messages with safe Markdown and coloured code, a streaming transcript, a thinking indicator, agent tool calls, cited sources, prompt suggestions, questions with choices and a list of saved chats.",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -48,6 +48,10 @@
       "types": "./dist/ai-suggestions.d.ts",
       "default": "./dist/ai-suggestions.js"
     },
+    "./ai-question": {
+      "types": "./dist/ai-question.d.ts",
+      "default": "./dist/ai-question.js"
+    },
     "./ai-chat-list": {
       "types": "./dist/ai-chat-list.d.ts",
       "default": "./dist/ai-chat-list.js"
@@ -91,6 +95,7 @@
     "web-components",
     "custom-elements",
     "ai",
+    "ask-user",
     "chat",
     "markdown",
     "ui-sdk"

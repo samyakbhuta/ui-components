@@ -7,6 +7,7 @@ import "@samyakbhuta/ui-components/ai-thinking";
 import "@samyakbhuta/ui-components/ai-tool-call";
 import "@samyakbhuta/ui-components/ai-sources";
 import "@samyakbhuta/ui-components/ai-suggestions";
+import "@samyakbhuta/ui-components/ai-question";
 import type { Source } from "@samyakbhuta/ui-components/ai-sources";
 import "@samyakbhuta/ui-components/ai-transcript";
 import {
@@ -28,6 +29,7 @@ import {
   type StoredChat,
   type StoredMessage,
   type StoredPrompt,
+  type StoredQuestion,
   type StoredToolCall,
   titleFrom,
 } from "./chat-store.ts";
@@ -69,7 +71,66 @@ export const suggestions = [
   "Write a haiku about web components",
   "Show me a reply that fails",
   "What are web components? Cite your sources",
+  "Plan a weekend trip for me",
 ];
+
+/** Asking to plan a trip makes the pretend model ask questions first, with <ai-question>. */
+const planning = (text: string) => /\btrip\b/i.test(text);
+
+/** The questions of the pretend trip planner, by step. */
+export const tripQuestions: Record<number, StoredQuestion> = {
+  1: {
+    step: 1,
+    question: "Which city should the trip start in?",
+    options: ["Paris", "Rome", { value: "Lisbon", description: "The cheapest flights this month" }],
+    other: true,
+    skippable: true,
+  },
+  2: {
+    step: 2,
+    question: "What would you like to do there?",
+    options: ["Museums", "Food", "Beaches", "Nightlife"],
+    multiple: true,
+    max: 3,
+    other: true,
+  },
+};
+
+const waitingPlaceholder = "Answer the question above, or type your answer";
+
+/** Whether a chat's last reply asks a question that hasn't been answered. */
+const waitsForAnswer = (messages: StoredMessage[]) => {
+  const last = messages.at(-1);
+  return last?.from === "assistant" && last.question !== undefined && !last.question.answer;
+};
+
+/** An answer typed in the composer: the choice it names, or else an answer of one's own. */
+export function typedAnswer(question: { options: StoredQuestion["options"]; multiple: boolean }, text: string) {
+  const typed = text.trim();
+  const choices = question.options.map((option) =>
+    typeof option === "string" ? { value: option, label: option } : { value: option.value, label: option.label ?? option.value },
+  );
+  const match = choices.find((choice) => choice.label.toLowerCase() === typed.toLowerCase());
+  const answer = match
+    ? { value: match.value, labels: [match.label], other: null }
+    : { value: typed, labels: [typed], other: typed };
+  return question.multiple ? { ...answer, value: [answer.value] } : answer;
+}
+
+/** What the pretend trip planner says at each step: ask, ask again, then plan. */
+export function tripReply(step: number, answer: string, city: string) {
+  if (step === 1) return "Happy to help plan a weekend away! First, a couple of questions.";
+  if (step === 2) return `${city} it is. One more question.`;
+  const plans = answer.split(/,\s*/).filter(Boolean);
+  return [
+    `## A weekend in ${city}`,
+    "",
+    `**Saturday:** start with ${plans[0]?.toLowerCase() ?? "a walk"} in the morning, then a long lunch.`,
+    `**Sunday:** ${plans[1] ? `${plans[1].toLowerCase()} in the afternoon` : "a slow morning"}${plans[2] ? `, and ${plans[2].toLowerCase()} to finish` : ""}.`,
+    "",
+    "— pretend trip planner",
+  ].join("\n");
+}
 
 /** Asking for sources makes the pretend model cite these. */
 const citing = (text: string) => /\b(?:cite|sources?)\b/i.test(text);
@@ -275,6 +336,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   const versionTexts = new WeakMap<AiMessageElement, string[]>();
   /** Why the newest version of a reply failed, to show again when people step back to it. */
   const latestError = new WeakMap<AiMessageElement, string | null>();
+  /** Which step of the pretend trip planner a reply was, so Retry asks the same thing. */
+  const tripSteps = new WeakMap<AiMessageElement, number>();
   let stopReply: (() => void) | undefined;
   let replying: Promise<void> | undefined;
 
@@ -299,15 +362,28 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
 
   // ---- Saving and opening chats ---------------------------------------------------------------
 
+  /** The newest reply's question, while it waits for an answer. */
+  const openQuestion = () =>
+    messages().at(-1)?.querySelector<HTMLElementTagNameMap["ai-question"]>("ai-question:not([answered])") ?? null;
+
   function showTitle() {
     const title = current.title || "New chat";
     heading.textContent = title;
-    document.title = `${title} · AI chat`;
+    // While the agent waits on an answer, say so in the box, and in the tab's title when it's in the background.
+    const waiting = openQuestion() !== null;
+    if (waiting) composer.setAttribute("placeholder", waitingPlaceholder);
+    else composer.removeAttribute("placeholder");
+    document.title = `${waiting && document.hidden ? "Waiting for you · " : ""}${title} · AI chat`;
     exportButton.disabled = current.messages.length === 0;
   }
 
   function refreshList() {
-    list.chats = store.list().map(({ id, title, updatedAt }) => ({ id, title, updatedAt }));
+    list.chats = store.list().map(({ id, title, updatedAt, messages }) => ({
+      id,
+      title,
+      updatedAt,
+      status: waitsForAnswer(messages) ? "Needs your answer" : undefined,
+    }));
     list.selected = store.get(current.id) ? current.id : null;
   }
 
@@ -341,8 +417,38 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
           feedback: message.feedback ?? undefined,
           versions: texts && texts.length > 1 ? [...texts] : undefined,
           version: texts && texts.length > 1 ? message.version : undefined,
+          question: questionOf(message),
         };
       });
+  }
+
+  function questionOf(message: AiMessageElement): StoredQuestion | undefined {
+    const asking = message.querySelector("ai-question");
+    if (!asking) return undefined;
+    return {
+      question: asking.question,
+      options: asking.options,
+      multiple: asking.multiple || undefined,
+      other: asking.other || undefined,
+      max: asking.max ?? undefined,
+      skippable: asking.skippable || undefined,
+      step: Number(asking.dataset.step) || undefined,
+      answer: asking.answer ?? undefined,
+    };
+  }
+
+  function questionFor(stored: StoredQuestion) {
+    const asking = document.createElement("ai-question");
+    asking.slot = "footer";
+    asking.question = stored.question;
+    asking.options = stored.options;
+    asking.multiple = stored.multiple ?? false;
+    asking.other = stored.other ?? false;
+    asking.max = stored.max ?? null;
+    asking.skippable = stored.skippable ?? false;
+    if (stored.step) asking.dataset.step = String(stored.step);
+    if (stored.answer) asking.answer = stored.answer;
+    return asking;
   }
 
   /** Saves the open chat once it has a message, and gives it a link. */
@@ -453,6 +559,10 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       message.append(call);
     }
     if (stored.sources?.length) message.append(sourcesFor(stored.sources));
+    if (stored.question) {
+      message.append(questionFor(stored.question));
+      if (stored.question.step) tripSteps.set(message, stored.question.step);
+    }
     if (stored.meta) message.append(meta(stored.meta));
     showWork(message, message.version === message.versions);
     return message;
@@ -513,12 +623,13 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   // ---- Replies --------------------------------------------------------------------------------
 
   /** A pretend reply: think for as long as the level asks, then stream Markdown in. */
-  async function reply(detail: PromptSubmitDetail, replacing?: AiMessageElement) {
+  async function reply(detail: PromptSubmitDetail, replacing?: AiMessageElement, trip?: number) {
     const controller = new AbortController();
     const { signal } = controller;
     const message = replyMessage();
     message.streaming = true;
     asked.set(message, detail);
+    if (trip) tripSteps.set(message, trip);
     const earlier = replacing ? (versionTexts.get(replacing) ?? [replacing.text]) : [];
     if (earlier.length) {
       message.versions = earlier.length + 1;
@@ -559,7 +670,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
         call.done(pretendFile(reference.label));
       }
       // Stream a few characters at a time, the way a model's tokens arrive.
-      const text = pretendReply(detail);
+      const city = firstAnswer() ?? "Lisbon";
+      const text = trip ? tripReply(trip, detail.text, city) : pretendReply(detail);
       const end = failing(detail.text) ? Math.floor(text.length / 3) : text.length;
       for (let index = 0; index < end; index += 6) {
         await wait(12, signal);
@@ -568,7 +680,11 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       if (end < text.length) message.error = "The connection dropped. Press Retry to try again.";
       else {
         if (citing(detail.text)) message.append(sourcesFor(pretendSources));
-        offerFollowUps(message, followUps(detail));
+        if (trip && tripQuestions[trip]) {
+          // A question takes the place of follow-ups until it's answered.
+          for (const old of transcript.querySelectorAll("ai-suggestions.follow-ups")) old.remove();
+          message.append(questionFor(tripQuestions[trip]));
+        } else offerFollowUps(message, followUps(detail));
       }
     } catch {
       thinking?.remove();
@@ -584,9 +700,15 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     }
   }
 
-  const startReply = (detail: PromptSubmitDetail, replacing?: AiMessageElement) => {
-    replying = reply(detail, replacing);
+  const startReply = (detail: PromptSubmitDetail, replacing?: AiMessageElement, trip?: number) => {
+    replying = reply(detail, replacing, trip);
   };
+
+  /** The city chosen in the trip planner's first question, if it was answered. */
+  function firstAnswer() {
+    const answer = transcript.querySelector<HTMLElementTagNameMap["ai-question"]>("ai-question[data-step='1']")?.answer;
+    return answer && !("skipped" in answer) ? answer.labels[0] : undefined;
+  }
 
   composer.addEventListener("promptstop", () => stopReply?.());
 
@@ -597,6 +719,20 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       save();
       return;
     }
+    // With a question open, what's typed answers it, as if chosen or typed into Other.
+    const asking = openQuestion();
+    if (asking) {
+      asking.answer = typedAnswer(asking, detail.text);
+      const step = Number(asking.dataset.step);
+      return send(detail, step ? step + 1 : undefined);
+    }
+    send(detail, planning(detail.text) ? 1 : undefined);
+  });
+
+  document.addEventListener("visibilitychange", showTitle, { signal: page.signal });
+
+  /** Shows what was sent as your message, and starts the reply. */
+  function send(detail: PromptSubmitDetail, trip?: number) {
 
     const line = [
       `${labelOf(defaultModes, detail.mode)} · ${labelOf(defaultModels, detail.model)} · Thinking: ${labelOf(defaultThinkingLevels, detail.thinking)}`,
@@ -616,14 +752,31 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     };
     transcript.append(userMessage(detail.text, line, prompt, detail.files));
     save();
-    startReply(detail);
+    startReply(detail, undefined, trip);
+  }
+
+  /** An answer to the trip planner's question goes in as your next message, with the composer's settings. */
+  const answerWith = (text: string, step: number) =>
+    send({ text, mode: composer.mode, model: composer.model, thinking: composer.thinking, references: [], files: [] }, step + 1);
+
+  transcript.addEventListener("questionanswer", (event) => {
+    if (composer.busy) return event.preventDefault();
+    const step = Number((event.target as HTMLElement).dataset.step);
+    // The event comes before the question shows as answered; send once it has.
+    queueMicrotask(() => (step ? answerWith(event.detail.labels.join(", "), step) : save()));
+  });
+
+  transcript.addEventListener("questionskip", (event) => {
+    if (composer.busy) return event.preventDefault();
+    const step = Number((event.target as HTMLElement).dataset.step);
+    queueMicrotask(() => (step ? answerWith("Surprise me", step) : save()));
   });
 
   transcript.addEventListener("messageaction", (event) => {
     const message = event.target as AiMessageElement;
     if (event.detail.action === "retry" && !composer.busy) {
       const detail = asked.get(message);
-      if (detail) startReply(detail, message);
+      if (detail) startReply(detail, message, tripSteps.get(message));
     } else if (event.detail.action === "edit") {
       composer.value = event.detail.text;
       composer.focus();

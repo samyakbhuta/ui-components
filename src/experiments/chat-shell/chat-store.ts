@@ -29,6 +29,21 @@ export type StoredMessage = {
   /** Every version of the reply after Retry, oldest first. `text` is the one showing. */
   versions?: string[];
   version?: number;
+  /** A question the reply asked, with its answer once given. */
+  question?: StoredQuestion;
+};
+
+/** An `<ai-question>`: its question, its choices, and the answer, or `{ skipped: true }`. */
+export type StoredQuestion = {
+  question: string;
+  options: (string | { value: string; label?: string; description?: string })[];
+  multiple?: boolean;
+  other?: boolean;
+  max?: number;
+  skippable?: boolean;
+  /** Which step of a conversation it belongs to, so the app knows what to ask next. */
+  step?: number;
+  answer?: { value: string | string[]; labels: string[]; other: string | null } | { skipped: true };
 };
 
 export type StoredToolCall = { name: string; summary: string; input?: unknown; output?: unknown; error?: string };
@@ -148,12 +163,28 @@ export function chatToMarkdown(chat: StoredChat, { exportedAt = new Date(), loca
     }
     parts.push("", message.text.trim() || "*(no text)*");
     if (message.error !== undefined) parts.push("", `> **Error:** ${message.error || "Something went wrong."}`);
+    if (message.question) parts.push("", ...questionToMarkdown(message.question));
     if (message.sources?.length) parts.push("", ...message.sources.map((source, index) => `[${index + 1}]: ${source.url} "${source.title.replace(/"/g, "'")}"`));
     versions?.forEach((text, index) => {
       if (index + 1 !== version) parts.push("", `*Version ${index + 1} of ${versions.length}:*`, "", text.trim() || "*(no text)*");
     });
   }
   return `${parts.join("\n")}\n`;
+}
+
+/** A question as a task list: the chosen answers checked, then the answer in words. */
+function questionToMarkdown(question: StoredQuestion) {
+  const answer = question.answer;
+  const chosen = answer && !("skipped" in answer) ? (Array.isArray(answer.value) ? answer.value : [answer.value]) : [];
+  const lines = [`**${question.question.replace(/\n/g, " ")}**${question.multiple ? " *(choose any)*" : ""}`, ""];
+  for (const option of question.options) {
+    const { value, label } = typeof option === "string" ? { value: option, label: option } : { value: option.value, label: option.label ?? option.value };
+    lines.push(`- [${chosen.includes(value) ? "x" : " "}] ${label}`);
+  }
+  if (answer && !("skipped" in answer) && answer.other !== null) lines.push(`- [x] Other: ${answer.other}`);
+  else if (question.other) lines.push("- [ ] Other");
+  lines.push("", !answer ? "*Not answered.*" : "skipped" in answer ? "*Skipped.*" : `*Answered: ${answer.labels.join(", ")}*`);
+  return lines;
 }
 
 /** A file name from a title, like "web-components-explained.md". */

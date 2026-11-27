@@ -27,7 +27,7 @@ async function mount(markup = "<ai-chat-list></ai-chat-list>", setup?: (list: Ai
   return {
     list,
     nav,
-    titles: () => [...list.querySelectorAll("[data-part='chat']")].map((chat) => chat.textContent),
+    titles: () => [...list.querySelectorAll("[data-part='chat'] [data-part='title']")].map((title) => title.textContent),
     groups: () => [...list.querySelectorAll("[data-part='group-label']")].map((label) => label.textContent),
   };
 }
@@ -177,4 +177,17 @@ test("agents can start a new chat and open one by name", async () => {
   });
   expect(result.ok, result.error?.message).toBe(true);
   expect(events).toEqual(["new", "week"]);
+});
+
+test("a chat can show a status, like one waiting on an answer, read after its title", async () => {
+  const { list } = await mount();
+  list.chats = [
+    { id: "today", title: "Trip ideas", updatedAt: midday, status: "Needs your answer" },
+    { id: "week", title: "Recipe", updatedAt: midday - 3 * day },
+  ];
+  await settle();
+  const waiting = within(list).getByRole("button", { name: "Trip ideas", description: "Needs your answer" });
+  expect(waiting.querySelector("[data-part='status']")!.textContent).toBe("Needs your answer");
+  expect(within(list).getByRole("button", { name: "Recipe" }).hasAttribute("aria-describedby")).toBe(false);
+  expect(list.querySelectorAll("[data-part='item'][data-status]")).toHaveLength(1);
 });

@@ -11,6 +11,7 @@ const tags = [
   "ai-tool-call",
   "ai-sources",
   "ai-suggestions",
+  "ai-question",
   "ai-chat-list",
 ] as const;
 
