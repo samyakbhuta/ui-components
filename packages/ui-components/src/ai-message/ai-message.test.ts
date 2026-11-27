@@ -184,12 +184,12 @@ test("header and footer children sit around the text, even when added later", as
       <small slot="footer">Sonnet 5.5</small>
     </ai-message>`);
   const parts = () => [...message.children].map((child) => child.getAttribute("slot") ?? child.getAttribute("data-part"));
-  expect(parts()).toEqual(["header", "body", "footer", "actions", "announcement"]);
+  expect(parts()).toEqual(["header", "attachments", "body", "error", "footer", "actions", "announcement"]);
   expect(message.text).toBe("Answer");
 
   message.append(Object.assign(document.createElement("span"), { slot: "header", textContent: "Searching" }));
   await settle();
-  expect(parts()).toEqual(["header", "header", "body", "footer", "actions", "announcement"]);
+  expect(parts()).toEqual(["header", "header", "attachments", "body", "error", "footer", "actions", "announcement"]);
 });
 
 test("agents can copy, retry or edit a message", async () => {
@@ -200,4 +200,146 @@ test("agents can copy, retry or edit a message", async () => {
   const result = await agent.act({ steps: [{ ref: "Retry", action: "press" }] });
   expect(result.ok, result.error?.message).toBe(true);
   expect(retried).toHaveBeenCalledOnce();
+});
+
+test("fail() keeps what arrived, shows why, announces it, and ends streaming", async () => {
+  const { message } = await mount("<ai-message streaming></ai-message>");
+  const completed = vi.fn();
+  message.addEventListener("messagecomplete", completed);
+  message.appendText("Half an ans");
+  message.fail("The connection dropped.");
+  await settle();
+
+  const error = message.querySelector<HTMLElement>("[data-part='error']")!;
+  expect(error.hidden).toBe(false);
+  expect(error.textContent).toBe("The connection dropped.");
+  expect(message.hasAttribute("data-error")).toBe(true);
+  expect(message.querySelector("[role='status']")!.textContent).toBe("The connection dropped.");
+  expect(message.text).toBe("Half an ans");
+  expect(message.streaming).toBe(false);
+  expect(completed).toHaveBeenCalledOnce();
+  // Retry stays, since that's what people do next.
+  expect(within(message).getByRole("button", { name: "Retry" })).toBeTruthy();
+
+  message.error = null;
+  expect(error.hidden).toBe(true);
+  expect(message.hasAttribute("data-error")).toBe(false);
+});
+
+test("an empty error shows a general message", async () => {
+  const { message } = await mount(`<ai-message error="">Partial</ai-message>`);
+  expect(message.querySelector("[data-part='error']")!.textContent).toBe("Something went wrong.");
+});
+
+test("feedback toggles between Good and Bad response, and can be cleared", async () => {
+  const { message } = await mount(`<ai-message actions="copy retry feedback">Answer</ai-message>`);
+  const ratings: (string | null)[] = [];
+  message.addEventListener("messagefeedback", (event) => ratings.push(event.detail.feedback));
+  const ui = within(message);
+  const group = ui.getByRole("group", { name: "Feedback" });
+  const good = within(group).getByRole("button", { name: "Good response" });
+  const bad = within(group).getByRole("button", { name: "Bad response" });
+  expect(good.getAttribute("aria-pressed")).toBe("false");
+
+  await userEvent.click(good);
+  expect(message.feedback).toBe("good");
+  expect(good.getAttribute("aria-pressed")).toBe("true");
+  await userEvent.click(bad);
+  expect(message.feedback).toBe("bad");
+  expect(good.getAttribute("aria-pressed")).toBe("false");
+  expect(bad.getAttribute("aria-pressed")).toBe("true");
+  await userEvent.click(bad);
+  expect(message.feedback).toBeNull();
+  expect(ratings).toEqual(["good", "bad", null]);
+});
+
+test("a cancelled messagefeedback keeps the rating, and setting feedback presses the toggle", async () => {
+  const { message } = await mount(`<ai-message actions="feedback" feedback="good">Answer</ai-message>`);
+  const good = within(message).getByRole("button", { name: "Good response" });
+  expect(good.getAttribute("aria-pressed")).toBe("true");
+  message.addEventListener("messagefeedback", (event) => event.preventDefault());
+  await userEvent.click(good);
+  expect(message.feedback).toBe("good");
+  expect(good.getAttribute("aria-pressed")).toBe("true");
+
+  message.feedback = "bad";
+  await settle();
+  expect(within(message).getByRole("button", { name: "Bad response" }).getAttribute("aria-pressed")).toBe("true");
+});
+
+test("versions step with Previous and Next, and stop at either end", async () => {
+  const { message } = await mount(`<ai-message versions="3">Third try</ai-message>`);
+  const asked: number[] = [];
+  message.addEventListener("messageversion", (event) => asked.push(event.detail.version));
+  const pager = () => within(message).getByRole("group", { name: /^Version/ });
+  expect(pager().getAttribute("aria-label")).toBe("Version 3 of 3");
+  expect(message.querySelector("[data-part='version']")!.textContent).toBe("3 / 3");
+  const next = () => within(message).getByRole("button", { name: "Next version" }) as HTMLButtonElement;
+  const previous = () => within(message).getByRole("button", { name: "Previous version" }) as HTMLButtonElement;
+  expect(next().disabled).toBe(true);
+
+  await userEvent.click(previous());
+  expect(message.version).toBe(2);
+  expect(pager().getAttribute("aria-label")).toBe("Version 2 of 3");
+  await userEvent.click(previous());
+  expect(message.version).toBe(1);
+  expect(previous().disabled).toBe(true);
+  // Focus moves to the arrow that still works.
+  expect(document.activeElement).toBe(next());
+  expect(asked).toEqual([2, 1]);
+});
+
+test("a single version shows no pager", async () => {
+  const { message } = await mount("<ai-message>Only one</ai-message>");
+  expect(message.querySelector("[data-part='versions']")).toBeNull();
+});
+
+test("attachments show images as thumbnails and other files by name and size", async () => {
+  const { message } = await mount(`<ai-message from="user">Look at these</ai-message>`, (m) => {
+    m.attachments = [
+      { name: "chart.png", type: "image/png", url: "https://example.com/chart.png" },
+      { name: "notes.pdf", type: "application/pdf", size: 2_400_000 },
+      { name: "evil.png", type: "image/png", url: "javascript:alert(1)" },
+    ];
+  });
+  const list = within(message).getByRole("list", { name: "Attachments" });
+  const items = within(list).getAllByRole("listitem");
+  expect(items).toHaveLength(3);
+  const img = within(items[0]).getByRole("img", { name: "chart.png" }) as HTMLImageElement;
+  expect(img.src).toBe("https://example.com/chart.png");
+  expect(items[1].textContent).toBe("notes.pdf2.3 MB");
+  // An address that isn't an image link shows as a file, never as a source.
+  expect(items[2].dataset.kind).toBe("file");
+  expect(items[2].querySelector("img")).toBeNull();
+
+  message.attachments = [];
+  expect(list.hidden).toBe(true);
+});
+
+test("attachments take File objects, like the ones <ai-composer> sends", async () => {
+  const created = vi.fn(() => "blob:preview");
+  const revoked = vi.fn();
+  vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: created, revokeObjectURL: revoked }));
+  const { message } = await mount(`<ai-message from="user">Hi</ai-message>`, (m) => {
+    m.attachments = [new File(["x"], "photo.jpg", { type: "image/jpeg" }), new File(["abc"], "a.txt", { type: "text/plain" })];
+  });
+  expect(message.querySelector("img")!.getAttribute("src")).toBe("blob:preview");
+  expect(message.querySelectorAll("[data-part='attachment']")[1].textContent).toBe("a.txt3 B");
+  message.attachments = [];
+  expect(revoked).toHaveBeenCalledWith("blob:preview");
+  vi.unstubAllGlobals();
+});
+
+test("agents can rate a reply and step between versions", async () => {
+  const { message } = await mount(`<ai-message actions="copy feedback" versions="2">Answer</ai-message>`);
+  const agent = createAgent();
+  const result = await agent.act({
+    steps: [
+      { ref: "Good response", action: "setPressed", args: [true] },
+      { ref: "Previous version", action: "press" },
+    ],
+  });
+  expect(result.ok, result.error?.message).toBe(true);
+  expect(message.feedback).toBe("good");
+  expect(message.version).toBe(1);
 });

@@ -1,6 +1,6 @@
 # `<ai-message>`
 
-One message in a conversation. An assistant message renders Markdown safely and streams in a piece at a time; a user message shows what was typed. Each offers actions: **Copy**, plus **Retry** on replies and **Edit** on your own messages.
+One message in a conversation. An assistant message renders Markdown safely and streams in a piece at a time; a user message shows what was typed. Each offers actions: **Copy**, plus **Retry** on replies and **Edit** on your own messages. A message can also show its attachments, a failed reply's error, **Good response** and **Bad response** buttons, and arrows to step between versions of a reply.
 
 Put messages in an [`<ai-transcript>`](../ai-transcript/README.md), which scrolls and announces them, or anywhere else.
 
@@ -40,19 +40,25 @@ reply.done(); // renders what's left and fires messagecomplete
 | `from` | `assistant` | `assistant` or `user`. User messages sit on the right in a bubble. |
 | `format` | `markdown` for assistant, `text` for user | `markdown` renders Markdown; `text` keeps the words as typed, with paragraphs and line breaks. |
 | `streaming` | off | Text is still coming. A caret shows after it, the actions hide, and the message is `aria-busy`. |
-| `actions` | `copy retry` for assistant, `copy edit` for user | Which actions to offer, separated by spaces. `actions=""` shows none. |
+| `actions` | `copy retry` for assistant, `copy edit` for user | Which actions to offer, separated by spaces: `copy`, `retry`, `edit` and `feedback`. `actions=""` shows none. |
+| `error` | none | The reply failed. Shows the message given, or "Something went wrong." for `error=""`, below the text. |
+| `feedback` | none | `good` or `bad`: which of Good response and Bad response is pressed, when `actions` includes `feedback`. |
+| `versions` | `1` | How many versions of this reply there are, after Retry or Edit. From 2, Previous and Next arrows step between them. |
+| `version` | the last | Which version is showing, counting from 1. |
 
 ## Properties and methods
 
 | Member | What it does |
 | --- | --- |
 | `text` | The message's source. Setting it replaces the message. |
-| `from`, `format`, `streaming`, `actions` | The same as the attributes. `actions` is an array. |
+| `from`, `format`, `streaming`, `actions`, `error`, `feedback`, `versions`, `version` | The same as the attributes. `actions` is an array of `copy`, `retry` and `edit`; `error` and `feedback` are `null` when unset. |
+| `attachments` | Files shown above the text: `File` objects, like the ones `<ai-composer>` sends, or `{ name, type?, size?, url? }`. Images show as thumbnails; other files show their name and size. |
 | `strings` | Words to replace; see below. |
-| `icons` | SVG markup for `copy`, `copied`, `retry` and `edit`. |
+| `icons` | SVG markup for `copy`, `copied`, `retry`, `edit`, `good`, `bad`, `error`, `previous`, `next` and `file`. |
 | `highlighter` | Colours code blocks: `(code, language) => Node[] \| null`. Defaults to the built-in highlighter; `null` shows code plain. |
 | `appendText(chunk)` | Adds streamed text to the end. |
 | `done()` | Ends streaming. The same as `streaming = false`. |
+| `fail(error?)` | Ends streaming and shows the error, keeping the text that arrived. |
 
 ## Events
 
@@ -60,6 +66,8 @@ reply.done(); // renders what's left and fires messagecomplete
 | --- | --- | --- |
 | `messageaction` | `{ action, text }` | Copy, Retry or Edit was pressed. Copy copies `text` unless you call `preventDefault()`; Retry and Edit are yours to handle. |
 | `messagecomplete` | `null` | Streaming ended. It bubbles, so a transcript can listen once for every message. |
+| `messagefeedback` | `{ feedback, text }` | Good response or Bad response was pressed. `feedback` is `"good"`, `"bad"`, or `null` when it was pressed again to clear it. `preventDefault()` keeps the rating as it was. |
+| `messageversion` | `{ version, versions }` | Previous or Next was pressed. Set `text` to that version's reply. `preventDefault()` stays on the current one. |
 
 ```ts
 transcript.addEventListener("messageaction", (event) => {
@@ -67,6 +75,30 @@ transcript.addEventListener("messageaction", (event) => {
   if (event.detail.action === "edit") composer.value = event.detail.text;
 });
 ```
+
+### Attachments, errors, feedback and versions
+
+```ts
+// Show what was sent with the prompt.
+composer.addEventListener("promptsubmit", (event) => {
+  const sent = document.createElement("ai-message");
+  sent.from = "user";
+  sent.text = event.detail.text;
+  sent.attachments = event.detail.files;
+  transcript.append(sent);
+});
+
+// A reply that failed part way keeps what arrived.
+reply.fail("The connection dropped. Try again.");
+
+// Ask for ratings, and keep each version after Retry.
+reply.setAttribute("actions", "copy retry feedback");
+reply.addEventListener("messagefeedback", (event) => saveRating(event.detail.feedback));
+reply.versions = answers.length;
+reply.addEventListener("messageversion", (event) => (reply.text = answers[event.detail.version - 1]));
+```
+
+Image attachments show only from `http:`, `https:`, `blob:` and image `data:` addresses; anything else shows as a file. A `File` gets an object URL that is revoked when `attachments` changes.
 
 ## Markdown
 
@@ -119,6 +151,13 @@ message.strings = { copy: "Copier", copied: "Copié", retry: "Réessayer", edit:
 | `copyCodeName(language)` | `Copy ts code`: that button's accessible name |
 | `codeCopied` | `Copied` |
 | `actions` | `Message actions`: the name of the group of action buttons |
+| `good`, `bad`, `feedback` | `Good response`, `Bad response`, and `Feedback`: the name of their group |
+| `error` | `Something went wrong.`: shown for `error=""` |
+| `previousVersion`, `nextVersion` | `Previous version`, `Next version` |
+| `version(version, versions)` | `2 / 3`: the count between the arrows |
+| `versionName(version, versions)` | `Version 2 of 3`: the name of the arrows' group |
+| `attachments` | `Attachments`: the name of the list of files |
+| `fileSize(bytes)` | `512 B`, `24 KB` or `2.3 MB` |
 
 ## Slots
 
@@ -142,14 +181,20 @@ The CSS sits in the `ai-message` cascade layer, so your unlayered rules win over
 | `--ai-message-code-background` | code and table headers |
 | `--ai-message-border` | code blocks, tables, quotes and rules |
 | `--ai-message-max-width` | `85%`: how wide the text gets |
+| `--ai-message-error` | the error's border and icon, at least 3:1 in light and dark |
+| `--ai-message-thumbnail-size` | `6rem`: the size of image attachments |
 
-Parts: `[data-part="body"]`, `actions`, `code-block`, `code-header`, `code-language`, `code-copy` and `table`. Buttons show `data-copied` for a moment after copying.
+Parts: `[data-part="body"]`, `attachments`, `attachment` (with `data-kind="image"` or `"file"`), `file-name`, `file-size`, `error`, `actions`, `versions`, `version`, `feedback`, `code-block`, `code-header`, `code-language`, `code-copy` and `table`. Buttons show `data-copied` for a moment after copying, and the message has `data-error` while it shows an error.
 
 ## Accessibility
 
 - Copy, Retry and Edit are named buttons in a group named "Message actions". After a copy, the button's name changes to "Copied" for two seconds, and screen readers hear it.
+- Good response and Bad response are ui-sdk Toggles in a group named "Feedback". Each reports `aria-pressed`, and Left and Right move between them.
+- Previous and Next sit in a group named for the version showing, like "Version 2 of 3". At either end the unusable arrow is disabled, and focus moves to the other one.
+- An error is announced once when it's set. Its colour isn't the only cue: it has an icon and a border, and the text says what went wrong.
+- Attachments are a list named "Attachments". Images use the file name as their alternative text.
 - While streaming, the message is `aria-busy`. The caret is drawn in CSS, so it isn't read out, and it doesn't blink with Reduce motion turned on.
-- AI agents can press Copy, Retry and Edit through ui-sdk's agent bridge, because they're ui-sdk Buttons.
+- AI agents can press Copy, Retry, Edit, Previous and Next, and set Good response or Bad response with `setPressed`, through ui-sdk's agent bridge.
 
 ## Files
 
@@ -157,5 +202,5 @@ Parts: `[data-part="body"]`, `actions`, `code-block`, `code-header`, `code-langu
 - `markdown.ts`: the safe Markdown renderer.
 - `highlight.ts`: the syntax highlighter.
 - `ai-message.css`: its styles.
-- `ai-message.test.ts`: tests for the Markdown it covers, attempts to inject HTML and scripts, streaming, actions, slots and agent use.
+- `ai-message.test.ts`: tests for the Markdown it covers, attempts to inject HTML and scripts, streaming, actions, errors, feedback, versions, attachments, slots and agent use.
 - `highlight.test.ts`: tests for each language, unfinished code, lossless output and the `highlighter` property.

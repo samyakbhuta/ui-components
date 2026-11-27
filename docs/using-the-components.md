@@ -6,6 +6,7 @@ This guide is for developers who want to use the components from this repo in th
 - `<ai-message>`: one message
 - `<ai-transcript>`: the scrolling conversation
 - `<ai-thinking>`: the "Thinking…" indicator
+- `<ai-tool-call>`: one step an agent takes, like a web search
 - `<ai-chat-list>`: the sidebar of saved chats
 
 They're standard Web Components, so they work in a plain HTML page and in React, Vue, Svelte or Angular. They're packaged as `@samyakbhuta/ui-components`. Each component's full API is in its README, in the package's `docs/` folder and in `packages/ui-components/src/` in this repo. This guide covers getting them into your app.
@@ -59,7 +60,7 @@ Without it the components stay light even in dark mode. Use `color-scheme: light
 Importing a component registers its tag and adds its styles to the page. Do it once, in your app's entry:
 
 ```ts
-import "@samyakbhuta/ui-components"; // all five
+import "@samyakbhuta/ui-components"; // all six
 ```
 
 Or import only what you use:
@@ -82,11 +83,12 @@ Then use the tags:
 
 | Import | Gives you |
 | --- | --- |
-| `@samyakbhuta/ui-components` | All five elements, their classes and types, and `renderMarkdown()` |
+| `@samyakbhuta/ui-components` | All six elements, their classes and types, and `renderMarkdown()` |
 | `@samyakbhuta/ui-components/ai-composer` | `<ai-composer>`, plus `defaultModes`, `defaultModels`, `defaultThinkingLevels` and its types |
 | `@samyakbhuta/ui-components/ai-message` | `<ai-message>` and `copyText()` |
 | `@samyakbhuta/ui-components/ai-transcript` | `<ai-transcript>` |
 | `@samyakbhuta/ui-components/ai-thinking` | `<ai-thinking>` |
+| `@samyakbhuta/ui-components/ai-tool-call` | `<ai-tool-call>` |
 | `@samyakbhuta/ui-components/ai-chat-list` | `<ai-chat-list>` |
 | `@samyakbhuta/ui-components/markdown` | `renderMarkdown()` and `renderPlainText()` on their own |
 | `@samyakbhuta/ui-components/highlight` | The syntax highlighter on its own |

@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import { defineConfig } from "vite";
 
 /** Each entry is an import path: `@samyakbhuta/ui-components/ai-composer` and so on. */
-export const entries = ["index", "ai-composer", "ai-message", "ai-transcript", "ai-thinking", "ai-chat-list", "markdown", "highlight"];
+export const entries = ["index", "ai-composer", "ai-message", "ai-transcript", "ai-thinking", "ai-tool-call", "ai-chat-list", "markdown", "highlight"];
 
 export default defineConfig({
   root: import.meta.dirname,

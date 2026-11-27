@@ -4,6 +4,7 @@ import "@samyakbhuta/ui-components/ai-chat-list";
 import "@samyakbhuta/ui-components/ai-composer";
 import "@samyakbhuta/ui-components/ai-message";
 import "@samyakbhuta/ui-components/ai-thinking";
+import "@samyakbhuta/ui-components/ai-tool-call";
 import "@samyakbhuta/ui-components/ai-transcript";
 import {
   type ComposerCommands,
@@ -24,6 +25,7 @@ import {
   type StoredChat,
   type StoredMessage,
   type StoredPrompt,
+  type StoredToolCall,
   titleFrom,
 } from "./chat-store.ts";
 
@@ -62,7 +64,19 @@ export const suggestions = [
   "Show me what a reply can look like",
   "/explain @src/main.ts",
   "Write a haiku about web components",
+  "Show me a reply that fails",
 ];
+
+/** Asking for a failure makes the pretend model stop half way, to show an error. */
+const failing = (text: string) => /\bfails?\b/i.test(text);
+
+/** Pretend contents for files people reference with @. */
+const pretendFile = (path: string) =>
+  path.endsWith(".json")
+    ? '{\n  "name": "web-components-app",\n  "type": "module"\n}'
+    : path.endsWith(".md")
+      ? "# Web components\n\nA showcase of AI chat components built on ui-sdk."
+      : 'import "./styles/base.css";\nimport { mountChatShell } from "./experiments/chat-shell/chat-shell.ts";';
 
 /** How long the pretend model thinks at each level, in milliseconds. */
 const thinkingTime: Record<string, number> = { off: 0, low: 1500, medium: 3000, high: 5000 };
@@ -215,6 +229,10 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   const asked = new WeakMap<AiMessageElement, PromptSubmitDetail>();
   /** The settings each prompt went with, for saving. */
   const prompts = new WeakMap<AiMessageElement, StoredPrompt>();
+  /** Every version of a reply after Retry, oldest first. */
+  const versionTexts = new WeakMap<AiMessageElement, string[]>();
+  /** Why the newest version of a reply failed, to show again when people step back to it. */
+  const latestError = new WeakMap<AiMessageElement, string | null>();
   let stopReply: (() => void) | undefined;
   let replying: Promise<void> | undefined;
 
@@ -257,6 +275,16 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       .filter((message) => !message.streaming)
       .map((message) => {
         const thinking = message.querySelector("ai-thinking");
+        const tools = [...message.querySelectorAll("ai-tool-call")]
+          .filter((call) => call.status !== "running")
+          .map((call): StoredToolCall => ({
+            name: call.name,
+            summary: call.summary,
+            input: call.input,
+            output: call.status === "done" ? call.output : undefined,
+            error: call.status === "error" ? call.error : undefined,
+          }));
+        const texts = versionTexts.get(message);
         return {
           from: message.from,
           text: message.text,
@@ -265,6 +293,11 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
           thinking: thinking
             ? { seconds: thinking.duration ?? Math.round(thinking.elapsed / 1000), reasoning: thinking.reasoning }
             : undefined,
+          tools: tools.length ? tools : undefined,
+          error: message.error ?? undefined,
+          feedback: message.feedback ?? undefined,
+          versions: texts && texts.length > 1 ? [...texts] : undefined,
+          version: texts && texts.length > 1 ? message.version : undefined,
         };
       });
   }
@@ -292,18 +325,43 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     files: prompt.files.map((name) => new File([], name)),
   });
 
-  function userMessage(text: string, line: string, prompt?: StoredPrompt) {
+  function userMessage(text: string, line: string, prompt?: StoredPrompt, files?: File[]) {
     const message = document.createElement("ai-message");
     message.from = "user";
     message.text = text;
+    message.attachments = files ?? prompt?.files.map((name) => ({ name })) ?? [];
     message.append(meta(line));
     if (prompt) prompts.set(message, prompt);
     return message;
   }
 
-  function savedReply(stored: StoredMessage) {
+  /** A reply's message, with Good response and Bad response. */
+  function replyMessage() {
     const message = document.createElement("ai-message");
+    message.setAttribute("actions", "copy retry feedback");
+    return message;
+  }
+
+  function toolCall(name: string, label: string, input: unknown) {
+    const call = document.createElement("ai-tool-call");
+    call.slot = "header";
+    call.name = name;
+    call.label = label;
+    call.input = input;
+    return call;
+  }
+
+  function savedReply(stored: StoredMessage) {
+    const message = replyMessage();
     message.text = stored.text;
+    if (stored.versions && stored.versions.length > 1) {
+      versionTexts.set(message, [...stored.versions]);
+      message.versions = stored.versions.length;
+      message.version = stored.version ?? stored.versions.length;
+    }
+    if (stored.feedback) message.feedback = stored.feedback;
+    if (stored.error !== undefined) message.error = stored.error;
+    latestError.set(message, stored.versions && stored.version !== stored.versions.length ? null : (stored.error ?? null));
     if (stored.thinking) {
       const thinking = document.createElement("ai-thinking");
       thinking.slot = "header";
@@ -312,6 +370,18 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       thinking.duration = stored.thinking.seconds;
       thinking.reasoning = stored.thinking.reasoning;
       message.append(thinking);
+    }
+    for (const tool of stored.tools ?? []) {
+      const call = toolCall(tool.name, "", tool.input);
+      call.summary = tool.summary;
+      if (tool.error !== undefined) {
+        call.error = tool.error;
+        call.status = "error";
+      } else {
+        call.output = tool.output;
+        call.status = "done";
+      }
+      message.append(call);
     }
     if (stored.meta) message.append(meta(stored.meta));
     return message;
@@ -375,9 +445,14 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   async function reply(detail: PromptSubmitDetail, replacing?: AiMessageElement) {
     const controller = new AbortController();
     const { signal } = controller;
-    const message = document.createElement("ai-message");
+    const message = replyMessage();
     message.streaming = true;
     asked.set(message, detail);
+    const earlier = replacing ? (versionTexts.get(replacing) ?? [replacing.text]) : [];
+    if (earlier.length) {
+      message.versions = earlier.length + 1;
+      message.version = earlier.length + 1;
+    }
     const thinking = thinkingTime[detail.thinking ?? "off"] ? document.createElement("ai-thinking") : undefined;
     if (thinking) {
       thinking.slot = "header";
@@ -392,7 +467,6 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     try {
       if (thinking) {
         const steps = [
-          detail.references.length > 0 && `Reading ${detail.references.map((reference) => `@${reference.label}`).join(", ")}…`,
           detail.files.length > 0 && `Looking at ${detail.files.length === 1 ? detail.files[0].name : `${detail.files.length} files`}…`,
           "Thinking…",
         ].filter((step): step is string => Boolean(step));
@@ -405,16 +479,29 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
         }
         thinking.done();
       }
+      // Each @reference is read with a tool, the way an agent would.
+      for (const reference of detail.references) {
+        const call = toolCall("read_file", `Reading ${reference.label}…`, { path: reference.label });
+        message.append(call);
+        await wait(600, signal);
+        call.summary = `Read ${reference.label}`;
+        call.done(pretendFile(reference.label));
+      }
       // Stream a few characters at a time, the way a model's tokens arrive.
       const text = pretendReply(detail);
-      for (let index = 0; index < text.length; index += 6) {
+      const end = failing(detail.text) ? Math.floor(text.length / 3) : text.length;
+      for (let index = 0; index < end; index += 6) {
         await wait(12, signal);
-        message.appendText(text.slice(index, index + 6));
+        message.appendText(text.slice(index, Math.min(index + 6, end)));
       }
+      if (end < text.length) message.error = "The connection dropped. Press Retry to try again.";
     } catch {
       thinking?.remove();
+      for (const call of message.querySelectorAll("ai-tool-call")) if (call.status === "running") call.fail("Stopped");
       message.append(meta("Stopped"));
     } finally {
+      versionTexts.set(message, [...earlier, message.text]);
+      latestError.set(message, message.error);
       message.done();
       stopReply = undefined;
       composer.busy = false;
@@ -452,7 +539,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       references: detail.references,
       files: detail.files.map((file) => file.name),
     };
-    transcript.append(userMessage(detail.text, line, prompt));
+    transcript.append(userMessage(detail.text, line, prompt, detail.files));
     save();
     startReply(detail);
   });
@@ -467,6 +554,19 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       composer.focus();
     }
   });
+
+  transcript.addEventListener("messageversion", (event) => {
+    const message = event.target as AiMessageElement;
+    const text = versionTexts.get(message)?.[event.detail.version - 1];
+    if (text === undefined || composer.busy) return event.preventDefault();
+    message.text = text;
+    // Only the newest version can have failed.
+    message.error = event.detail.version === event.detail.versions ? (latestError.get(message) ?? null) : null;
+    queueMicrotask(save);
+  });
+
+  // The event comes before the rating changes, so it can be cancelled; save once it has.
+  transcript.addEventListener("messagefeedback", () => queueMicrotask(save));
 
   transcript.addEventListener("click", (event) => {
     const suggestion = (event.target as Element).closest(".suggestion");

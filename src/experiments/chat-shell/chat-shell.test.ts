@@ -77,7 +77,12 @@ test("a sent prompt shows with its settings, then a Markdown reply streams in af
   const [reply] = replies();
   const thinking = reply.querySelector("ai-thinking")!;
   expect(thinking.status).toBe("done");
-  expect(thinking.reasoning).toBe("Reading @package.json.\nThinking.");
+  expect(thinking.reasoning).toBe("Thinking.");
+  const read = reply.querySelector("ai-tool-call")!;
+  expect(read.status).toBe("done");
+  expect(read.name).toBe("read_file");
+  expect(read.input).toEqual({ path: "package.json" });
+  expect(read.querySelector("[data-part='label']")!.textContent).toBe("Read package.json");
   expect(reply.querySelector("strong")!.textContent).toBe("Sonnet 5.5");
   expect([...reply.querySelectorAll("td")].map((cell) => cell.textContent)).toContain("@package.json");
   expect(within(reply).getByRole("button", { name: "Copy ts code" })).toBeDefined();
@@ -166,6 +171,8 @@ test("attached files go with the prompt and the reply looks at them", async () =
   await settle();
   await user.type(prompt, "{Enter}");
   expect(metas()).toEqual(["Auto · Sonnet 5.5 · Thinking: Medium · Attached: notes.txt"]);
+  const mine = document.querySelector<AiMessageElement>("ai-message[from='user']")!;
+  expect(within(within(mine).getByRole("list", { name: "Attachments" })).getByRole("listitem").textContent).toBe("notes.txt1 B");
   expect(composer.files).toHaveLength(0);
   await idle();
   expect(replies()[0].querySelector("ai-thinking")!.reasoning).toBe("Looking at notes.txt.\nThinking.");
@@ -357,4 +364,51 @@ test("an agent can set the mode, model and thinking level, write a prompt and se
   expect(sent()).toEqual(["/summarize @README.md"]);
   expect(metas()).toEqual(["Plan · Haiku 5.5 · Thinking: High · Command: /summarize · References: @README.md"]);
   await idle();
+});
+
+test("Retry keeps the earlier reply as a version, and the arrows step back to it", async () => {
+  const user = userEvent.setup();
+  const { composer, prompt, replies, idle } = await renderShell();
+  composer.thinking = "off";
+  await settle();
+  await user.type(prompt, "Write a haiku about web components{Enter}");
+  await idle();
+  const first = replies()[0];
+
+  await user.click(within(first).getByRole("button", { name: "Retry" }));
+  await idle();
+  const reply = replies()[0];
+  expect(reply).not.toBe(first);
+  expect(reply.versions).toBe(2);
+  expect(within(reply).getByRole("group", { name: "Version 2 of 2" })).toBeDefined();
+  await user.click(within(reply).getByRole("button", { name: "Previous version" }));
+  expect(reply.version).toBe(1);
+  expect(reply.text).toBe(first.text);
+  const [saved] = new ChatStore().list();
+  expect(saved.messages[1].versions).toHaveLength(2);
+  expect(saved.messages[1].version).toBe(1);
+});
+
+test("a reply can be rated, and the rating is saved", async () => {
+  const user = userEvent.setup();
+  const { composer, prompt, replies, idle } = await renderShell();
+  composer.thinking = "off";
+  await settle();
+  await user.type(prompt, "hello{Enter}");
+  await idle();
+  await user.click(within(replies()[0]).getByRole("button", { name: "Good response" }));
+  expect(new ChatStore().list()[0].messages[1].feedback).toBe("good");
+});
+
+test("a reply that fails keeps what arrived, shows an error, and Retry tries again", async () => {
+  const user = userEvent.setup();
+  const { composer, replies, idle } = await renderShell();
+  composer.thinking = "off";
+  await settle();
+  await user.click(screen.getByRole("button", { name: suggestions[3] }));
+  await idle();
+  const [reply] = replies();
+  expect(reply.error).toBe("The connection dropped. Press Retry to try again.");
+  expect(reply.text.length).toBeGreaterThan(0);
+  expect(new ChatStore().list()[0].messages[1].error).toBe(reply.error);
 });

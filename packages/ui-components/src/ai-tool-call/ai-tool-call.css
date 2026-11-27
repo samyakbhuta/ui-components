@@ -1,0 +1,192 @@
+/*
+ * <ai-tool-call> styles, in the `ai-tool-call` layer so unlayered page rules win.
+ */
+@layer ai-tool-call {
+  ai-tool-call {
+    --ai-tool-call-color: color-mix(in srgb, CanvasText 64%, Canvas);
+    --ai-tool-call-highlight: CanvasText;
+    --ai-tool-call-done: #1f7a35;
+    --ai-tool-call-done: light-dark(#1f7a35, #7fd08f);
+    --ai-tool-call-error: #b3261e;
+    --ai-tool-call-error: light-dark(#b3261e, #ff8a80);
+    --ai-tool-call-border: color-mix(in srgb, CanvasText 18%, Canvas);
+    --ai-tool-call-background: color-mix(in srgb, CanvasText 5%, Canvas);
+    --ai-tool-call-max-height: 16rem;
+
+    display: block;
+    font-size: 0.875rem;
+    color: var(--ai-tool-call-color);
+  }
+
+  ai-tool-call + ai-tool-call {
+    margin-top: 0.25rem;
+  }
+
+  ai-tool-call [data-part="summary"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    max-width: 100%;
+  }
+
+  ai-tool-call summary[data-part="summary"] {
+    cursor: pointer;
+    border-radius: 0.25rem;
+    list-style: none;
+  }
+
+  ai-tool-call summary[data-part="summary"]::-webkit-details-marker {
+    display: none;
+  }
+
+  ai-tool-call summary[data-part="summary"]:focus-visible {
+    outline: auto;
+  }
+
+  ai-tool-call summary[data-part="summary"]::after {
+    content: "›";
+    display: inline-block;
+    transition: rotate 150ms;
+  }
+
+  ai-tool-call details[open] > summary[data-part="summary"]::after {
+    rotate: 90deg;
+  }
+
+  ai-tool-call [data-part="icon"] {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  ai-tool-call [data-part="icon"] svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* While running: a spinning ring. */
+  ai-tool-call[data-running] [data-part="icon"]::before {
+    content: "";
+    width: 0.75rem;
+    height: 0.75rem;
+    border: 2px solid var(--ai-tool-call-border);
+    border-top-color: var(--ai-tool-call-highlight);
+    border-radius: 50%;
+    animation: ai-tool-call-spin 0.8s linear infinite;
+  }
+
+  ai-tool-call[data-done] [data-part="icon"] {
+    color: var(--ai-tool-call-done);
+  }
+
+  ai-tool-call[data-error] [data-part="icon"] {
+    color: var(--ai-tool-call-error);
+  }
+
+  ai-tool-call [data-part="label"] {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  ai-tool-call [data-shimmer] {
+    background: linear-gradient(90deg, transparent 30%, var(--ai-tool-call-highlight) 50%, transparent 70%) 0 0 / 250% 100% no-repeat,
+      linear-gradient(var(--ai-tool-call-color), var(--ai-tool-call-color));
+    background-clip: text;
+    color: transparent;
+    animation: ai-tool-call-shimmer 2s linear infinite;
+  }
+
+  ai-tool-call [data-part="panel"] {
+    display: grid;
+    gap: 0.25rem;
+    margin: 0.5rem 0 0.25rem;
+    padding-inline-start: 1.5rem;
+  }
+
+  ai-tool-call [data-part="section-label"] {
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  ai-tool-call pre {
+    margin: 0 0 0.5rem;
+    max-height: var(--ai-tool-call-max-height);
+    overflow: auto;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--ai-tool-call-border);
+    border-radius: 0.5rem;
+    background: var(--ai-tool-call-background);
+    color: CanvasText;
+    font-family: ui-monospace, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  ai-tool-call pre:focus-visible {
+    outline: auto;
+  }
+
+  ai-tool-call pre[data-part="error"] {
+    border-color: var(--ai-tool-call-error);
+  }
+
+  ai-tool-call [data-part="announcement"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  @keyframes ai-tool-call-spin {
+    to {
+      rotate: 1turn;
+    }
+  }
+
+  @keyframes ai-tool-call-shimmer {
+    from {
+      background-position: 100% 0, 0 0;
+    }
+    to {
+      background-position: 0% 0, 0 0;
+    }
+  }
+
+  /* With reduced motion, the ring stays still and the text doesn't sweep. */
+  @media (prefers-reduced-motion: reduce) {
+    ai-tool-call[data-running] [data-part="icon"]::before {
+      animation: none;
+      border-color: var(--ai-tool-call-highlight);
+    }
+
+    ai-tool-call [data-shimmer] {
+      background: none;
+      color: var(--ai-tool-call-color);
+      animation: none;
+    }
+
+    ai-tool-call summary[data-part="summary"]::after {
+      transition: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    ai-tool-call [data-shimmer] {
+      background: none;
+      color: CanvasText;
+      animation: none;
+    }
+
+    ai-tool-call [data-part="icon"] {
+      color: CanvasText;
+    }
+  }
+}
