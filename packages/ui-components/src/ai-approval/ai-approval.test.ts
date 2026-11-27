@@ -79,9 +79,9 @@ test("with `reason`, what's typed goes with Deny, and Enter in the box denies", 
   await user.type(box, "Only delete dist/cache{Enter}");
   await settle();
   expect(decisions).toEqual([{ decision: "deny", reason: "Only delete dist/cache" }]);
-  expect(line(approval).textContent).toBe("Denied: Only delete dist/cache");
+  expect(line(approval).textContent).toBe("Denied. Instead, you suggested: “Only delete dist/cache”");
   expect(line(approval).dataset.decision).toBe("deny");
-  expect(box.hasAttribute("readonly")).toBe(true);
+  expect(box.closest<HTMLElement>("[data-part='reason']")!.hidden).toBe(true);
 });
 
 test("a reason typed and then Allow once isn't sent; Deny without one is plain", async () => {
@@ -106,8 +106,8 @@ test("cancelling keeps it asking; a saved decision shows decided; null asks agai
 
   approval.decision = { decision: "deny", reason: "Use a dry run" };
   await settle();
-  expect(line(approval).textContent).toBe("Denied: Use a dry run");
-  expect((view.getByRole("textbox") as HTMLInputElement).value).toBe("Use a dry run");
+  expect(line(approval).textContent).toBe("Denied. Instead, you suggested: “Use a dry run”");
+  expect(view.queryByRole("textbox")).toBeNull();
   expect(view.queryByRole("button")).toBeNull();
 
   approval.decision = null;

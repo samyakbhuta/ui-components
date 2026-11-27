@@ -221,7 +221,7 @@ function approvalToMarkdown(approval: StoredApproval) {
       : decision.decision === "always"
         ? "*Always allowed.*"
         : decision.reason
-          ? `*Denied: ${decision.reason}*`
+          ? `*Denied. Instead, you suggested: “${decision.reason}”*`
           : "*Denied.*";
   return [
     `**${(approval.label || `Allow ${approval.name}?`).replace(/\n/g, " ")}** · \`${approval.name}\``,

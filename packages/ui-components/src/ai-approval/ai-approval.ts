@@ -28,7 +28,7 @@ export type ApprovalStrings = {
   /** The text box's accessible name, with `reason`. */
   reasonLabel: string;
   reasonPlaceholder: string;
-  /** The line shown, and announced, once decided. */
+  /** The line shown, and announced, once decided. With a reason, it says the person suggested something else. */
   decided: (decision: ApprovalDecision, reason: string | null) => string;
 };
 
@@ -42,7 +42,7 @@ export const defaultApprovalStrings: ApprovalStrings = {
   reasonLabel: "What should it do instead?",
   reasonPlaceholder: "Optional: tell it what to do instead",
   decided: (decision, reason) =>
-    decision === "allow" ? "Allowed once" : decision === "always" ? "Always allowed" : reason ? `Denied: ${reason}` : "Denied",
+    decision === "allow" ? "Allowed once" : decision === "always" ? "Always allowed" : reason ? `Denied. Instead, you suggested: “${reason}”` : "Denied",
 };
 
 /** The events this element fires, by name. */
@@ -305,8 +305,8 @@ export class AiApprovalElement extends BaseElement {
     box.setAttribute("aria-label", s.reasonLabel);
     box.disabled = disabled;
     box.readOnly = decided;
-    // Once decided, the box only stays to show a reason that was given.
-    reasonField.hidden = !this.reason || (decided && !this.#decision?.reason);
+    // Once decided, the decision line quotes any reason, so the box goes.
+    reasonField.hidden = !this.reason || decided;
 
     part("actions").hidden = decided;
     for (const choice of ["allow", "always", "deny"] as const) {

@@ -96,7 +96,7 @@ export function cleanupReply(step: NonNullable<StoredScript["cleanup"]>, reason?
   if (step === "ask") return "I can clear out the build folder, `dist/`. It holds 42 files left over from old builds.";
   if (step === "allowed") return "Done. The build folder is gone, and your next build will make it again.";
   return reason
-    ? `OK, I won't run that. You said: *${reason.replace(/[*_\\`]/g, "\\$&")}*. A real agent would try that next.`
+    ? `OK, I won't run that. You suggested instead: *${reason.replace(/[*_\\`]/g, "\\$&")}*. A real agent would try that next.`
     : "OK, I won't run that. The build folder stays as it is.";
 }
 

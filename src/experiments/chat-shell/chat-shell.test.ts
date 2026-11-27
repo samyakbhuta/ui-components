@@ -615,9 +615,11 @@ test("Always allow skips the approval next time in that chat; Deny and typing in
   const approval = replies()[0].querySelector("ai-approval")!;
   await user.type(within(approval).getByRole("textbox", { name: "What should it do instead?" }), "Only clear dist/cache{Enter}");
   await idle();
-  expect(approval.querySelector("[data-part='decision']")!.textContent).toBe("Denied: Only clear dist/cache");
+  expect(approval.querySelector("[data-part='decision']")!.textContent).toBe("Denied. Instead, you suggested: “Only clear dist/cache”");
   expect(replies()[1].querySelector("ai-tool-call")).toBeNull();
-  expect(replies()[1].text).toContain("You said: *Only clear dist/cache*.");
+  expect(replies()[1].text).toContain("You suggested instead: *Only clear dist/cache*.");
+  const { chatToMarkdown } = await import("./chat-store.ts");
+  expect(chatToMarkdown(new ChatStore().list()[0])).toContain("*Denied. Instead, you suggested: “Only clear dist/cache”*");
 
   // Typing in the message box while it asks denies it, with what was typed.
   composer.value = "Clean up my project's build folder";
@@ -630,5 +632,5 @@ test("Always allow skips the approval next time in that chat; Deny and typing in
   await idle();
   expect(sent().slice(-2)).toEqual(["Clean up my project's build folder", "Wait, back it up first"]);
   expect(replies()[2].querySelector("ai-approval")!.decision).toEqual({ decision: "deny", reason: "Wait, back it up first" });
-  expect(replies()[3].text).toContain("You said: *Wait, back it up first*.");
+  expect(replies()[3].text).toContain("You suggested instead: *Wait, back it up first*.");
 });

@@ -31,7 +31,7 @@ approval.addEventListener("approvaldecision", (event) => {
 });
 ```
 
-Once decided, the buttons go and a line shows what was chosen: "Allowed once", "Always allowed", or "Denied: Only clear dist/cache". The line is coloured green or red, with a dot. Focus moves to that line, since the buttons are gone, and screen readers hear it too.
+Once decided, the buttons go and a line shows what was chosen: "Allowed once", "Always allowed", "Denied", or, when people typed what to do instead, "Denied. Instead, you suggested: “Only clear dist/cache”". The line is coloured green or red, with a dot. Focus moves to that line, since the buttons are gone, and screen readers hear it too.
 
 ## Telling people the agent is waiting on them
 
@@ -119,7 +119,7 @@ Pair it with [`<ai-tool-call>`](../ai-tool-call/README.md) to show the tool runn
 | `deny` | `Deny` |
 | `reasonLabel` | `What should it do instead?`: the text box's accessible name |
 | `reasonPlaceholder` | `Optional: tell it what to do instead` |
-| `decided(decision, reason)` | `Allowed once`, `Always allowed`, `Denied: ${reason}` or `Denied` |
+| `decided(decision, reason)` | `Allowed once`, `Always allowed`, `Denied`, or with a reason `Denied. Instead, you suggested: “${reason}”` |
 
 ## Safety
 

@@ -21,9 +21,9 @@ test.describe("on the docs page", () => {
 
     await expect(page.locator("#approval .event-log")).toHaveText('approvaldecision {"decision":"deny","reason":"Only clear dist/cache"}');
     const decision = approval.locator("[data-part='decision']");
-    await expect(decision).toHaveText("Denied: Only clear dist/cache");
+    await expect(decision).toHaveText("Denied. Instead, you suggested: “Only clear dist/cache”");
     await expect(decision).toBeFocused();
-    await expect(approval.getByRole("status")).toHaveText("Denied: Only clear dist/cache");
+    await expect(approval.getByRole("status")).toHaveText("Denied. Instead, you suggested: “Only clear dist/cache”");
     await expect(approval.getByRole("button")).toHaveCount(0);
 
     await page.locator("#approval").getByRole("button", { name: "Ask again" }).click();
