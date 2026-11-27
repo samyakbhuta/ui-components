@@ -4,12 +4,12 @@ The list of saved chats, for a sidebar or a drawer. **New chat** is at the top, 
 
 The list shows the chats you give it and tells you what people do. Saving chats is up to your page; the chat shell experiment keeps them in `localStorage` (`src/experiments/chat-shell/chat-store.ts`).
 
-Live examples: run `npm run dev` and open [`/experiments/ai-composer.html#chat-list`](../../../experiments/ai-composer.html), or the chat shell, which uses it as its sidebar.
+Live examples: run `npm run dev` and open [`/experiments/ai-composer.html#chat-list`](../../../../experiments/ai-composer.html), or the chat shell, which uses it as its sidebar.
 
 ## Quick start
 
 ```ts
-import "./components/ai-chat-list/ai-chat-list.ts"; // registers <ai-chat-list> and loads its CSS
+import "@samyakbhuta/ui-components/ai-chat-list"; // registers <ai-chat-list> and loads its CSS
 ```
 
 ```html

@@ -3,7 +3,17 @@ import { defineConfig } from "vite";
 
 const page = (path: string) => resolve(import.meta.dirname, path);
 
+/**
+ * The showcase imports the components by their package name, as an app would. This points those
+ * imports at the package's source, so the site needs no build of the package first.
+ */
+export const packageAlias = [
+  { find: /^@samyakbhuta\/ui-components$/, replacement: page("packages/ui-components/src/index.ts") },
+  { find: /^@samyakbhuta\/ui-components\/(.+)$/, replacement: page("packages/ui-components/src/$1.ts") },
+];
+
 export default defineConfig({
+  resolve: { alias: packageAlias },
   build: {
     rollupOptions: {
       input: {

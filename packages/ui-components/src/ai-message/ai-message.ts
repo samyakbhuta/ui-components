@@ -1,5 +1,6 @@
 import "@ui-sdk/web/button";
-import "./ai-message.css";
+import { adoptStyles, BaseElement, define } from "../styles.ts";
+import styles from "./ai-message.css?inline";
 import { type Highlighter, highlight } from "./highlight.ts";
 import { type MarkdownBlock, renderMarkdown, renderPlainText } from "./markdown.ts";
 
@@ -82,8 +83,10 @@ function dedent(text: string) {
 /**
  * `<ai-message>`: one message in a conversation. Renders Markdown safely, streams text in,
  * and offers Copy, Retry and Edit. See README.md beside this file.
+ *
+ * @customElement ai-message
  */
-export class AiMessageElement extends HTMLElement {
+export class AiMessageElement extends BaseElement {
   static observedAttributes = ["from", "format", "streaming", "actions"];
 
   #source = "";
@@ -353,7 +356,8 @@ export class AiMessageElement extends HTMLElement {
   };
 }
 
-customElements.get("ai-message") ?? customElements.define("ai-message", AiMessageElement);
+adoptStyles(styles);
+define("ai-message", AiMessageElement);
 
 declare global {
   interface HTMLElementTagNameMap {

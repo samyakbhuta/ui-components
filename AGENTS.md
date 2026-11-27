@@ -16,15 +16,27 @@ To build a new component, also:
 
 ## Components
 
-Our own components live in `src/components/`, each with a README that documents its full API:
+Our own components live in the package `packages/ui-components/` (`@samyakbhuta/ui-components`), one folder each under `src/`, each with a README that documents its full API. The showcase imports them by package name; `vite.config.ts` and `tsconfig.json` point that name at the package's source.
 
-- `<ai-composer>` (`src/components/ai-composer/README.md`): the input box of an AI chat. It arranges ui-sdk parts; every extra (attachments, voice, mode, model, thinking, `/` commands, `@` references) is opt-in.
-- `<ai-message>` (`src/components/ai-message/README.md`): one message. Renders Markdown with its own safe renderer (`markdown.ts`) and colours code with `highlight.ts`; both build DOM nodes and never parse model text as HTML. Keep it that way.
-- `<ai-transcript>` (`src/components/ai-transcript/README.md`): the scrolling conversation, which follows streaming replies and announces finished ones.
-- `<ai-thinking>` (`src/components/ai-thinking/README.md`): the "Thinking…" indicator for a conversation.
-- `<ai-chat-list>` (`src/components/ai-chat-list/README.md`): the list of saved chats for a sidebar, with Rename, Export and Delete. The chat shell keeps its chats in `src/experiments/chat-shell/chat-store.ts`.
+- `<ai-composer>` (`packages/ui-components/src/ai-composer/README.md`): the input box of an AI chat. It arranges ui-sdk parts; every extra (attachments, voice, mode, model, thinking, `/` commands, `@` references) is opt-in.
+- `<ai-message>` (`packages/ui-components/src/ai-message/README.md`): one message. Renders Markdown with its own safe renderer (`markdown.ts`) and colours code with `highlight.ts`; both build DOM nodes and never parse model text as HTML. Keep it that way.
+- `<ai-transcript>` (`packages/ui-components/src/ai-transcript/README.md`): the scrolling conversation, which follows streaming replies and announces finished ones.
+- `<ai-thinking>` (`packages/ui-components/src/ai-thinking/README.md`): the "Thinking…" indicator for a conversation.
+- `<ai-chat-list>` (`packages/ui-components/src/ai-chat-list/README.md`): the list of saved chats for a sidebar, with Rename, Export and Delete. The chat shell keeps its chats in `src/experiments/chat-shell/chat-store.ts`.
 
-When you change a component's API, update its README, its tests, and the live examples in `src/experiments/ai-composer/main.ts` (`/experiments/ai-composer.html`).
+When you change a component's API, update its README, its tests, the live examples in `src/experiments/ai-composer/main.ts` (`/experiments/ai-composer.html`), and `packages/ui-components/CHANGELOG.md`.
+
+## The package
+
+- `npm run build:package` builds `packages/ui-components/dist/` with the steps below. Its output is gitignored.
+  - Vite's library build, one entry per component, with ui-sdk kept external as a peer dependency.
+  - Type declarations.
+  - The Custom Elements Manifest.
+  - `scripts/finish-build.mjs`, which copies the plain CSS files and READMEs, cleans the manifest, and points declarations at `.js`.
+- Each component adds its CSS to the page through `adoptStyles()` and registers through `define()`, both in `src/styles.ts`. Keep it that way, so the package needs no CSS setup and is safe to import on a server (`src/server-import.test.ts`).
+- Every file that registers an element must stay covered by `sideEffects` in the package's `package.json`, both `dist/` and `src/`, or bundlers tree-shake the registration away and the tags stay empty.
+- New entry points need a one-line file in `packages/ui-components/src/` (like `ai-composer.ts`), an entry in its `vite.config.ts`, and an `exports` entry in its `package.json`.
+- Don't publish without the owner's go-ahead. To check a release, run `npm publish --dry-run` in `packages/ui-components/`. Publish betas with `npm publish --tag beta`: npm 10 doesn't always apply `publishConfig.tag`, so `scripts/check-tag.mjs` refuses to publish a prerelease under `latest`.
 
 ## Testing
 

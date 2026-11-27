@@ -20,7 +20,13 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    /* The showcase imports the components by their package name; see vite.config.ts. */
+    "paths": {
+      "@samyakbhuta/ui-components": ["./packages/ui-components/src/index.ts"],
+      "@samyakbhuta/ui-components/*": ["./packages/ui-components/src/*.ts"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "packages/ui-components/src"]
 }

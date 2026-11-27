@@ -1,10 +1,10 @@
 import "@ui-sdk/web/button";
 import "@ui-sdk/web/drawer";
-import "../../components/ai-chat-list/ai-chat-list.ts";
-import "../../components/ai-composer/ai-composer.ts";
-import "../../components/ai-message/ai-message.ts";
-import "../../components/ai-thinking/ai-thinking.ts";
-import "../../components/ai-transcript/ai-transcript.ts";
+import "@samyakbhuta/ui-components/ai-chat-list";
+import "@samyakbhuta/ui-components/ai-composer";
+import "@samyakbhuta/ui-components/ai-message";
+import "@samyakbhuta/ui-components/ai-thinking";
+import "@samyakbhuta/ui-components/ai-transcript";
 import {
   type ComposerCommands,
   type ComposerOption,
@@ -13,8 +13,8 @@ import {
   defaultModes,
   defaultThinkingLevels,
   type PromptSubmitDetail,
-} from "../../components/ai-composer/ai-composer.ts";
-import type { AiMessageElement } from "../../components/ai-message/ai-message.ts";
+} from "@samyakbhuta/ui-components/ai-composer";
+import type { AiMessageElement } from "@samyakbhuta/ui-components/ai-message";
 import {
   ChatStore,
   chatToMarkdown,

@@ -8,7 +8,8 @@ import "@ui-sdk/web/trigger-menu";
 import { formatFileSize } from "@ui-sdk/web/file-input";
 import { textFieldAdapter } from "@ui-sdk/web/trigger-menu";
 import type { TriggerDefinition, TriggerItemsLoader, TriggerMenuData } from "@ui-sdk/web/trigger-menu";
-import "./ai-composer.css";
+import { adoptStyles, BaseElement, define } from "../styles.ts";
+import styles from "./ai-composer.css?inline";
 
 /** A choice in the Mode, Model or Thinking control. */
 export type ComposerOption = {
@@ -239,8 +240,20 @@ type Saved = { value?: string; mode?: string; model?: string; thinking?: string;
  * `<ai-composer>`: the input box of an AI chat. A prompt and a Send button, plus whichever of
  * attachments, voice, Mode, Model, Thinking, `/` commands and `@` references you turn on.
  * See README.md beside this file.
+ *
+ * @customElement ai-composer
+ * @fires promptsubmit - Send, Enter or submit(). Cancelable: preventDefault() keeps the prompt in the box.
+ * @fires promptstop - Stop was pressed while busy.
+ * @fires valuechange - The prompt's text changed.
+ * @fires modechange - The mode changed.
+ * @fires modelchange - The model changed.
+ * @fires thinkingchange - The thinking level changed.
+ * @fires fileschange - Files were attached or removed.
+ * @fires filereject - Files broke accept, max-size or max-files.
+ * @fires voicestart - Voice input started listening.
+ * @fires voiceend - Voice input stopped listening.
  */
-export class AiComposerElement extends HTMLElement {
+export class AiComposerElement extends BaseElement {
   static observedAttributes = [...rebuildAttributes, ...liveAttributes, "default-mode", "default-model", "default-thinking"];
 
   #id = `ai-composer-${++instances}`;
@@ -1072,7 +1085,8 @@ export class AiComposerElement extends HTMLElement {
   }
 }
 
-customElements.get("ai-composer") ?? customElements.define("ai-composer", AiComposerElement);
+adoptStyles(styles);
+define("ai-composer", AiComposerElement);
 
 declare global {
   interface HTMLElementTagNameMap {

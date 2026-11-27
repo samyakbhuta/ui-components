@@ -1,13 +1,13 @@
 import "@ui-sdk/web/segmented-control";
 import "@ui-sdk/web/slider";
 import "@ui-sdk/web/switch";
-import "../../components/ai-message/ai-message.ts";
+import "@samyakbhuta/ui-components/ai-message";
 import {
   type AiComposerElement,
   defaultModels,
   defaultModes,
   defaultThinkingLevels,
-} from "../../components/ai-composer/ai-composer.ts";
+} from "@samyakbhuta/ui-components/ai-composer";
 
 type Feature = { key: string; label: string; on: boolean };
 
@@ -147,8 +147,8 @@ export function mountPlayground(section: HTMLElement) {
       key === "modes" ? "defaultModes" : key === "models" ? "defaultModels" : "defaultThinkingLevels",
     );
     const script = [
-      'import "./components/ai-composer/ai-composer.ts";',
-      presets.length && `import { ${presets.join(", ")} } from "./components/ai-composer/ai-composer.ts";`,
+      'import "@samyakbhuta/ui-components/ai-composer";',
+      presets.length && `import { ${presets.join(", ")} } from "@samyakbhuta/ui-components/ai-composer";`,
       "",
       'const composer = document.querySelector("ai-composer");',
       ...lists,

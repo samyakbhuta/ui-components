@@ -1,17 +1,17 @@
 import "../../styles/base.css";
 import "./docs.css";
-import "../../components/ai-message/ai-message.ts";
-import "../../components/ai-thinking/ai-thinking.ts";
-import "../../components/ai-transcript/ai-transcript.ts";
-import "../../components/ai-chat-list/ai-chat-list.ts";
-import { highlight } from "../../components/ai-message/highlight.ts";
+import "@samyakbhuta/ui-components/ai-message";
+import "@samyakbhuta/ui-components/ai-thinking";
+import "@samyakbhuta/ui-components/ai-transcript";
+import "@samyakbhuta/ui-components/ai-chat-list";
+import { highlight } from "@samyakbhuta/ui-components/highlight";
 import { mountPlayground } from "./playground.ts";
 import {
   type AiComposerElement,
   defaultModels,
   defaultModes,
   defaultThinkingLevels,
-} from "../../components/ai-composer/ai-composer.ts";
+} from "@samyakbhuta/ui-components/ai-composer";
 
 type Demo = {
   id: string;
@@ -58,7 +58,7 @@ function stream(message: HTMLElementTagNameMap["ai-message"], text: string, sign
   }, 16);
 }
 
-const files = ["README.md", "package.json", "src/main.ts", "src/components/ai-composer/ai-composer.ts"];
+const files = ["README.md", "package.json", "src/main.ts", "packages/ui-components/src/ai-composer/ai-composer.ts"];
 
 /** Logs each composer event under the demo, so people can see what their code would receive. */
 function logEvents(root: HTMLElement) {
@@ -483,7 +483,7 @@ main.innerHTML = `
   <header class="docs-header">
     <a class="back" href="/showcase.html">← Showcase</a>
     <h1>AI chat components</h1>
-    <p>Live examples of <code>&lt;ai-composer&gt;</code>, <code>&lt;ai-message&gt;</code>, <code>&lt;ai-transcript&gt;</code>, <code>&lt;ai-thinking&gt;</code> and <code>&lt;ai-chat-list&gt;</code>. Each has a README with its full API in <code>src/components/</code>.</p>
+    <p>Live examples of <code>&lt;ai-composer&gt;</code>, <code>&lt;ai-message&gt;</code>, <code>&lt;ai-transcript&gt;</code>, <code>&lt;ai-thinking&gt;</code> and <code>&lt;ai-chat-list&gt;</code>. Each has a README with its full API in <code>packages/ui-components/</code>.</p>
     <nav aria-label="Examples"><ul>${demos.map((demo) => `<li><a href="#${demo.id}">${escape(demo.title)}</a></li>`).join("")}</ul></nav>
   </header>
   ${demos

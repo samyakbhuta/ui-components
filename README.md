@@ -1,6 +1,6 @@
 # ui-sdk experiments
 
-Web Components built with [ui-sdk](https://www.npmjs.com/package/@ui-sdk/web), plus a showcase of experiments: an AI chat app and the components it's made of (`<ai-composer>`, `<ai-message>`, `<ai-transcript>`, `<ai-thinking>` and `<ai-chat-list>`). Each component has a README in `src/components/`.
+Web Components built with [ui-sdk](https://www.npmjs.com/package/@ui-sdk/web), plus a showcase of experiments: an AI chat app and the components it's made of (`<ai-composer>`, `<ai-message>`, `<ai-transcript>`, `<ai-thinking>` and `<ai-chat-list>`). The components are packaged as `@samyakbhuta/ui-components` in `packages/ui-components/`, each with its own README.
 
 ## Scripts
 
@@ -10,7 +10,8 @@ Web Components built with [ui-sdk](https://www.npmjs.com/package/@ui-sdk/web), p
 | `npm run build` | Type-checks and builds the site into `dist/`. |
 | `npm test` | Runs the unit tests (Vitest). |
 | `npm run test:e2e` | Builds the site and runs the browser tests in `e2e/` (Playwright, Chromium, light and dark). The first time, run `npx playwright install chromium`. |
-| `npm run typecheck` | Type-checks the site and the browser tests. |
+| `npm run typecheck` | Type-checks the site, the package and the browser tests. |
+| `npm run build:package` | Builds the package into `packages/ui-components/dist/`. |
 
 `.github/workflows/ci.yml` runs the type-check, unit tests and browser tests on pull requests and on `main`, and uploads the browser test report.
 

@@ -4,12 +4,12 @@ One message in a conversation. An assistant message renders Markdown safely and 
 
 Put messages in an [`<ai-transcript>`](../ai-transcript/README.md), which scrolls and announces them, or anywhere else.
 
-Live examples: run `npm run dev` and open [`/experiments/ai-composer.html#messages`](../../../experiments/ai-composer.html).
+Live examples: run `npm run dev` and open [`/experiments/ai-composer.html#messages`](../../../../experiments/ai-composer.html).
 
 ## Quick start
 
 ```ts
-import "./components/ai-message/ai-message.ts"; // registers <ai-message> and loads its CSS
+import "@samyakbhuta/ui-components/ai-message"; // registers <ai-message> and loads its CSS
 ```
 
 ```html

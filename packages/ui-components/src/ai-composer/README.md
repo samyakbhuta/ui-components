@@ -2,9 +2,9 @@
 
 The input box of an AI chat. Out of the box it's a prompt and a **Send** button. Attachments, voice input, **Mode**, **Model**, **Thinking**, `/` commands and `@` references are each turned on only when you ask for them.
 
-It's a plain custom element that arranges [ui-sdk](../../../AGENTS.md) parts (Textarea, Button, Trigger Menu, File Input, Segmented Control, Select and Toggle). Their keyboard, focus and screen reader behavior comes with them, and AI agents can use every control through ui-sdk's agent bridge.
+It's a plain custom element that arranges [ui-sdk](../../../../AGENTS.md) parts (Textarea, Button, Trigger Menu, File Input, Segmented Control, Select and Toggle). Their keyboard, focus and screen reader behavior comes with them, and AI agents can use every control through ui-sdk's agent bridge.
 
-Live examples: run `npm run dev` and open [`/experiments/ai-composer.html`](../../../experiments/ai-composer.html).
+Live examples: run `npm run dev` and open [`/experiments/ai-composer.html`](../../../../experiments/ai-composer.html).
 
 - [Quick start](#quick-start)
 - [Turning features on](#turning-features-on)
@@ -23,7 +23,7 @@ Live examples: run `npm run dev` and open [`/experiments/ai-composer.html`](../.
 ## Quick start
 
 ```ts
-import "./components/ai-composer/ai-composer.ts"; // registers <ai-composer> and loads its CSS
+import "@samyakbhuta/ui-components/ai-composer"; // registers <ai-composer> and loads its CSS
 ```
 
 ```html
@@ -58,7 +58,7 @@ Every extra is opt-in. To leave a feature out, don't add its attribute or data.
 ```
 
 ```ts
-import { defaultModes, defaultModels, defaultThinkingLevels } from "./components/ai-composer/ai-composer.ts";
+import { defaultModes, defaultModels, defaultThinkingLevels } from "@samyakbhuta/ui-components/ai-composer";
 
 composer.modes = defaultModes; // Auto, Plan, Accept-edits
 composer.models = defaultModels; // Opus 5.5, Sonnet 5.5, Haiku 5.5
@@ -99,7 +99,7 @@ Every attribute can change at any time, and what people have typed, attached and
 | Property | Type | What it holds |
 | --- | --- | --- |
 | `modes`, `models`, `thinkingLevels` | `ComposerOption[]` | The choices for each control. `[]` (the default) leaves the control out. |
-| `commands` | `ComposerCommands` | `/` commands, as [Trigger Menu data](../../../node_modules/@ui-sdk/web/docs/components/trigger-menu.md#triggers-as-data). Commands can ask for `arguments` and send at once with `after: "submit"`. |
+| `commands` | `ComposerCommands` | `/` commands, as [Trigger Menu data](../../../../node_modules/@ui-sdk/web/docs/components/trigger-menu.md#triggers-as-data). Commands can ask for `arguments` and send at once with `after: "submit"`. |
 | `references` | `ComposerReferences` | `@` references: a list (strings, `{ value, label }` objects or groups), or a search function `(query, { signal }) => items`. |
 | `strings` | `Partial<ComposerStrings>` | Words to replace. See [Translation](#translation). |
 | `icons` | `Partial<ComposerIcons>` | SVG markup for `attach`, `voice`, `send`, `stop` and `chevron`. |

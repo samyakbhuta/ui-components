@@ -1,4 +1,5 @@
-import "./ai-transcript.css";
+import { adoptStyles, BaseElement, define } from "../styles.ts";
+import styles from "./ai-transcript.css?inline";
 
 /** Every word `<ai-transcript>` shows or announces. Override any of them through `strings`. */
 export type TranscriptStrings = {
@@ -24,8 +25,10 @@ type Message = HTMLElement & { from?: string; streaming?: boolean };
  * `<ai-transcript>`: the scrolling conversation. It follows new text while you're at the bottom,
  * stays put when you scroll up, offers "Jump to latest", and tells screen readers about each
  * finished reply once. See README.md beside this file.
+ *
+ * @customElement ai-transcript
  */
-export class AiTranscriptElement extends HTMLElement {
+export class AiTranscriptElement extends BaseElement {
   #strings: TranscriptStrings = defaultTranscriptStrings;
   #stuck = true;
   #lastTop = 0;
@@ -178,7 +181,8 @@ export class AiTranscriptElement extends HTMLElement {
   }
 }
 
-customElements.get("ai-transcript") ?? customElements.define("ai-transcript", AiTranscriptElement);
+adoptStyles(styles);
+define("ai-transcript", AiTranscriptElement);
 
 declare global {
   interface HTMLElementTagNameMap {

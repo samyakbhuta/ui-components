@@ -1,0 +1,83 @@
+{
+  "name": "@samyakbhuta/ui-components",
+  "version": "0.1.0-beta.0",
+  "description": "Web Components for AI chat apps, built on ui-sdk: a composer, messages with safe Markdown and coloured code, a streaming transcript, a thinking indicator and a list of saved chats.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "prepublishOnly": "node scripts/check-tag.mjs"
+  },
+  "sideEffects": [
+    "./dist/index.js",
+    "./dist/ai-*.js",
+    "./dist/shared/*.js",
+    "./dist/css/*.css",
+    "./src/**/*.ts"
+  ],
+  "customElements": "dist/custom-elements.json",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./ai-composer": {
+      "types": "./dist/ai-composer.d.ts",
+      "default": "./dist/ai-composer.js"
+    },
+    "./ai-message": {
+      "types": "./dist/ai-message.d.ts",
+      "default": "./dist/ai-message.js"
+    },
+    "./ai-transcript": {
+      "types": "./dist/ai-transcript.d.ts",
+      "default": "./dist/ai-transcript.js"
+    },
+    "./ai-thinking": {
+      "types": "./dist/ai-thinking.d.ts",
+      "default": "./dist/ai-thinking.js"
+    },
+    "./ai-chat-list": {
+      "types": "./dist/ai-chat-list.d.ts",
+      "default": "./dist/ai-chat-list.js"
+    },
+    "./markdown": {
+      "types": "./dist/markdown.d.ts",
+      "default": "./dist/markdown.js"
+    },
+    "./highlight": {
+      "types": "./dist/highlight.d.ts",
+      "default": "./dist/highlight.js"
+    },
+    "./*.css": "./dist/css/*.css",
+    "./package.json": "./package.json",
+    "./custom-elements.json": "./dist/custom-elements.json"
+  },
+  "files": [
+    "dist",
+    "docs",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "peerDependencies": {
+    "@ui-sdk/core": "^0.1.0-beta.17",
+    "@ui-sdk/web": "^0.1.0-beta.17"
+  },
+  "keywords": [
+    "web-components",
+    "custom-elements",
+    "ai",
+    "chat",
+    "markdown",
+    "ui-sdk"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/samyakbhuta/uisdk.git",
+    "directory": "packages/ui-components"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "beta"
+  }
+}

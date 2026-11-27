@@ -4,12 +4,12 @@ The scrolling conversation. It follows a reply as it streams while you're at the
 
 Its children are your messages, usually [`<ai-message>`](../ai-message/README.md) elements.
 
-Live examples: run `npm run dev` and open [`/experiments/ai-composer.html#transcript`](../../../experiments/ai-composer.html).
+Live examples: run `npm run dev` and open [`/experiments/ai-composer.html#transcript`](../../../../experiments/ai-composer.html).
 
 ## Quick start
 
 ```ts
-import "./components/ai-transcript/ai-transcript.ts"; // registers <ai-transcript> and loads its CSS
+import "@samyakbhuta/ui-components/ai-transcript"; // registers <ai-transcript> and loads its CSS
 ```
 
 ```html

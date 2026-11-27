@@ -2,7 +2,8 @@ import "@ui-sdk/web/alert-dialog";
 import "@ui-sdk/web/button";
 import "@ui-sdk/web/menu";
 import { createConfirm } from "@ui-sdk/web/alert-dialog";
-import "./ai-chat-list.css";
+import { adoptStyles, BaseElement, define } from "../styles.ts";
+import styles from "./ai-chat-list.css?inline";
 
 /** One chat in the list. */
 export type ChatSummary = {
@@ -85,8 +86,15 @@ let instances = 0;
 /**
  * `<ai-chat-list>`: the list of saved chats, for a sidebar. New chat at the top, chats grouped by
  * day, and Rename, Export and Delete on each. See README.md beside this file.
+ *
+ * @customElement ai-chat-list
+ * @fires chatselect - A chat was chosen. Cancelable.
+ * @fires chatnew - New chat was pressed.
+ * @fires chatrename - A new name was saved. Cancelable.
+ * @fires chatexport - Export was chosen.
+ * @fires chatdelete - Delete was confirmed. Cancelable.
  */
-export class AiChatListElement extends HTMLElement {
+export class AiChatListElement extends BaseElement {
   static observedAttributes = ["selected", "actions"];
 
   #id = `ai-chat-list-${++instances}`;
@@ -409,7 +417,8 @@ export class AiChatListElement extends HTMLElement {
   }
 }
 
-customElements.get("ai-chat-list") ?? customElements.define("ai-chat-list", AiChatListElement);
+adoptStyles(styles);
+define("ai-chat-list", AiChatListElement);
 
 declare global {
   interface HTMLElementTagNameMap {

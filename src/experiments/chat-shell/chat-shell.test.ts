@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { settle } from "@ui-sdk/core/testing";
 import { createAgent } from "@ui-sdk/web/agent";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import type { AiMessageElement } from "../../components/ai-message/ai-message.ts";
+import type { AiMessageElement } from "@samyakbhuta/ui-components/ai-message";
 import { mountChatShell, suggestions } from "./chat-shell.ts";
 import { ChatStore } from "./chat-store.ts";
 
@@ -306,7 +306,8 @@ test("Export downloads the chat as Markdown, from the header or the list", async
     expect(names).toHaveLength(2);
   } finally {
     click.mockRestore();
-    Object.assign(URL, { createObjectURL: undefined, revokeObjectURL: undefined });
+    // download() frees the URL a second later, so leave a harmless stand-in for that.
+    Object.assign(URL, { createObjectURL: undefined, revokeObjectURL: () => {} });
   }
 });
 

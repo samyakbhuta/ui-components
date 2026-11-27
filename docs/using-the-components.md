@@ -8,82 +8,65 @@ This guide is for developers who want to use the components from this repo in th
 - `<ai-thinking>`: the "Thinking…" indicator
 - `<ai-chat-list>`: the sidebar of saved chats
 
-They're standard Web Components, so they work in a plain HTML page and in React, Vue, Svelte or Angular. Each component's full API is in the README in its folder under `src/components/`. This guide covers getting them into your app.
+They're standard Web Components, so they work in a plain HTML page and in React, Vue, Svelte or Angular. They're packaged as `@samyakbhuta/ui-components`. Each component's full API is in its README, in the package's `docs/` folder and in `packages/ui-components/src/` in this repo. This guide covers getting them into your app.
 
 ## What you need
 
-- **A bundler that compiles TypeScript and bundles CSS imports.** Vite does both with no setup, and the examples below use it. webpack, Rspack, Parcel and esbuild work too, with CSS imports turned on. Each component imports its own stylesheet (`import "./ai-composer.css"`) and its siblings with `.ts` extensions (`import "./markdown.ts"`).
-- **ui-sdk**: `@ui-sdk/web` and its peer `@ui-sdk/core`. This repo uses `0.1.0-beta.17`. ui-sdk is in beta, so pin the same version until you've checked a newer one.
+- **A bundler**, like Vite, webpack, Rspack, Parcel or esbuild. The package ships plain JavaScript with its CSS built in and its TypeScript types included, so it needs no TypeScript or CSS configuration. The examples below use Vite.
+- **ui-sdk**: `@ui-sdk/web` and its peer `@ui-sdk/core`, installed beside the package so all the components share one copy. The package is built against `0.1.0-beta.17`. ui-sdk is in beta, so pin that version until you've checked a newer one.
 - **A current browser.** The styles use `color-mix()`, `light-dark()`, `:has()` and container queries, which Chrome, Edge, Firefox and Safari have supported for some time.
 
-## Option 1: copy the components (works today)
+## Option 1: install the package
 
-The components aren't published as a package yet, so the simplest way in is to copy them.
+### 1. Install it
 
-### 1. Install ui-sdk
+Once the package is published:
 
 ```bash
-npm install @ui-sdk/web@0.1.0-beta.17 @ui-sdk/core@0.1.0-beta.17
+npm install @samyakbhuta/ui-components @ui-sdk/web@0.1.0-beta.17 @ui-sdk/core@0.1.0-beta.17
 ```
 
-### 2. Copy the folders you need
+Until then, build it from this repo and install the file it makes:
 
-Copy the component folders from `src/components/` into your app, for example into `src/components/`. Each folder holds the element, its CSS, its README and its tests. Copy only what you use: there are no dependencies between the folders.
+```bash
+npm run build:package
+```
 
-| Folder | Gives you | ui-sdk parts it imports |
-| --- | --- | --- |
-| `ai-composer/` | `<ai-composer>` | button, file-input, segmented-control, select, textarea, toggle, trigger-menu |
-| `ai-message/` | `<ai-message>`, plus `markdown.ts` and `highlight.ts` | button |
-| `ai-transcript/` | `<ai-transcript>` | none |
-| `ai-thinking/` | `<ai-thinking>` | none |
-| `ai-chat-list/` | `<ai-chat-list>` | alert-dialog, button, menu |
+```bash
+cd packages/ui-components && npm pack
+```
 
-`<ai-chat-list>` only lists chats; saving them is up to your app. If you want this repo's approach (chats in `localStorage`, plus Markdown export), copy `src/experiments/chat-shell/chat-store.ts` too.
+```bash
+npm install /path/to/samyakbhuta-ui-components-0.1.0-beta.0.tgz @ui-sdk/web@0.1.0-beta.17 @ui-sdk/core@0.1.0-beta.17
+```
 
-### 3. Add two lines of page CSS
+Run the last command in your app, with the path to the `.tgz` file that `npm pack` printed.
 
-Put these in your global stylesheet, before any other CSS:
+### 2. Let the page follow light and dark mode
+
+Put this in your global stylesheet:
 
 ```css
-/* ui-sdk adds a little CSS in this layer. Declared first, it ranks below your own styles. */
-@layer ui-sdk;
-
-/* The components follow light and dark mode through system colours and light-dark(). */
 :root {
   color-scheme: light dark;
 }
 ```
 
-Without `color-scheme: light dark` the components stay light even in dark mode. Use `color-scheme: light` or `dark` to pin one.
+Without it the components stay light even in dark mode. Use `color-scheme: light` or `dark` to pin one.
 
-### 4. Check your TypeScript settings
+### 3. Import them and use them
 
-The components import their siblings with `.ts` extensions, so a TypeScript project needs these compiler options (Vite's templates already have them):
-
-```json
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"]
-  }
-}
-```
-
-A JavaScript project needs nothing extra: the bundler compiles the `.ts` files.
-
-### 5. Import them and use them
-
-Importing a component's file registers its tag, so do that once, in your app's entry:
+Importing a component registers its tag and adds its styles to the page. Do it once, in your app's entry:
 
 ```ts
-import "./components/ai-composer/ai-composer.ts";
-import "./components/ai-message/ai-message.ts";
-import "./components/ai-transcript/ai-transcript.ts";
-import "./components/ai-thinking/ai-thinking.ts";
+import "@samyakbhuta/ui-components"; // all five
+```
+
+Or import only what you use:
+
+```ts
+import "@samyakbhuta/ui-components/ai-composer";
+import "@samyakbhuta/ui-components/ai-message";
 ```
 
 Then use the tags:
@@ -95,15 +78,33 @@ Then use the tags:
 <ai-composer attachments history persist="my-app"></ai-composer>
 ```
 
+### What you can import
+
+| Import | Gives you |
+| --- | --- |
+| `@samyakbhuta/ui-components` | All five elements, their classes and types, and `renderMarkdown()` |
+| `@samyakbhuta/ui-components/ai-composer` | `<ai-composer>`, plus `defaultModes`, `defaultModels`, `defaultThinkingLevels` and its types |
+| `@samyakbhuta/ui-components/ai-message` | `<ai-message>` and `copyText()` |
+| `@samyakbhuta/ui-components/ai-transcript` | `<ai-transcript>` |
+| `@samyakbhuta/ui-components/ai-thinking` | `<ai-thinking>` |
+| `@samyakbhuta/ui-components/ai-chat-list` | `<ai-chat-list>` |
+| `@samyakbhuta/ui-components/markdown` | `renderMarkdown()` and `renderPlainText()` on their own |
+| `@samyakbhuta/ui-components/highlight` | The syntax highlighter on its own |
+| `@samyakbhuta/ui-components/ai-composer.css` (and the others) | Each component's stylesheet, for use inside a shadow root |
+
+The package also ships `custom-elements.json`, a Custom Elements Manifest that editors and tools like Storybook can read for tag, property and event autocomplete.
+
+`<ai-chat-list>` only lists chats; saving them is up to your app. For this repo's approach (chats in `localStorage`, plus Markdown export), copy `src/experiments/chat-shell/chat-store.ts` into your app.
+
 ## A complete chat in a few lines
 
 This wires the components to your own server. It assumes an endpoint, `/api/chat`, that takes the prompt as JSON and streams the answer back as plain text. Replace it with however you call your model.
 
 ```ts
-import "./components/ai-composer/ai-composer.ts";
-import "./components/ai-message/ai-message.ts";
-import "./components/ai-thinking/ai-thinking.ts";
-import "./components/ai-transcript/ai-transcript.ts";
+import "@samyakbhuta/ui-components/ai-composer";
+import "@samyakbhuta/ui-components/ai-message";
+import "@samyakbhuta/ui-components/ai-thinking";
+import "@samyakbhuta/ui-components/ai-transcript";
 
 const transcript = document.querySelector("ai-transcript")!;
 const composer = document.querySelector("ai-composer")!;
@@ -176,7 +177,7 @@ Things you get without writing any code:
 - Replies render as Markdown, with code coloured.
 - Send turns into Stop while `busy` is set.
 
-To turn on Mode, Model, Thinking, `/` commands and `@` references, see `src/components/ai-composer/README.md`. The docs page in this repo (`npm run dev`, then `/experiments/ai-composer.html`) has a playground that writes the setup code for you.
+To turn on Mode, Model, Thinking, `/` commands and `@` references, see the composer's README (`docs/ai-composer.md` in the package). The docs page in this repo (`npm run dev`, then `/experiments/ai-composer.html`) has a playground that writes the setup code for you.
 
 ## Using them with a framework
 
@@ -188,8 +189,8 @@ React 19 sets properties on custom elements, so plain props work for lists. A re
 
 ```tsx
 import { useEffect, useRef } from "react";
-import "./components/ai-composer/ai-composer.ts";
-import { defaultModels } from "./components/ai-composer/ai-composer.ts";
+import "@samyakbhuta/ui-components/ai-composer";
+import { defaultModels } from "@samyakbhuta/ui-components/ai-composer";
 
 export function Composer({ onSend }: { onSend: (text: string) => void }) {
   const ref = useRef<HTMLElementTagNameMap["ai-composer"]>(null);
@@ -260,14 +261,11 @@ Add `CUSTOM_ELEMENTS_SCHEMA` to the component that uses them, then bind properti
 
 ## Server-side rendering
 
-The components run in the browser only. Their files define classes that extend `HTMLElement`, which doesn't exist on the server, so import them on the client:
+Importing the package on a server is safe: with no DOM there, the import registers nothing and touches nothing. That means you can import it in shared code in Next.js, Nuxt, SvelteKit or Astro without special handling.
 
-- **Next.js:** import them in a `"use client"` component inside `useEffect`, or load that component with `dynamic(..., { ssr: false })`.
-- **Nuxt:** wrap them in `<ClientOnly>`, and import them in a client-only plugin (`plugins/components.client.ts`).
-- **SvelteKit:** import them in `onMount`, or turn off SSR for that page.
-- **Astro:** import them in a `<script>` tag, which runs in the browser.
+The server sends the tags in its HTML as they are, and they come alive once the browser loads the script. Anything you set from script (lists like `models`, event listeners) belongs in client-side code: `useEffect`, `onMounted`, `onMount`, or a `<script>` tag in Astro.
 
-The server can still send the tags in its HTML. They come alive once the script loads.
+If you copied the source instead of installing the package, the same holds, as long as you copied `styles.ts` with it.
 
 ## Styling to match your app
 
@@ -323,7 +321,7 @@ See ui-sdk's agent docs in `node_modules/@ui-sdk/web/docs/agents.md`, including 
 
 ## Bringing the tests along
 
-Each folder's `*.test.ts` runs in Vitest with jsdom. To run them in your app:
+If you copied the source, each folder's `*.test.ts` runs in Vitest with jsdom. To run them in your app:
 
 1. Copy `src/test/setup.ts`, which stubs a few browser APIs jsdom lacks.
 2. Use a `vitest.config.ts` like this repo's.
@@ -337,21 +335,27 @@ The browser tests in `e2e/` test this repo's pages, so use them as examples for 
 
 ## Keeping up to date
 
-Copied components don't update themselves. When this repo changes, compare the component folders and copy them again; their READMEs describe the API, so you can see what changed. If several apps share the components, consider Option 2.
+The package follows semantic versioning, with a changelog in `CHANGELOG.md`. While it's in beta (`0.1.0-beta.x`), any release can change the API, so pin an exact version and read the changelog before you upgrade.
 
-## Option 2: share them as a package (not set up yet)
+## Option 2: copy the source instead
 
-To install the components with `npm install` instead of copying them, this repo needs a small library build. That means a Vite library build (`build.lib`) with an entry for each component, a `package.json` `exports` map, and type declarations. Then you could publish it to npm or GitHub Packages, or install it straight from Git. Ask if you'd like that set up.
+If you'd rather own the code, copy the component folders from `packages/ui-components/src/` into your app, along with `packages/ui-components/src/styles.ts`, which they all import. Then:
+
+- Install ui-sdk as above.
+- Your bundler has to handle TypeScript and `?inline` CSS imports. Vite does both; other bundlers need loaders for them.
+- Your `tsconfig.json` needs `"moduleResolution": "bundler"` and `"allowImportingTsExtensions": true`, since the files import each other with `.ts` extensions, plus `"types": ["vite/client"]` for the CSS imports.
+
+Copied code doesn't update itself. When this repo changes, compare the folders and copy them again.
 
 ## Troubleshooting
 
 | What you see | Why, and the fix |
 | --- | --- |
-| The tag renders nothing | The component's file was never imported. Import it once in your entry. |
-| It looks unstyled | Your bundler isn't bundling the CSS imports. Turn on CSS handling (Vite does it by default). |
+| The tag renders nothing | The component was never imported. Import it once in your entry. |
+| It looks unstyled | It's inside a shadow root, where page styles don't reach. Add the component's stylesheet there, like `@samyakbhuta/ui-components/ai-composer.css`. |
 | It stays light in dark mode | Add `color-scheme: light dark` to `:root`. |
 | `HTMLElement is not defined` | It was imported on the server. See [Server-side rendering](#server-side-rendering). |
-| TypeScript: "An import path can only end with a '.ts' extension…" | Turn on `allowImportingTsExtensions` with `moduleResolution: "bundler"`. |
+| TypeScript: "An import path can only end with a '.ts' extension…" | Only with copied source. Turn on `allowImportingTsExtensions` with `moduleResolution: "bundler"`. |
 | Vue warns "Failed to resolve component: ai-composer" | Add `isCustomElement` for `ai-` and `ui-` tags. |
 | A list like `models` does nothing | It was passed as an attribute. Set it as a property (see your framework's section). |
 | Your styles don't apply | Check whether your rule sits inside an `@layer` declared after the component's; unlayered rules always win. |

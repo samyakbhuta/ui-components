@@ -4,12 +4,12 @@ Shows that an AI is working: shimmering "Thinking…" text, an optional timer, a
 
 It sits in the conversation, where the answer is about to appear. It works on its own, or next to [`<ai-composer>`](../ai-composer/README.md).
 
-Live examples: run `npm run dev` and open [`/experiments/ai-composer.html#thinking`](../../../experiments/ai-composer.html).
+Live examples: run `npm run dev` and open [`/experiments/ai-composer.html#thinking`](../../../../experiments/ai-composer.html).
 
 ## Quick start
 
 ```ts
-import "./components/ai-thinking/ai-thinking.ts"; // registers <ai-thinking> and loads its CSS
+import "@samyakbhuta/ui-components/ai-thinking"; // registers <ai-thinking> and loads its CSS
 ```
 
 ```html

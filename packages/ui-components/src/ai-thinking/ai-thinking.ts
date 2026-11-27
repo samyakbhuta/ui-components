@@ -1,4 +1,5 @@
-import "./ai-thinking.css";
+import { adoptStyles, BaseElement, define } from "../styles.ts";
+import styles from "./ai-thinking.css?inline";
 
 /** Every word `<ai-thinking>` shows or announces. Override any of them through `strings`. */
 export type ThinkingStrings = {
@@ -30,8 +31,10 @@ const announceDelay = 100;
 /**
  * `<ai-thinking>`: shows that an AI is working, with shimmering text, an optional timer and
  * optional reasoning that opens from the summary. See README.md beside this file.
+ *
+ * @customElement ai-thinking
  */
-export class AiThinkingElement extends HTMLElement {
+export class AiThinkingElement extends BaseElement {
   static observedAttributes = ["status", "label", "timer", "duration"];
 
   #strings: ThinkingStrings = defaultThinkingStrings;
@@ -207,7 +210,8 @@ export class AiThinkingElement extends HTMLElement {
   }
 }
 
-customElements.get("ai-thinking") ?? customElements.define("ai-thinking", AiThinkingElement);
+adoptStyles(styles);
+define("ai-thinking", AiThinkingElement);
 
 declare global {
   interface HTMLElementTagNameMap {
