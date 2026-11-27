@@ -10,7 +10,9 @@ functions:
 jobs:
   test:
     docker:
-      - image: cimg/base:stable
+      # Ubuntu 24.04: Playwright 1.63 can't install Chromium's system packages on the newer
+      # Ubuntu that cimg/base:stable runs.
+      - image: cimg/base:current-24.04
     environment:
       # setup-playwright installs and caches the browsers, so npm ci doesn't download them.
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
