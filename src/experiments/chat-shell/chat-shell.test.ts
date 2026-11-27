@@ -412,3 +412,22 @@ test("a reply that fails keeps what arrived, shows an error, and Retry tries aga
   expect(reply.text.length).toBeGreaterThan(0);
   expect(new ChatStore().list()[0].messages[1].error).toBe(reply.error);
 });
+
+test("an older version hides the newest one's tool calls, and the newest shows them again", async () => {
+  const user = userEvent.setup();
+  const { composer, prompt, replies, idle } = await renderShell();
+  composer.thinking = "off";
+  await settle();
+  await user.type(prompt, "/explain @package.json");
+  await user.keyboard("{Enter}");
+  await idle();
+  await user.click(within(replies()[0]).getByRole("button", { name: "Retry" }));
+  await idle();
+  const reply = replies()[0];
+  const calls = () => [...reply.querySelectorAll("ai-tool-call")].map((call) => call.hidden);
+  expect(calls()).toEqual([false]);
+  await user.click(within(reply).getByRole("button", { name: "Previous version" }));
+  expect(calls()).toEqual([true]);
+  await user.click(within(reply).getByRole("button", { name: "Next version" }));
+  expect(calls()).toEqual([false]);
+});

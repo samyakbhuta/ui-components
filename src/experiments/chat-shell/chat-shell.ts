@@ -351,6 +351,11 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     return call;
   }
 
+  /** The thinking and tool calls belong to the newest version, so hide them while an older one shows. */
+  function showWork(message: AiMessageElement, newest: boolean) {
+    for (const part of message.querySelectorAll<HTMLElement>(":scope > ai-thinking, :scope > ai-tool-call")) part.hidden = !newest;
+  }
+
   function savedReply(stored: StoredMessage) {
     const message = replyMessage();
     message.text = stored.text;
@@ -384,6 +389,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       message.append(call);
     }
     if (stored.meta) message.append(meta(stored.meta));
+    showWork(message, message.version === message.versions);
     return message;
   }
 
@@ -560,8 +566,10 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     const text = versionTexts.get(message)?.[event.detail.version - 1];
     if (text === undefined || composer.busy) return event.preventDefault();
     message.text = text;
-    // Only the newest version can have failed.
-    message.error = event.detail.version === event.detail.versions ? (latestError.get(message) ?? null) : null;
+    // Only the newest version can have failed, thought or used tools.
+    const newest = event.detail.version === event.detail.versions;
+    message.error = newest ? (latestError.get(message) ?? null) : null;
+    showWork(message, newest);
     queueMicrotask(save);
   });
 

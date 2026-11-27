@@ -131,3 +131,25 @@ test.describe("in the chat shell", () => {
     await expect(reply.locator("[data-part='error']")).toBeHidden();
   });
 });
+
+test("the hidden attribute hides every component, and a streaming reply hides its actions", async ({ page }) => {
+  await page.goto("/experiments/ai-composer.html");
+  const displays = await page.evaluate(() =>
+    ["ai-composer", "ai-message", "ai-transcript", "ai-thinking", "ai-tool-call", "ai-chat-list"].map((tag) => {
+      const element = document.createElement(tag);
+      element.hidden = true;
+      document.body.append(element);
+      const display = getComputedStyle(element).display;
+      element.remove();
+      return `${tag}: ${display}`;
+    }),
+  );
+  expect(displays).toEqual(["ai-composer", "ai-message", "ai-transcript", "ai-thinking", "ai-tool-call", "ai-chat-list"].map((tag) => `${tag}: none`));
+
+  const reply = page.locator("#messages .sample-reply");
+  await page.locator("#messages .replay").click();
+  await expect(reply).toHaveAttribute("streaming", "");
+  await expect(reply.getByRole("button", { name: "Copy", exact: true })).toBeHidden();
+  await expect(reply).not.toHaveAttribute("streaming", { timeout: 15_000 });
+  await expect(reply.getByRole("button", { name: "Copy", exact: true })).toBeVisible();
+});

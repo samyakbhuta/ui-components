@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix: the `hidden` attribute now hides every component, and the parts inside them. Each component's own `display` used to win over it, so `<ai-message>`'s actions stayed visible while a reply streamed, and `hidden` on `<ai-tool-call>` or `<ai-thinking>` did nothing.
+
 ## 0.1.0-beta.1 (2026-11-27)
 
 Built on ui-sdk `0.1.0-beta.18`.

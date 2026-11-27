@@ -189,4 +189,10 @@
       color: CanvasText;
     }
   }
+
+  /* The element's own display would otherwise beat the hidden attribute. */
+  ai-tool-call[hidden],
+  ai-tool-call [hidden] {
+    display: none !important;
+  }
 }

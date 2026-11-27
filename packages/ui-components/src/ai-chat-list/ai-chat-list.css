@@ -252,4 +252,10 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
+
+  /* The element's own display would otherwise beat the hidden attribute. */
+  ai-chat-list[hidden],
+  ai-chat-list [hidden] {
+    display: none !important;
+  }
 }
