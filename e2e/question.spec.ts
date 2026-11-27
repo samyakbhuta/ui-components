@@ -11,6 +11,7 @@ test.describe("on the docs page", () => {
     const question = page.locator("#question .city-question");
     const send = question.getByRole("button", { name: "Send" });
     await expect(send).toBeDisabled();
+    await expect(page.locator("#question").getByRole("button", { name: "Reset demo" })).toBeHidden();
 
     // Tab into the group, then arrows move and choose, as with native radios.
     await question.getByRole("radio", { name: "Paris" }).focus();
@@ -28,8 +29,12 @@ test.describe("on the docs page", () => {
     await expect(send).toBeHidden();
     await expect(question.getByRole("status")).toHaveText("Answered: Porto");
 
-    await page.locator("#question").getByRole("button", { name: "Ask again" }).click();
+    // Reset demo shows once something is answered, and puts focus back on the first choice.
+    const reset = page.locator("#question").getByRole("button", { name: "Reset demo" });
+    await reset.click();
     await expect(send).toBeVisible();
+    await expect(reset).toBeHidden();
+    await expect(question.getByRole("radio").first()).toBeFocused();
   });
 
   test("several choices: max disables the rest until one is unchecked", async ({ page }) => {

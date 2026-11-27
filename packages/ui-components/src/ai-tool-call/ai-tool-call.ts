@@ -1,3 +1,4 @@
+import { showValue } from "../format.ts";
 import { adoptStyles, BaseElement, define } from "../styles.ts";
 import styles from "./ai-tool-call.css?inline";
 
@@ -33,16 +34,7 @@ const errorIcon = icon('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>');
 /** How long after connecting the start is announced, so the live region exists first. */
 const announceDelay = 100;
 
-/** Shows a tool's input or output: strings as they are, anything else as indented JSON. */
-function show(value: unknown): string {
-  if (value === undefined || value === null) return "";
-  if (typeof value === "string") return value;
-  try {
-    return JSON.stringify(value, null, 2) ?? String(value);
-  } catch {
-    return String(value);
-  }
-}
+const show = showValue;
 
 /**
  * `<ai-tool-call>`: one step an AI agent takes, like searching the web or running code. Shows

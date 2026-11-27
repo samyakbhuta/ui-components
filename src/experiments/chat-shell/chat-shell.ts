@@ -8,6 +8,7 @@ import "@samyakbhuta/ui-components/ai-tool-call";
 import "@samyakbhuta/ui-components/ai-sources";
 import "@samyakbhuta/ui-components/ai-suggestions";
 import "@samyakbhuta/ui-components/ai-question";
+import "@samyakbhuta/ui-components/ai-approval";
 import type { Source } from "@samyakbhuta/ui-components/ai-sources";
 import "@samyakbhuta/ui-components/ai-transcript";
 import {
@@ -28,8 +29,10 @@ import {
   newChatId,
   type StoredChat,
   type StoredMessage,
+  type StoredApproval,
   type StoredPrompt,
   type StoredQuestion,
+  type StoredScript,
   type StoredToolCall,
   titleFrom,
 } from "./chat-store.ts";
@@ -72,7 +75,30 @@ export const suggestions = [
   "Show me a reply that fails",
   "What are web components? Cite your sources",
   "Plan a weekend trip for me",
+  "Clean up my project's build folder",
 ];
+
+/** Asking to clean up makes the pretend agent ask before it deletes anything, with <ai-approval>. */
+const cleaning = (text: string) => /\bclean\s*up\b|\bbuild folder\b/i.test(text);
+
+/** What the pretend agent asks to run when cleaning up. */
+export const cleanupApproval: StoredApproval = {
+  name: "run_command",
+  label: "Run a command",
+  description: "This deletes files in your project, and can't be undone.",
+  input: "rm -rf dist",
+  always: true,
+  reason: true,
+};
+
+/** What the pretend agent says at each step of the cleanup. */
+export function cleanupReply(step: NonNullable<StoredScript["cleanup"]>, reason?: string) {
+  if (step === "ask") return "I can clear out the build folder, `dist/`. It holds 42 files left over from old builds.";
+  if (step === "allowed") return "Done. The build folder is gone, and your next build will make it again.";
+  return reason
+    ? `OK, I won't run that. You suggested instead: *${reason.replace(/[*_\\`]/g, "\\$&")}*. A real agent would try that next.`
+    : "OK, I won't run that. The build folder stays as it is.";
+}
 
 /** Asking to plan a trip makes the pretend model ask questions first, with <ai-question>. */
 const planning = (text: string) => /\btrip\b/i.test(text);
@@ -96,12 +122,18 @@ export const tripQuestions: Record<number, StoredQuestion> = {
   },
 };
 
-const waitingPlaceholder = "Answer the question above, or type your answer";
+const waitingPlaceholder = {
+  question: "Answer the question above, or type your answer",
+  approval: "Allow or deny above, or tell it what to do instead",
+};
 
-/** Whether a chat's last reply asks a question that hasn't been answered. */
-const waitsForAnswer = (messages: StoredMessage[]) => {
+/** What a chat's last reply is waiting on: an answer, an approval, or nothing. */
+const waitsOn = (messages: StoredMessage[]) => {
   const last = messages.at(-1);
-  return last?.from === "assistant" && last.question !== undefined && !last.question.answer;
+  if (last?.from !== "assistant") return null;
+  if (last.question && !last.question.answer) return "Needs your answer";
+  if (last.approval && !last.approval.decision) return "Needs your approval";
+  return null;
 };
 
 /** An answer typed in the composer: the choice it names, or else an answer of one's own. */
@@ -336,8 +368,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   const versionTexts = new WeakMap<AiMessageElement, string[]>();
   /** Why the newest version of a reply failed, to show again when people step back to it. */
   const latestError = new WeakMap<AiMessageElement, string | null>();
-  /** Which step of the pretend trip planner a reply was, so Retry asks the same thing. */
-  const tripSteps = new WeakMap<AiMessageElement, number>();
+  /** Which scripted conversation a reply belongs to, and where in it, so Retry continues it. */
+  const scripts = new WeakMap<AiMessageElement, StoredScript>();
   let stopReply: (() => void) | undefined;
   let replying: Promise<void> | undefined;
 
@@ -362,16 +394,19 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
 
   // ---- Saving and opening chats ---------------------------------------------------------------
 
-  /** The newest reply's question, while it waits for an answer. */
-  const openQuestion = () =>
-    messages().at(-1)?.querySelector<HTMLElementTagNameMap["ai-question"]>("ai-question:not([answered])") ?? null;
+  /** The newest reply's question or approval, while it waits on the person. */
+  const openRequest = () =>
+    messages().at(-1)?.querySelector<HTMLElementTagNameMap["ai-question"] | HTMLElementTagNameMap["ai-approval"]>(
+      "ai-question:not([answered]), ai-approval:not([decided])",
+    ) ?? null;
 
   function showTitle() {
     const title = current.title || "New chat";
     heading.textContent = title;
     // While the agent waits on an answer, say so in the box, and in the tab's title when it's in the background.
-    const waiting = openQuestion() !== null;
-    if (waiting) composer.setAttribute("placeholder", waitingPlaceholder);
+    const request = openRequest();
+    const waiting = request !== null;
+    if (request) composer.setAttribute("placeholder", waitingPlaceholder[request.localName === "ai-approval" ? "approval" : "question"]);
     else composer.removeAttribute("placeholder");
     document.title = `${waiting && document.hidden ? "Waiting for you · " : ""}${title} · AI chat`;
     exportButton.disabled = current.messages.length === 0;
@@ -382,7 +417,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       id,
       title,
       updatedAt,
-      status: waitsForAnswer(messages) ? "Needs your answer" : undefined,
+      status: waitsOn(messages) ?? undefined,
     }));
     list.selected = store.get(current.id) ? current.id : null;
   }
@@ -418,6 +453,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
           versions: texts && texts.length > 1 ? [...texts] : undefined,
           version: texts && texts.length > 1 ? message.version : undefined,
           question: questionOf(message),
+          approval: approvalOf(message),
+          script: scripts.get(message),
         };
       });
   }
@@ -448,6 +485,33 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     asking.skippable = stored.skippable ?? false;
     if (stored.step) asking.dataset.step = String(stored.step);
     if (stored.answer) asking.answer = stored.answer;
+    return asking;
+  }
+
+  function approvalOf(message: AiMessageElement): StoredApproval | undefined {
+    const asking = message.querySelector("ai-approval");
+    if (!asking) return undefined;
+    return {
+      name: asking.name,
+      label: asking.label || undefined,
+      description: asking.description || undefined,
+      input: asking.input,
+      always: asking.always || undefined,
+      reason: asking.reason || undefined,
+      decision: asking.decision ?? undefined,
+    };
+  }
+
+  function approvalFor(stored: StoredApproval) {
+    const asking = document.createElement("ai-approval");
+    asking.slot = "footer";
+    asking.name = stored.name;
+    if (stored.label) asking.label = stored.label;
+    if (stored.description) asking.description = stored.description;
+    asking.input = stored.input;
+    asking.always = stored.always ?? false;
+    asking.reason = stored.reason ?? false;
+    if (stored.decision) asking.decision = stored.decision;
     return asking;
   }
 
@@ -559,10 +623,9 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       message.append(call);
     }
     if (stored.sources?.length) message.append(sourcesFor(stored.sources));
-    if (stored.question) {
-      message.append(questionFor(stored.question));
-      if (stored.question.step) tripSteps.set(message, stored.question.step);
-    }
+    if (stored.question) message.append(questionFor(stored.question));
+    if (stored.approval) message.append(approvalFor(stored.approval));
+    if (stored.script) scripts.set(message, stored.script);
     if (stored.meta) message.append(meta(stored.meta));
     showWork(message, message.version === message.versions);
     return message;
@@ -623,13 +686,13 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   // ---- Replies --------------------------------------------------------------------------------
 
   /** A pretend reply: think for as long as the level asks, then stream Markdown in. */
-  async function reply(detail: PromptSubmitDetail, replacing?: AiMessageElement, trip?: number) {
+  async function reply(detail: PromptSubmitDetail, replacing?: AiMessageElement, script?: StoredScript) {
     const controller = new AbortController();
     const { signal } = controller;
     const message = replyMessage();
     message.streaming = true;
     asked.set(message, detail);
-    if (trip) tripSteps.set(message, trip);
+    if (script) scripts.set(message, script);
     const earlier = replacing ? (versionTexts.get(replacing) ?? [replacing.text]) : [];
     if (earlier.length) {
       message.versions = earlier.length + 1;
@@ -669,9 +732,22 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
         call.summary = `Read ${reference.label}`;
         call.done(pretendFile(reference.label));
       }
+      // With Always allow chosen in this chat, the cleanup runs without asking again.
+      const preapproved = script?.cleanup === "ask" && (current.allowed ?? []).includes(cleanupApproval.name);
+      if (script?.cleanup === "allowed" || preapproved) {
+        const call = toolCall(cleanupApproval.name, "Running rm -rf dist…", cleanupApproval.input);
+        message.append(call);
+        await wait(600, signal);
+        call.summary = "Ran rm -rf dist";
+        call.done("Removed dist/ (42 files)");
+        if (preapproved) message.append(meta(`Allowed without asking: you chose Always allow for ${cleanupApproval.name}`));
+      }
       // Stream a few characters at a time, the way a model's tokens arrive.
-      const city = firstAnswer() ?? "Lisbon";
-      const text = trip ? tripReply(trip, detail.text, city) : pretendReply(detail);
+      const text = script?.trip
+        ? tripReply(script.trip, detail.text, firstAnswer() ?? "Lisbon")
+        : script?.cleanup
+          ? cleanupReply(preapproved ? "allowed" : script.cleanup, script.reason)
+          : pretendReply(detail);
       const end = failing(detail.text) ? Math.floor(text.length / 3) : text.length;
       for (let index = 0; index < end; index += 6) {
         await wait(12, signal);
@@ -680,10 +756,15 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       if (end < text.length) message.error = "The connection dropped. Press Retry to try again.";
       else {
         if (citing(detail.text)) message.append(sourcesFor(pretendSources));
-        if (trip && tripQuestions[trip]) {
-          // A question takes the place of follow-ups until it's answered.
+        const asking = script?.trip && tripQuestions[script.trip]
+          ? questionFor(tripQuestions[script.trip])
+          : script?.cleanup === "ask" && !preapproved
+            ? approvalFor(cleanupApproval)
+            : undefined;
+        if (asking) {
+          // A question or an approval takes the place of follow-ups until it's settled.
           for (const old of transcript.querySelectorAll("ai-suggestions.follow-ups")) old.remove();
-          message.append(questionFor(tripQuestions[trip]));
+          message.append(asking);
         } else offerFollowUps(message, followUps(detail));
       }
     } catch {
@@ -700,8 +781,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     }
   }
 
-  const startReply = (detail: PromptSubmitDetail, replacing?: AiMessageElement, trip?: number) => {
-    replying = reply(detail, replacing, trip);
+  const startReply = (detail: PromptSubmitDetail, replacing?: AiMessageElement, script?: StoredScript) => {
+    replying = reply(detail, replacing, script);
   };
 
   /** The city chosen in the trip planner's first question, if it was answered. */
@@ -719,20 +800,26 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       save();
       return;
     }
+    const request = openRequest();
+    // With an approval open, what's typed denies it, as what to do instead.
+    if (request?.localName === "ai-approval") {
+      (request as HTMLElementTagNameMap["ai-approval"]).decision = { decision: "deny", reason: detail.text };
+      return send(detail, { cleanup: "denied", reason: detail.text });
+    }
     // With a question open, what's typed answers it, as if chosen or typed into Other.
-    const asking = openQuestion();
-    if (asking) {
+    if (request) {
+      const asking = request as HTMLElementTagNameMap["ai-question"];
       asking.answer = typedAnswer(asking, detail.text);
       const step = Number(asking.dataset.step);
-      return send(detail, step ? step + 1 : undefined);
+      return send(detail, step ? { trip: step + 1 } : undefined);
     }
-    send(detail, planning(detail.text) ? 1 : undefined);
+    send(detail, planning(detail.text) ? { trip: 1 } : cleaning(detail.text) ? { cleanup: "ask" } : undefined);
   });
 
   document.addEventListener("visibilitychange", showTitle, { signal: page.signal });
 
   /** Shows what was sent as your message, and starts the reply. */
-  function send(detail: PromptSubmitDetail, trip?: number) {
+  function send(detail: PromptSubmitDetail, script?: StoredScript) {
 
     const line = [
       `${labelOf(defaultModes, detail.mode)} · ${labelOf(defaultModels, detail.model)} · Thinking: ${labelOf(defaultThinkingLevels, detail.thinking)}`,
@@ -752,12 +839,12 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     };
     transcript.append(userMessage(detail.text, line, prompt, detail.files));
     save();
-    startReply(detail, undefined, trip);
+    startReply(detail, undefined, script);
   }
 
   /** An answer to the trip planner's question goes in as your next message, with the composer's settings. */
   const answerWith = (text: string, step: number) =>
-    send({ text, mode: composer.mode, model: composer.model, thinking: composer.thinking, references: [], files: [] }, step + 1);
+    send({ text, mode: composer.mode, model: composer.model, thinking: composer.thinking, references: [], files: [] }, { trip: step + 1 });
 
   transcript.addEventListener("questionanswer", (event) => {
     if (composer.busy) return event.preventDefault();
@@ -772,11 +859,24 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     queueMicrotask(() => (step ? answerWith("Surprise me", step) : save()));
   });
 
+  // A decision continues the same turn: the agent runs the command, or says it won't.
+  transcript.addEventListener("approvaldecision", (event) => {
+    if (composer.busy) return event.preventDefault();
+    const message = (event.target as HTMLElement).closest("ai-message") as AiMessageElement | null;
+    const detail = message ? asked.get(message) : undefined;
+    const { decision, reason } = event.detail;
+    if (decision === "always") current.allowed = [...new Set([...(current.allowed ?? []), (event.target as HTMLElementTagNameMap["ai-approval"]).name])];
+    queueMicrotask(() => {
+      if (!detail) return save();
+      startReply(detail, undefined, decision === "deny" ? { cleanup: "denied", reason: reason ?? undefined } : { cleanup: "allowed" });
+    });
+  });
+
   transcript.addEventListener("messageaction", (event) => {
     const message = event.target as AiMessageElement;
     if (event.detail.action === "retry" && !composer.busy) {
       const detail = asked.get(message);
-      if (detail) startReply(detail, message, tripSteps.get(message));
+      if (detail) startReply(detail, message, scripts.get(message));
     } else if (event.detail.action === "edit") {
       composer.value = event.detail.text;
       composer.focus();

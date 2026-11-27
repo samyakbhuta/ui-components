@@ -1,6 +1,7 @@
 import { settle } from "@ui-sdk/core/testing";
 import { expect, test } from "vitest";
 import "../ai-message/ai-message.ts";
+import "../ai-approval/ai-approval.ts";
 import "../ai-question/ai-question.ts";
 import "./ai-transcript.ts";
 import type { AiTranscriptElement } from "./ai-transcript.ts";
@@ -88,6 +89,22 @@ test("a reply that asks a question is read out with it, so people know it's wait
   reply.done();
   await frame();
   expect(announced()).toBe("First, a question.");
+});
+
+test("a reply that asks for approval is read out with it", async () => {
+  const { transcript, announced } = await mount();
+  const reply = document.createElement("ai-message");
+  reply.streaming = true;
+  transcript.append(reply);
+  reply.text = "I'll clear the build folder.";
+  const approval = document.createElement("ai-approval");
+  approval.slot = "footer";
+  approval.label = "Run a command";
+  reply.append(approval);
+  await settle();
+  reply.done();
+  await frame();
+  expect(announced()).toBe("I'll clear the build folder. Run a command Waiting for your approval.");
 });
 
 test('announce="none" keeps replies quiet', async () => {

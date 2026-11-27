@@ -10,6 +10,8 @@ export type TranscriptStrings = {
   reply: (text: string) => string;
   /** Read after the reply for each `<ai-question>` in it still waiting for an answer. */
   waiting: (question: string) => string;
+  /** Read after the reply for each `<ai-approval>` in it still waiting for a decision. */
+  approval: (label: string) => string;
 };
 
 export const defaultTranscriptStrings: TranscriptStrings = {
@@ -17,6 +19,7 @@ export const defaultTranscriptStrings: TranscriptStrings = {
   jump: "Jump to latest",
   reply: (text) => text,
   waiting: (question) => `${question} Waiting for your answer.`,
+  approval: (label) => `${label} Waiting for your approval.`,
 };
 
 /** How close to the bottom, in pixels, still counts as "at the bottom". */
@@ -176,13 +179,19 @@ export class AiTranscriptElement extends BaseElement {
     this.#syncBusy();
     const body = message.querySelector("[data-part='body']");
     const text = (body ?? message).textContent?.trim() ?? "";
-    // A question the reply asks is read after it, so people know the agent is waiting on them.
-    const questions = [...message.querySelectorAll("ai-question:not([answered])")]
-      .map((question) => question.getAttribute("question")?.trim() ?? "")
+    // A question or an approval the reply asks for is read after it, so people know the agent
+    // is waiting on them.
+    const waiting = [...message.querySelectorAll("ai-question:not([answered]), ai-approval:not([decided])")]
+      .map((element) => {
+        if (element.localName === "ai-question") {
+          const question = element.getAttribute("question")?.trim();
+          return question ? this.#strings.waiting(question) : "";
+        }
+        const heading = element.querySelector("[data-part='heading']")?.textContent?.trim();
+        return heading ? this.#strings.approval(heading) : "";
+      })
       .filter(Boolean);
-    const words = [text && this.#strings.reply(text), ...questions.map((question) => this.#strings.waiting(question))]
-      .filter(Boolean)
-      .join(" ");
+    const words = [text && this.#strings.reply(text), ...waiting].filter(Boolean).join(" ");
     const announcement = this.#announcement;
     if (!words) return;
     // Clear first, so the same words twice in a row are still read out.
