@@ -9,6 +9,7 @@ This guide is for developers who want to use the components from this repo in th
 - `<ai-tool-call>`: one step an agent takes, like a web search
 - `<ai-sources>`: the sources a reply cites
 - `<ai-suggestions>`: prompts to send with one press
+- `<ai-question>`: a question the model asks, with choices to pick from
 - `<ai-chat-list>`: the sidebar of saved chats
 
 They're standard Web Components, so they work in a plain HTML page and in React, Vue, Svelte or Angular, with types for React, Vue and Svelte templates. They're packaged as `@samyakbhuta/ui-components`. Each component's full API is in its README, in the package's `docs/` folder and in `packages/ui-components/src/` in this repo. This guide covers getting them into your app.
@@ -48,7 +49,7 @@ Without it the components stay light even in dark mode. Use `color-scheme: light
 Importing a component registers its tag and adds its styles to the page. Do it once, in your app's entry:
 
 ```ts
-import "@samyakbhuta/ui-components"; // all eight
+import "@samyakbhuta/ui-components"; // all nine
 ```
 
 Or import only what you use:
@@ -71,7 +72,7 @@ Then use the tags:
 
 | Import | Gives you |
 | --- | --- |
-| `@samyakbhuta/ui-components` | All eight elements, their classes and types, and `renderMarkdown()` |
+| `@samyakbhuta/ui-components` | All nine elements, their classes and types, and `renderMarkdown()` |
 | `@samyakbhuta/ui-components/ai-composer` | `<ai-composer>`, plus `defaultModes`, `defaultModels`, `defaultThinkingLevels` and its types |
 | `@samyakbhuta/ui-components/ai-message` | `<ai-message>` and `copyText()` |
 | `@samyakbhuta/ui-components/ai-transcript` | `<ai-transcript>` |
@@ -79,6 +80,7 @@ Then use the tags:
 | `@samyakbhuta/ui-components/ai-tool-call` | `<ai-tool-call>` |
 | `@samyakbhuta/ui-components/ai-sources` | `<ai-sources>`, plus `safeUrl()` and `siteOf()` |
 | `@samyakbhuta/ui-components/ai-suggestions` | `<ai-suggestions>` |
+| `@samyakbhuta/ui-components/ai-question` | `<ai-question>` |
 | `@samyakbhuta/ui-components/ai-chat-list` | `<ai-chat-list>` |
 | `@samyakbhuta/ui-components/markdown` | `renderMarkdown()` and `renderPlainText()` on their own |
 | `@samyakbhuta/ui-components/highlight` | The syntax highlighter on its own |

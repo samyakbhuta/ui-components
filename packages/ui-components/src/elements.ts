@@ -28,6 +28,7 @@ import type {
   MessageStrings,
 } from "./ai-message/ai-message.ts";
 import type { AiSourcesElement, Source, SourcesEvents, SourcesStrings } from "./ai-sources/ai-sources.ts";
+import type { AiQuestionElement, QuestionAnswer, QuestionEvents, QuestionOption, QuestionStrings } from "./ai-question/ai-question.ts";
 import type { AiSuggestionsElement, Suggestion, SuggestionsEvents, SuggestionsStrings } from "./ai-suggestions/ai-suggestions.ts";
 import type { AiThinkingElement, ThinkingStatus, ThinkingStrings } from "./ai-thinking/ai-thinking.ts";
 import type { AiToolCallElement, ToolCallStatus, ToolCallStrings } from "./ai-tool-call/ai-tool-call.ts";
@@ -132,6 +133,20 @@ export interface AiSuggestionsProps {
   label?: string;
 }
 
+export interface AiQuestionProps {
+  options?: QuestionOption[];
+  question?: string;
+  multiple?: boolean;
+  other?: boolean;
+  max?: NumberAttribute | null;
+  skippable?: boolean;
+  disabled?: boolean;
+  strings?: Partial<QuestionStrings>;
+  value?: string | string[] | null;
+  otherText?: string;
+  answer?: QuestionAnswer | null;
+}
+
 export interface AiChatListProps {
   chats?: ChatSummary[];
   selected?: string | null;
@@ -150,6 +165,7 @@ export interface CustomElements {
   "ai-tool-call": { element: AiToolCallElement; props: AiToolCallProps; events: {} };
   "ai-sources": { element: AiSourcesElement; props: AiSourcesProps; events: SourcesEvents };
   "ai-suggestions": { element: AiSuggestionsElement; props: AiSuggestionsProps; events: SuggestionsEvents };
+  "ai-question": { element: AiQuestionElement; props: AiQuestionProps; events: QuestionEvents };
   "ai-chat-list": { element: AiChatListElement; props: AiChatListProps; events: ChatListEvents };
 }
 

@@ -11,6 +11,7 @@ Web Components for AI chat apps, built on [ui-sdk](https://www.npmjs.com/package
 | `<ai-tool-call>` | One step an agent takes, like a web search: running, done or failed, and opens to show its input and result. |
 | `<ai-sources>` | The sources a reply drew on. Turns a message's `[1]` markers into links, with a preview on hover. |
 | `<ai-suggestions>` | Prompts to send with one press: starters for an empty chat, or follow-up questions. |
+| `<ai-question>` | A question the model asks, with choices: radio buttons for one, checkboxes for several, and an optional "Other" with a text box. |
 | `<ai-chat-list>` | The list of saved chats for a sidebar, with Rename, Export and Delete. |
 
 ## Install
@@ -26,7 +27,7 @@ npm install @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/co
 Importing a component registers its tag and adds its styles to the page; there's no CSS to set up. Import everything, or only what you use:
 
 ```ts
-import "@samyakbhuta/ui-components"; // all eight
+import "@samyakbhuta/ui-components"; // all nine
 import "@samyakbhuta/ui-components/ai-composer"; // or one at a time
 ```
 
@@ -67,7 +68,7 @@ Add this to your page's CSS so the components follow light and dark mode:
 
 ## Docs
 
-Each component's full API is in this package's `docs/` folder: `ai-composer.md`, `ai-message.md`, `ai-transcript.md`, `ai-thinking.md`, `ai-tool-call.md`, `ai-sources.md`, `ai-suggestions.md` and `ai-chat-list.md`.
+Each component's full API is in this package's `docs/` folder: `ai-composer.md`, `ai-message.md`, `ai-transcript.md`, `ai-thinking.md`, `ai-tool-call.md`, `ai-sources.md`, `ai-suggestions.md`, `ai-question.md` and `ai-chat-list.md`.
 
 What changed in each release is in the [changelog](https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/CHANGELOG.md).
 

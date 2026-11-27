@@ -461,3 +461,58 @@ test("the newest reply offers follow-up questions, and one sends", async () => {
   expect(replies()[0].querySelector("ai-suggestions")).toBeNull();
   expect(replies()[1].querySelector("ai-suggestions")).not.toBeNull();
 });
+
+test("planning a trip asks questions with choices, each answer sends, and the chat saves and exports them", async () => {
+  const user = userEvent.setup();
+  const { composer, sent, replies, idle } = await renderShell();
+  composer.thinking = "off";
+  await settle();
+  await user.click(screen.getByRole("button", { name: suggestions[5] }));
+  await idle();
+  expect(replies()[0].querySelector("ai-suggestions")).toBeNull();
+  const first = within(replies()[0]).getByRole("radiogroup", { name: "Which city should the trip start in?" });
+  await user.click(within(first).getByRole("radio", { name: "Rome" }));
+  await user.click(within(replies()[0]).getByRole("button", { name: "Send" }));
+  await idle();
+  expect(replies()[1].text).toContain("Rome it is.");
+
+  const second = within(replies()[1]).getByRole("group", { name: "What would you like to do there?" });
+  await user.click(within(second).getByRole("checkbox", { name: "Food" }));
+  await user.type(within(replies()[1]).getByRole("textbox", { name: "Your own answer" }), "Hiking{Enter}");
+  await idle();
+  expect(sent()).toEqual(["Plan a weekend trip for me", "Rome", "Food, Hiking"]);
+  expect(replies()[2].text).toContain("## A weekend in Rome");
+
+  const [saved] = new ChatStore().list();
+  expect(saved.messages[1].question?.answer).toEqual({ value: "Rome", labels: ["Rome"], other: null });
+  expect(saved.messages[3].question?.answer).toEqual({ value: ["Food", "Hiking"], labels: ["Food", "Hiking"], other: "Hiking" });
+  const { chatToMarkdown } = await import("./chat-store.ts");
+  const markdown = chatToMarkdown(saved);
+  expect(markdown).toContain("**Which city should the trip start in?**\n\n- [ ] Paris\n- [x] Rome\n- [ ] Lisbon\n- [ ] Other\n\n*Answered: Rome*");
+  expect(markdown).toContain("- [x] Other: Hiking");
+});
+
+test("a saved chat shows its questions answered, and an open one can still be answered", async () => {
+  const user = userEvent.setup();
+  const first = await renderShell();
+  first.composer.thinking = "off";
+  await settle();
+  await user.click(screen.getByRole("button", { name: suggestions[5] }));
+  await first.idle();
+  cleanups.splice(0).forEach((cleanup) => cleanup());
+  document.body.replaceChildren();
+
+  const again = await renderShell();
+  again.composer.thinking = "off";
+  const [chat] = new ChatStore().list();
+  history.replaceState(null, "", `#chat/${chat.id}`);
+  window.dispatchEvent(new HashChangeEvent("hashchange"));
+  await settle();
+  const question = again.replies()[0].querySelector("ai-question")!;
+  expect(question.hasAttribute("answered")).toBe(false);
+  await user.click(within(question).getByRole("button", { name: "Skip" }));
+  await again.idle();
+  expect(again.sent()).toEqual(["Plan a weekend trip for me", "Surprise me"]);
+  expect(again.replies()[1].text).toContain("Lisbon it is.");
+  expect(new ChatStore().list()[0].messages[1].question?.answer).toEqual({ skipped: true });
+});

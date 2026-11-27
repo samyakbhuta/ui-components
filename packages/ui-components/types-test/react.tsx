@@ -42,6 +42,15 @@ export const valid = (
         return detail.value;
       }}
     />
+    <ai-question
+      question="Where to?"
+      other
+      multiple
+      max={2}
+      options={["Paris", { value: "rome", label: "Rome", description: "Warm" }]}
+      onquestionanswer={(event) => event.detail.labels.join(", ")}
+      onquestionskip={() => {}}
+    />
     <ai-chat-list chats={[{ id: "1", title: "Chat" }]} selected="1" onchatselect={(event) => event.detail.id} />
   </>
 );
@@ -62,6 +71,8 @@ export const invalid = (
     <ai-composer onpromptsubmit={(event) => event.detail.prompt} />
     {/* @ts-expect-error ai-sources fires no promptsubmit */}
     <ai-sources onpromptsubmit={() => {}} />
+    {/* @ts-expect-error the detail of questionanswer has no `text` */}
+    <ai-question onquestionanswer={(event) => event.detail.text} />
     {/* @ts-expect-error sources need a title and a url */}
     <ai-sources sources={[{ title: "No address" }]} />
   </>
