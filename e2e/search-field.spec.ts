@@ -1,7 +1,7 @@
 import { contrastRatio, expect, test } from "./fixtures";
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/experiments/search-field.html");
 });
 
 test("Clear shows only while there's text, and puts focus back in the field", async ({ page }) => {

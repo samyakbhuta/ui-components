@@ -10,6 +10,10 @@ test("the showcase links to each experiment", async ({ page }) => {
   await page.getByRole("link", { name: /docs and playground/ }).click();
   await expect(page).toHaveURL(/\/experiments\/ai-composer\.html$/);
   await expect(page.getByRole("heading", { name: "AI chat components" })).toBeVisible();
+
+  await page.goBack();
+  await page.getByRole("link", { name: "Search field" }).click();
+  await expect(page).toHaveURL(/\/experiments\/search-field\.html$/);
 });
 
 test("each experiment links back to the showcase", async ({ page }) => {

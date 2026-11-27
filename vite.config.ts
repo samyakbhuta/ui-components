@@ -21,6 +21,7 @@ export default defineConfig({
         showcase: page("showcase.html"),
         "chat-shell": page("experiments/chat-shell.html"),
         "ai-composer": page("experiments/ai-composer.html"),
+        "search-field": page("experiments/search-field.html"),
       },
     },
   },
