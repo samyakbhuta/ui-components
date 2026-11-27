@@ -186,6 +186,7 @@ export function webSpeechRecognizer(): SpeechRecognizer {
   };
 }
 
+/** The events this element fires, by name. */
 export type ComposerEvents = {
   promptsubmit: CustomEvent<PromptSubmitDetail>;
   promptstop: CustomEvent<null>;
@@ -399,14 +400,51 @@ export class AiComposerElement extends BaseElement {
     return [...(this.#fileInput?.api.getValue() ?? [])];
   }
 
-  /** Sent prompts, oldest first. With the `history` attribute, ArrowUp brings them back. */
+  /**
+   * Sent prompts, oldest first. With the `history` attribute, ArrowUp brings them back.
+   * Setting `true` or `false` turns the attribute on or off instead, as a framework does for
+   * `<ai-composer history>`.
+   */
   get history(): string[] {
     return [...this.#history];
   }
-  set history(value: string[]) {
+  set history(value: string[] | boolean | "") {
+    if (typeof value === "boolean" || value === "") {
+      this.toggleAttribute("history", value !== false);
+      return;
+    }
     this.#history = [...(value ?? [])].slice(-historyLimit);
     this.#historyIndex = -1;
     this.#save();
+  }
+
+  /** The same as the `attachments` attribute. */
+  get attachments(): boolean {
+    return this.hasAttribute("attachments");
+  }
+  set attachments(value: boolean) {
+    this.toggleAttribute("attachments", value !== false);
+  }
+
+  /** The same as the `voice` attribute: `true`, `"hide"`, or `false` for off. */
+  get voice(): boolean | "hide" {
+    const value = this.getAttribute("voice");
+    return value === null ? false : value === "hide" ? "hide" : true;
+  }
+  set voice(value: boolean | "hide") {
+    if (value === "hide") this.setAttribute("voice", "hide");
+    else this.toggleAttribute("voice", value !== false);
+  }
+
+  /** The same as the `paste-as-file` attribute: `true` for 2,000 characters, a number, or `false` for off. */
+  get pasteAsFile(): boolean | number {
+    const value = this.getAttribute("paste-as-file");
+    if (value === null) return false;
+    return Number(value) > 0 ? Number(value) : true;
+  }
+  set pasteAsFile(value: boolean | number) {
+    if (typeof value === "number") this.setAttribute("paste-as-file", String(value));
+    else this.toggleAttribute("paste-as-file", value !== false);
   }
 
   get busy() {

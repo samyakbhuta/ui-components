@@ -157,6 +157,11 @@ export class AiSuggestionsElement extends BaseElement {
   }
 }
 
+/** The events this element fires, by name. */
+export type SuggestionsEvents = {
+  suggestionselect: CustomEvent<SuggestionSelectDetail>;
+};
+
 adoptStyles(styles);
 define("ai-suggestions", AiSuggestionsElement);
 
@@ -164,7 +169,5 @@ declare global {
   interface HTMLElementTagNameMap {
     "ai-suggestions": AiSuggestionsElement;
   }
-  interface HTMLElementEventMap {
-    suggestionselect: CustomEvent<SuggestionSelectDetail>;
-  }
+  interface HTMLElementEventMap extends SuggestionsEvents {}
 }

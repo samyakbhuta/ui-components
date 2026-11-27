@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Types for React, Vue and Svelte. Add `import type {} from "@samyakbhuta/ui-components/react"` (or `/vue`, `/svelte`) once, and every tag is typed in JSX or templates: its props, the values they take, and its events with their `detail`. The map underneath, `CustomElements`, is exported from `@samyakbhuta/ui-components/elements` for other frameworks.
+- `<ai-composer>` has `attachments`, `voice` and `pasteAsFile` properties, the same as the attributes. Frameworks set a property when there is one, so `attachments={false}` now turns attachments off in Vue and Svelte instead of on.
+- `<ai-composer>`'s `history` takes `true` or `false` to turn the attribute on or off. `<ai-composer history>` used to throw in React and Svelte, which pass `true` to the property.
+- `actions` on `<ai-message>` and `<ai-chat-list>` also takes the attribute's words as a string, as frameworks pass `actions="copy retry"`. It used to throw.
+- `<ai-message>`'s `actions` property now includes `"feedback"` when it's on. It used to leave it out, though the attribute had it.
+
 ## 0.1.0-beta.2 (2026-11-27)
 
 - New `<ai-sources>`: the numbered list of sources a reply drew on. Inside an `<ai-message>`, the reply's `[1]` markers become links to them, with a preview on hover or keyboard focus. Markers in code and links stay as written, and only `http:` and `https:` addresses become links. `max` shows the first few, with "Show N more".

@@ -63,6 +63,7 @@ export const defaultChatListStrings: ChatListStrings = {
   deleted: (title) => `Deleted “${title}”`,
 };
 
+/** The events this element fires, by name. */
 export type ChatListEvents = {
   chatselect: CustomEvent<{ id: string }>;
   chatnew: CustomEvent<null>;
@@ -130,8 +131,8 @@ export class AiChatListElement extends BaseElement {
     const value = this.getAttribute("actions") ?? "rename delete";
     return value.split(/\s+/).filter((action): action is ChatListAction => ["rename", "export", "delete"].includes(action));
   }
-  set actions(value: ChatListAction[]) {
-    this.setAttribute("actions", value.join(" "));
+  set actions(value: ChatListAction[] | string) {
+    this.setAttribute("actions", Array.isArray(value) ? value.join(" ") : String(value));
   }
 
   /** Makes each chat a link to this address, so chats can be opened in a new tab or with Back. */
@@ -424,11 +425,5 @@ declare global {
   interface HTMLElementTagNameMap {
     "ai-chat-list": AiChatListElement;
   }
-  interface HTMLElementEventMap {
-    chatselect: CustomEvent<{ id: string }>;
-    chatnew: CustomEvent<null>;
-    chatrename: CustomEvent<{ id: string; title: string }>;
-    chatexport: CustomEvent<{ id: string }>;
-    chatdelete: CustomEvent<{ id: string }>;
-  }
+  interface HTMLElementEventMap extends ChatListEvents {}
 }

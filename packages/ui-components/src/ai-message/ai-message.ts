@@ -9,6 +9,9 @@ export type { Highlighter } from "./highlight.ts";
 
 export type MessageAction = "copy" | "retry" | "edit";
 
+/** What `actions` can hold: the buttons, and "feedback" for Good response and Bad response. */
+export type MessageActionName = MessageAction | "feedback";
+
 /** What `messageaction` carries in `event.detail`. */
 export type MessageActionDetail = { action: MessageAction; text: string };
 
@@ -203,14 +206,16 @@ export class AiMessageElement extends BaseElement {
     this.toggleAttribute("streaming", value);
   }
 
-  /** The actions to offer, from "copy", "retry" and "edit". */
-  get actions(): MessageAction[] {
+  /** The actions to offer, from "copy", "retry", "edit" and "feedback". */
+  get actions(): MessageActionName[] {
     const value = this.getAttribute("actions");
     const list = value === null ? (this.from === "user" ? "copy edit" : "copy retry") : value;
-    return list.split(/\s+/).filter((action): action is MessageAction => ["copy", "retry", "edit"].includes(action));
+    return list
+      .split(/\s+/)
+      .filter((action): action is MessageActionName => ["copy", "retry", "edit", "feedback"].includes(action));
   }
-  set actions(value: MessageAction[]) {
-    this.setAttribute("actions", value.join(" "));
+  set actions(value: MessageActionName[] | string) {
+    this.setAttribute("actions", Array.isArray(value) ? value.join(" ") : String(value));
   }
 
   /** Why the reply failed. Set it, even to "", to show the error; null clears it. */
@@ -520,6 +525,7 @@ export class AiMessageElement extends BaseElement {
       bar.append(pager);
     }
     for (const action of this.actions) {
+      if (action === "feedback") continue;
       const wrapper = document.createElement("ui-button");
       wrapper.dataset.action = action;
       const button = document.createElement("button");
@@ -537,11 +543,11 @@ export class AiMessageElement extends BaseElement {
   }
 
   #offersFeedback() {
-    return /(?:^|\s)feedback(?:\s|$)/.test(this.getAttribute("actions") ?? "");
+    return this.actions.includes("feedback");
   }
 
   #hasActions() {
-    return this.actions.length > 0 || this.#offersFeedback() || this.versions > 1;
+    return this.actions.length > 0 || this.versions > 1;
   }
 
   #iconButton(name: "previous" | "next", label: string, disabled: boolean, press: () => void) {
@@ -651,6 +657,14 @@ export class AiMessageElement extends BaseElement {
   };
 }
 
+/** The events this element fires, by name. */
+export type MessageEvents = {
+  messageaction: CustomEvent<MessageActionDetail>;
+  messagecomplete: CustomEvent<null>;
+  messagefeedback: CustomEvent<MessageFeedbackDetail>;
+  messageversion: CustomEvent<MessageVersionDetail>;
+};
+
 adoptStyles(styles);
 define("ai-message", AiMessageElement);
 
@@ -658,10 +672,5 @@ declare global {
   interface HTMLElementTagNameMap {
     "ai-message": AiMessageElement;
   }
-  interface HTMLElementEventMap {
-    messageaction: CustomEvent<MessageActionDetail>;
-    messagecomplete: CustomEvent<null>;
-    messagefeedback: CustomEvent<MessageFeedbackDetail>;
-    messageversion: CustomEvent<MessageVersionDetail>;
-  }
+  interface HTMLElementEventMap extends MessageEvents {}
 }

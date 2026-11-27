@@ -189,47 +189,51 @@ To turn on Mode, Model, Thinking, `/` commands and `@` references, see the compo
 
 Web Components are HTML elements, so every framework can render them. The differences are in how you pass lists and objects (as properties, not attributes) and how you listen for their events.
 
-### React
+### Types for JSX and templates
 
-React 19 sets properties on custom elements, so plain props work for lists. A ref and `addEventListener` works in every version, including React 18:
-
-```tsx
-import { useEffect, useRef } from "react";
-import "@samyakbhuta/ui-components/ai-composer";
-import { defaultModels } from "@samyakbhuta/ui-components/ai-composer";
-
-export function Composer({ onSend }: { onSend: (text: string) => void }) {
-  const ref = useRef<HTMLElementTagNameMap["ai-composer"]>(null);
-
-  useEffect(() => {
-    const composer = ref.current!;
-    composer.models = defaultModels;
-    const send = (event: CustomEvent<{ text: string }>) => onSend(event.detail.text);
-    composer.addEventListener("promptsubmit", send);
-    return () => composer.removeEventListener("promptsubmit", send);
-  }, [onSend]);
-
-  return <ai-composer ref={ref} attachments="" default-model="sonnet-5.5" />;
-}
-```
-
-For TypeScript to accept `<ai-composer>` in JSX, declare the tags once:
+The package types every tag for React, Vue and Svelte: each prop, the values it takes, and each event with its `detail`. Your editor completes them, and a typo or a wrong value fails the type check. Add one line, once, in any file your project type-checks:
 
 ```ts
-import type { DetailedHTMLProps, HTMLAttributes } from "react";
+import type {} from "@samyakbhuta/ui-components/react"; // or /vue or /svelte
+```
 
-declare module "react" {
-  namespace JSX {
-    interface IntrinsicElements {
-      "ai-composer": DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> & Record<string, unknown>;
-      "ai-transcript": DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement>;
-      "ai-message": DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> & Record<string, unknown>;
-    }
-  }
+The map underneath, `CustomElements` from `@samyakbhuta/ui-components/elements`, lists each tag's element class, props and events, for typing another framework.
+
+React 19, Vue and Svelte all set a prop as a property when the element has one, and as an attribute otherwise. So lists and objects pass straight through, and so do flags like `attachments={false}`. Import the components before the framework first renders them, so the properties exist by then.
+
+### React
+
+React 19 sets properties on custom elements, and `on` with an event's exact name listens to it:
+
+```tsx
+import "@samyakbhuta/ui-components/ai-composer";
+import { defaultModels } from "@samyakbhuta/ui-components/ai-composer";
+import type {} from "@samyakbhuta/ui-components/react";
+
+export function Composer({ onSend }: { onSend: (text: string) => void }) {
+  return (
+    <ai-composer
+      attachments
+      models={defaultModels}
+      default-model="sonnet-5.5"
+      onpromptsubmit={(event) => onSend(event.detail.text)}
+    />
+  );
 }
 ```
 
-Boolean attributes such as `attachments` need a string value in JSX (`attachments=""`), since React leaves out `false` and passes `true` through as a string.
+React 18 doesn't set properties or listen to custom events. There, set them through a ref:
+
+```tsx
+const ref = useRef<HTMLElementTagNameMap["ai-composer"]>(null);
+useEffect(() => {
+  const composer = ref.current!;
+  composer.models = defaultModels;
+  const send = (event: CustomEvent<{ text: string }>) => onSend(event.detail.text);
+  composer.addEventListener("promptsubmit", send);
+  return () => composer.removeEventListener("promptsubmit", send);
+}, [onSend]);
+```
 
 ### Vue
 
@@ -243,7 +247,7 @@ export default {
 };
 ```
 
-Vue sets a binding as a property when the element has one, so lists pass straight through, and `@` listens to custom events:
+Vue sets a binding as a property when the element has one, and `@` listens to custom events. With `import type {} from "@samyakbhuta/ui-components/vue"`, vue-tsc and the Vue extension check both, including `$event.detail`:
 
 ```vue
 <ai-composer attachments :models="models" @promptsubmit="send($event.detail)" />
@@ -251,10 +255,10 @@ Vue sets a binding as a property when the element has one, so lists pass straigh
 
 ### Svelte
 
-Svelte sets properties on custom elements and listens to any event:
+Svelte 5 sets properties on custom elements and listens to any event. With `import type {} from "@samyakbhuta/ui-components/svelte"`, svelte-check and the Svelte extension check them:
 
 ```svelte
-<ai-composer attachments models={models} onpromptsubmit={(event) => send(event.detail)}></ai-composer>
+<ai-composer attachments {models} onpromptsubmit={(event) => send(event.detail)}></ai-composer>
 ```
 
 ### Angular
