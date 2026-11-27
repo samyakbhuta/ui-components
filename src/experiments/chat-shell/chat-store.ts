@@ -19,7 +19,17 @@ export type StoredMessage = {
   meta?: string;
   prompt?: StoredPrompt;
   thinking?: { seconds: number; reasoning: string };
+  /** Tools the reply used, like reading a referenced file. */
+  tools?: StoredToolCall[];
+  /** Why the reply failed. */
+  error?: string;
+  feedback?: "good" | "bad";
+  /** Every version of the reply after Retry, oldest first. `text` is the one showing. */
+  versions?: string[];
+  version?: number;
 };
+
+export type StoredToolCall = { name: string; summary: string; input?: unknown; output?: unknown; error?: string };
 
 export type StoredChat = {
   id: string;

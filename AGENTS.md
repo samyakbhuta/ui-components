@@ -19,9 +19,10 @@ To build a new component, also:
 Our own components live in the package `packages/ui-components/` (`@samyakbhuta/ui-components`), one folder each under `src/`, each with a README that documents its full API. The showcase imports them by package name; `vite.config.ts` and `tsconfig.json` point that name at the package's source.
 
 - `<ai-composer>` (`packages/ui-components/src/ai-composer/README.md`): the input box of an AI chat. It arranges ui-sdk parts; every extra (attachments, voice, mode, model, thinking, `/` commands, `@` references) is opt-in.
-- `<ai-message>` (`packages/ui-components/src/ai-message/README.md`): one message. Renders Markdown with its own safe renderer (`markdown.ts`) and colours code with `highlight.ts`; both build DOM nodes and never parse model text as HTML. Keep it that way.
+- `<ai-message>` (`packages/ui-components/src/ai-message/README.md`): one message. Renders Markdown with its own safe renderer (`markdown.ts`) and colours code with `highlight.ts`; both build DOM nodes and never parse model text as HTML. Keep it that way. It also shows attachments, errors, feedback and versions of a reply.
 - `<ai-transcript>` (`packages/ui-components/src/ai-transcript/README.md`): the scrolling conversation, which follows streaming replies and announces finished ones.
 - `<ai-thinking>` (`packages/ui-components/src/ai-thinking/README.md`): the "Thinking…" indicator for a conversation.
+- `<ai-tool-call>` (`packages/ui-components/src/ai-tool-call/README.md`): one step an agent takes, like a web search, with its input and result. It shows tool output as text only. Keep it that way.
 - `<ai-chat-list>` (`packages/ui-components/src/ai-chat-list/README.md`): the list of saved chats for a sidebar, with Rename, Export and Delete. The chat shell keeps its chats in `src/experiments/chat-shell/chat-store.ts`.
 
 When you change a component's API, update its README, its tests, the live examples in `src/experiments/ai-composer/main.ts` (`/experiments/ai-composer.html`), and `packages/ui-components/CHANGELOG.md`.

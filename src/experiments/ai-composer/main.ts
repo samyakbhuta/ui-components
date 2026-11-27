@@ -2,6 +2,7 @@ import "../../styles/base.css";
 import "./docs.css";
 import "@samyakbhuta/ui-components/ai-message";
 import "@samyakbhuta/ui-components/ai-thinking";
+import "@samyakbhuta/ui-components/ai-tool-call";
 import "@samyakbhuta/ui-components/ai-transcript";
 import "@samyakbhuta/ui-components/ai-chat-list";
 import { highlight } from "@samyakbhuta/ui-components/highlight";
@@ -78,6 +79,8 @@ function logEvents(root: HTMLElement) {
     "chatrename",
     "chatexport",
     "chatdelete",
+    "messagefeedback",
+    "messageversion",
   ];
   for (const type of types) {
     root.addEventListener(type, (event) => {
@@ -264,6 +267,106 @@ reply.addEventListener("messageaction", (event) => {
       root.addEventListener("messageaction", (event) => {
         if (event.detail.action === "retry") stream(reply, sampleReply);
       });
+    },
+  },
+  {
+    id: "message-states",
+    title: "Attachments, errors, feedback and versions",
+    intro:
+      "A message can show the files sent with it, a reply that failed part way, Good response and Bad response, and arrows to step between versions after Retry. Rate the reply or step through its versions: the event shows below.",
+    html: `<ai-message from="user" class="with-files">What's in these?</ai-message>
+<ai-message class="failed-reply"></ai-message>
+<ai-message class="rated-reply" actions="copy retry feedback"></ai-message>`,
+    script: `sent.attachments = event.detail.files // File objects, or { name, type, size, url }
+reply.fail("The connection dropped. Try again.")
+
+reply.setAttribute("actions", "copy retry feedback")
+reply.versions = answers.length
+reply.addEventListener("messageversion", (event) => {
+  reply.text = answers[event.detail.version - 1]
+})`,
+    setup: (root) => {
+      const sent = root.querySelector<HTMLElementTagNameMap["ai-message"]>(".with-files")!;
+      const chart = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" fill="#e8eefc"/><rect x="14" y="52" width="14" height="30" fill="#2b5bc4"/><rect x="41" y="34" width="14" height="48" fill="#2b5bc4"/><rect x="68" y="18" width="14" height="64" fill="#2b5bc4"/></svg>');
+      sent.attachments = [
+        new File([chart], "chart.svg", { type: "image/svg+xml" }),
+        { name: "quarterly-report.pdf", type: "application/pdf", size: 2_400_000 },
+        { name: "notes.txt", type: "text/plain", size: 812 },
+      ];
+      const failed = root.querySelector<HTMLElementTagNameMap["ai-message"]>(".failed-reply")!;
+      failed.text = "The chart shows sales rising each quarter, from";
+      failed.fail("The connection dropped. Try again.");
+
+      const answers = [
+        "Sales rose in each of the three quarters.",
+        "Sales grew every quarter, and the third quarter was the strongest.",
+        "Sales grew steadily: each quarter beat the one before, and the third was more than double the first.",
+      ];
+      const rated = root.querySelector<HTMLElementTagNameMap["ai-message"]>(".rated-reply")!;
+      rated.text = answers[2];
+      rated.versions = answers.length;
+      rated.addEventListener("messageversion", (event) => (rated.text = answers[event.detail.version - 1]));
+      root.addEventListener("messageaction", (event) => {
+        const message = event.target as HTMLElementTagNameMap["ai-message"];
+        if (event.detail.action !== "retry") return;
+        message.error = null;
+        stream(message, message === rated ? answers[rated.version - 1] : "The chart shows sales rising each quarter, from about 30 to 64.");
+      });
+    },
+  },
+  {
+    id: "tools",
+    title: "<ai-tool-call>",
+    intro:
+      "One step an agent takes. It spins while it runs, then stays as a summary that opens to show what went in and what came back. The last call fails. Press the button to run them again.",
+    html: `<ai-message class="agent-reply">
+  <ai-tool-call slot="header" name="search_web" label="Searching the web…"></ai-tool-call>
+  <ai-tool-call slot="header" name="read_file" label="Reading src/main.ts…"></ai-tool-call>
+  <ai-tool-call slot="header" name="run_tests" label="Running the tests…"></ai-tool-call>
+</ai-message>
+<button type="button" class="rerun">Run them again</button>`,
+    script: `const call = document.createElement("ai-tool-call")
+call.slot = "header"
+call.name = "search_web"
+call.label = "Searching the web…"
+call.input = { query: "custom elements lifecycle" }
+reply.append(call)
+
+call.summary = "Found 3 pages"
+call.done(results) // or call.fail("Timed out after 30s")`,
+    setup: (root) => {
+      const reply = root.querySelector<HTMLElementTagNameMap["ai-message"]>(".agent-reply")!;
+      const run = () => {
+        const [search, read, tests] = root.querySelectorAll("ai-tool-call");
+        for (const call of [search, read, tests]) {
+          call.status = "running";
+          call.removeAttribute("summary");
+          call.output = undefined;
+          call.error = "";
+        }
+        reply.text = "";
+        search.input = { query: "custom elements lifecycle" };
+        read.input = { path: "src/main.ts" };
+        tests.input = { command: "npm test" };
+        setTimeout(() => {
+          search.summary = "Found 3 pages";
+          search.done([
+            { title: "Using custom elements", url: "https://developer.mozilla.org/docs/Web/API/Web_components/Using_custom_elements" },
+            { title: "Custom element reactions", url: "https://html.spec.whatwg.org/multipage/custom-elements.html" },
+            { title: "Lifecycle callbacks", url: "https://web.dev/articles/custom-elements-v1" },
+          ]);
+        }, 1200);
+        setTimeout(() => {
+          read.summary = "Read src/main.ts";
+          read.done('import "./styles/base.css";\nimport { mountChatShell } from "./experiments/chat-shell/chat-shell.ts";\n\nmountChatShell(document.querySelector("#app")!);');
+        }, 2000);
+        setTimeout(() => {
+          tests.fail("npm test exited with code 1: 2 of 98 tests failed.");
+          stream(reply, "Custom elements get **connectedCallback** when they join the page and **disconnectedCallback** when they leave. The tests failed, so I haven't changed `src/main.ts` yet.");
+        }, 3200);
+      };
+      run();
+      root.querySelector(".rerun")!.addEventListener("click", run);
     },
   },
   {
@@ -483,7 +586,7 @@ main.innerHTML = `
   <header class="docs-header">
     <a class="back" href="/showcase.html">← Showcase</a>
     <h1>AI chat components</h1>
-    <p>Live examples of <code>&lt;ai-composer&gt;</code>, <code>&lt;ai-message&gt;</code>, <code>&lt;ai-transcript&gt;</code>, <code>&lt;ai-thinking&gt;</code> and <code>&lt;ai-chat-list&gt;</code>. Each has a README with its full API in <code>packages/ui-components/</code>.</p>
+    <p>Live examples of <code>&lt;ai-composer&gt;</code>, <code>&lt;ai-message&gt;</code>, <code>&lt;ai-transcript&gt;</code>, <code>&lt;ai-thinking&gt;</code>, <code>&lt;ai-tool-call&gt;</code> and <code>&lt;ai-chat-list&gt;</code>. Each has a README with its full API in <code>packages/ui-components/</code>.</p>
     <nav aria-label="Examples"><ul>${demos.map((demo) => `<li><a href="#${demo.id}">${escape(demo.title)}</a></li>`).join("")}</ul></nav>
   </header>
   ${demos
