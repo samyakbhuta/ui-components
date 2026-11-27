@@ -1,0 +1,193 @@
+/* The site's front page: what the package is, how to install it, and where to try it. */
+.home {
+  --home-muted: color-mix(in srgb, CanvasText 70%, Canvas);
+  --home-border: color-mix(in srgb, CanvasText 22%, Canvas);
+  --home-code: color-mix(in srgb, CanvasText 6%, Canvas);
+
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 3rem 1rem 4rem;
+  line-height: 1.55;
+}
+
+.home h1 {
+  margin: 0.25rem 0 0.75rem;
+  font-size: clamp(2rem, 6vw, 2.75rem);
+  line-height: 1.15;
+}
+
+.home h2 {
+  margin: 2.5rem 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.home-package {
+  margin: 0;
+  color: var(--home-muted);
+}
+
+.home-lead {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.home code,
+.home kbd {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+}
+
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.home-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 1.25rem;
+  border: 1px solid var(--home-border);
+  border-radius: 1.5rem;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.home-actions a.home-primary {
+  border-color: CanvasText;
+  background: CanvasText;
+  color: Canvas;
+}
+
+.home a:focus-visible {
+  outline: 2px solid CanvasText;
+  outline-offset: 2px;
+}
+
+.home-install {
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--home-border);
+  border-radius: 0.5rem;
+  background: var(--home-code);
+  font-size: 0.875rem;
+  /* Wrap rather than hide the end of the command behind a scroll. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.home-components {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-components li {
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--home-border);
+  border-radius: 0.75rem;
+}
+
+.home-components a {
+  font-weight: 600;
+}
+
+.home-components p {
+  margin: 0.25rem 0 0;
+  color: var(--home-muted);
+  font-size: 0.9375rem;
+}
+
+.home-footer {
+  margin-top: 3rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--home-border);
+  color: var(--home-muted);
+  font-size: 0.9375rem;
+}
+
+.home-footer ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-footer p {
+  margin: 0.75rem 0 0;
+}
+
+/* Package manager tabs above the install command. */
+.home-install-tabs ui-tabs-list {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.home-install-tabs ui-tabs-tab button {
+  min-height: 2rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  background: none;
+  color: var(--home-muted);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.home-install-tabs ui-tabs-tab button[data-selected] {
+  border-color: var(--home-border);
+  background: var(--home-code);
+  color: CanvasText;
+  font-weight: 600;
+}
+
+.home-install-tabs ui-tabs-tab button:focus-visible {
+  outline: 2px solid CanvasText;
+  outline-offset: 2px;
+}
+
+/* Until the tabs load, show npm only. */
+ui-tabs:not(:defined) ui-tabs-panel:not([value="npm"]),
+.home-install-tabs ui-tabs-panel[hidden] {
+  display: none;
+}
+
+.home-code {
+  margin: 0.75rem 0;
+  max-height: 28rem;
+  overflow: auto;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--home-border);
+  border-radius: 0.5rem;
+  background: var(--home-code);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+/* Each card: the name and API on one line, the description under them. */
+.home-components li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  column-gap: 0.75rem;
+}
+
+.home-components li p {
+  grid-column: 1 / -1;
+}
+
+.home-components a.home-api {
+  color: var(--home-muted);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}

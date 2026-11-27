@@ -29,6 +29,8 @@ Our own components live in the package `packages/ui-components/` (`@samyakbhuta/
 - `<ai-approval>` (`packages/ui-components/src/ai-approval/README.md`): an agent asks permission before it acts, with Allow once, Always allow and Deny. What the tool would get is shown as text only. Keep it that way, so people see exactly what they allow.
 - `<ai-chat-list>` (`packages/ui-components/src/ai-chat-list/README.md`): the list of saved chats for a sidebar, with Rename, Export and Delete. The chat shell keeps its chats in `src/experiments/chat-shell/chat-store.ts`.
 
+The site's front page, `index.html`, introduces the package and lists every component, each linking to its live example on the docs page. Netlify deploys the site from `main` to https://uisdk-components.netlify.app. A new component needs a card there too, and `e2e/home.spec.ts` counts them.
+
 When you change a component's API, update its README, its tests, the live examples in `src/experiments/ai-composer/main.ts` (`/experiments/ai-composer.html`), `packages/ui-components/CHANGELOG.md`, and its props or events in `packages/ui-components/src/elements.ts`.
 
 `elements.ts` is the map of every tag's props and events that `react.ts`, `vue.ts` and `svelte.ts` turn into JSX and template types. `elements.test.ts` fails when an attribute or writable property is missing from it. Type a prop as its setter takes it. Frameworks set a property whenever the element has one, so a property must accept what a framework passes for the attribute of the same name, like `true` for a bare attribute or a string of words. The type tests in `packages/ui-components/types-test/` run with `npm run typecheck`; each `@ts-expect-error` there must stay an error.

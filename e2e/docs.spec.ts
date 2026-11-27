@@ -171,3 +171,12 @@ test.describe("with Reduce motion turned on", () => {
     await expect(label).toHaveCSS("background-image", "none");
   });
 });
+
+test("each example's code has a Copy button", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/experiments/ai-composer.html");
+  const section = page.locator("#approval");
+  await section.getByText("Code", { exact: true }).click();
+  await section.getByRole("button", { name: "Copy code" }).first().click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("<ai-approval");
+});

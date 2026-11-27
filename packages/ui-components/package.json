@@ -109,7 +109,7 @@
     "url": "git+https://github.com/samyakbhuta/ui-components.git",
     "directory": "packages/ui-components"
   },
-  "homepage": "https://github.com/samyakbhuta/ui-components/tree/main/packages/ui-components#readme",
+  "homepage": "https://uisdk-components.netlify.app",
   "bugs": {
     "url": "https://github.com/samyakbhuta/ui-components/issues"
   },

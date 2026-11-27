@@ -2,6 +2,8 @@
 
 Web Components for AI chat apps, built on [ui-sdk](https://www.npmjs.com/package/@ui-sdk/web). They work in plain HTML and in React, Vue, Svelte and Angular.
 
+**[Try them live](https://uisdk-components.netlify.app)**: a chat demo, and a live example of every component.
+
 | Element | What it is |
 | --- | --- |
 | `<ai-composer>` | The input box: a prompt and Send, plus opt-in attachments, voice, mode, model, thinking level, `/` commands, `@` references, history and saved drafts. |

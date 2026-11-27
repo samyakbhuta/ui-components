@@ -3,10 +3,169 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Web Components App</title>
+    <title>AI chat components</title>
+    <meta
+      name="description"
+      content="Web Components for AI chat apps, built on ui-sdk: a composer, safe Markdown messages, a streaming transcript, tool calls, sources, questions, approvals and more."
+    />
+    <link rel="stylesheet" href="/src/styles/base.css" />
+    <link rel="stylesheet" href="/src/styles/home.css" />
   </head>
   <body>
-    <app-root></app-root>
-    <script type="module" src="/src/main.ts"></script>
+    <main class="home">
+      <header class="home-header">
+        <p class="home-package"><code>@samyakbhuta/ui-components</code></p>
+        <h1>AI chat components</h1>
+        <p class="home-lead">
+          Web Components for AI chat apps, built on ui-sdk. They work in plain HTML and in React, Vue, Svelte and
+          Angular, with types for React, Vue and Svelte, and no CSS to set up.
+        </p>
+        <nav class="home-actions" aria-label="Try it">
+          <a class="home-primary" href="/experiments/chat-shell.html">Try the chat demo</a>
+          <a href="/experiments/ai-composer.html">See every component</a>
+        </nav>
+      </header>
+
+      <section aria-labelledby="install-title">
+        <h2 id="install-title">Install</h2>
+        <ui-tabs class="home-install-tabs" default-value="npm">
+          <ui-tabs-list aria-label="Package manager">
+            <ui-tabs-tab value="npm"><button type="button">npm</button></ui-tabs-tab>
+            <ui-tabs-tab value="pnpm"><button type="button">pnpm</button></ui-tabs-tab>
+            <ui-tabs-tab value="yarn"><button type="button">yarn</button></ui-tabs-tab>
+            <ui-tabs-tab value="bun"><button type="button">bun</button></ui-tabs-tab>
+          </ui-tabs-list>
+          <ui-tabs-panel value="npm">
+            <pre class="home-install" data-copy-label="npm command"><code>npm install @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18</code></pre>
+          </ui-tabs-panel>
+          <ui-tabs-panel value="pnpm">
+            <pre class="home-install" data-copy-label="pnpm command"><code>pnpm add @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18</code></pre>
+          </ui-tabs-panel>
+          <ui-tabs-panel value="yarn">
+            <pre class="home-install" data-copy-label="yarn command"><code>yarn add @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18</code></pre>
+          </ui-tabs-panel>
+          <ui-tabs-panel value="bun">
+            <pre class="home-install" data-copy-label="bun command"><code>bun add @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18</code></pre>
+          </ui-tabs-panel>
+        </ui-tabs>
+        <p>
+          Then <code>import "@samyakbhuta/ui-components"</code> once, and use the tags. The
+          <a href="https://github.com/samyakbhuta/ui-components/blob/main/docs/using-the-components.md">guide</a> covers
+          frameworks, styling, translation and server rendering.
+        </p>
+      </section>
+
+      <section aria-labelledby="quick-start-title">
+        <h2 id="quick-start-title">Quick start</h2>
+        <p>
+          A working chat in one page. Replace <code>model()</code> with a call to your own model; it gets the prompt
+          and yields the reply a piece at a time.
+        </p>
+        <pre class="home-code" data-copy-label="quick start"><code>&lt;ai-transcript style="height: 60vh"&gt;&lt;/ai-transcript&gt;
+&lt;ai-composer&gt;&lt;/ai-composer&gt;
+
+&lt;script type="module"&gt;
+  import "@samyakbhuta/ui-components";
+
+  const transcript = document.querySelector("ai-transcript");
+  const composer = document.querySelector("ai-composer");
+
+  // A stand-in for your model: it streams your words back.
+  async function* model(prompt) {
+    for (const word of `You said: ${prompt}`.split(" ")) {
+      await new Promise((resolve) =&gt; setTimeout(resolve, 80));
+      yield `${word} `;
+    }
+  }
+
+  composer.addEventListener("promptsubmit", async (event) =&gt; {
+    const yours = document.createElement("ai-message");
+    yours.from = "user";
+    yours.text = event.detail.text;
+    const reply = document.createElement("ai-message");
+    reply.streaming = true;
+    transcript.append(yours, reply);
+    composer.busy = true;
+    for await (const chunk of model(event.detail.text)) reply.appendText(chunk);
+    reply.done();
+    composer.busy = false;
+  });
+&lt;/script&gt;</code></pre>
+        <p>
+          Using React, Vue or Svelte? Add <code>import type {} from "@samyakbhuta/ui-components/react"</code> (or
+          <code>/vue</code>, <code>/svelte</code>) once, and every tag is typed. The
+          <a href="https://github.com/samyakbhuta/ui-components/blob/main/docs/using-the-components.md#using-them-with-a-framework">framework guide</a>
+          has the details.
+        </p>
+      </section>
+
+      <section aria-labelledby="components-title">
+        <h2 id="components-title">The components</h2>
+        <p>Each name links to its live example, and API to its full reference.</p>
+        <ul class="home-components">
+          <li>
+            <a href="/experiments/ai-composer.html#everything"><code>&lt;ai-composer&gt;</code></a>
+            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-composer/README.md" aria-label="ai-composer API">API</a>
+            <p>The input box: attachments, voice, mode, model, thinking level, <kbd>/</kbd> commands and <kbd>@</kbd> references, each opt-in.</p>
+          </li>
+          <li>
+            <a href="/experiments/ai-composer.html#messages"><code>&lt;ai-message&gt;</code></a>
+            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-message/README.md" aria-label="ai-message API">API</a>
+            <p>One message: safe Markdown, coloured code, streaming, Copy, Retry, Edit, feedback and versions.</p>
+          </li>
+          <li>
+            <a href="/experiments/ai-composer.html#transcript"><code>&lt;ai-transcript&gt;</code></a>
+            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-transcript/README.md" aria-label="ai-transcript API">API</a>
+            <p>The scrolling conversation. Follows a streaming reply, and tells screen readers about finished ones.</p>
+          </li>
+          <li>
+            <a href="/experiments/ai-composer.html#thinking"><code>&lt;ai-thinking&gt;</code></a>
+            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-thinking/README.md" aria-label="ai-thinking API">API</a>
+            <p>The “Thinking…” indicator, with a timer and the reasoning.</p>
+          </li>
+          <li>
+            <a href="/experiments/ai-composer.html#tools"><code>&lt;ai-tool-call&gt;</code></a>
+            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-tool-call/README.md" aria-label="ai-tool-call API">API</a>
+            <p>One step an agent takes, like a web search, with its input and result.</p>
+          </li>
+          <li>
+            <a href="/experiments/ai-composer.html#sources"><code>&lt;ai-sources&gt;</code></a>
+            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-sources/README.md" aria-label="ai-sources API">API</a>
+            <p>The sources a reply cites. Turns <code>[1]</code> markers into links with a preview.</p>
+          </li>
+          <li>
+            <a href="/experiments/ai-composer.html#suggestions"><code>&lt;ai-suggestions&gt;</code></a>
+            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-suggestions/README.md" aria-label="ai-suggestions API">API</a>
+            <p>Prompts to send with one press: starters, or follow-up questions.</p>
+          </li>
+          <li>
+            <a href="/experiments/ai-composer.html#question"><code>&lt;ai-question&gt;</code></a>
+            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-question/README.md" aria-label="ai-question API">API</a>
+            <p>The model asks, the person picks: one choice, several, or an answer of their own.</p>
+          </li>
+          <li>
+            <a href="/experiments/ai-composer.html#approval"><code>&lt;ai-approval&gt;</code></a>
+            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-approval/README.md" aria-label="ai-approval API">API</a>
+            <p>The agent asks permission before it acts: Allow once, Always allow or Deny.</p>
+          </li>
+          <li>
+            <a href="/experiments/ai-composer.html#chat-list"><code>&lt;ai-chat-list&gt;</code></a>
+            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-chat-list/README.md" aria-label="ai-chat-list API">API</a>
+            <p>Saved chats for a sidebar, with Rename, Export and Delete.</p>
+          </li>
+        </ul>
+      </section>
+
+      <footer class="home-footer">
+        <ul>
+          <li><a href="https://www.npmjs.com/package/@samyakbhuta/ui-components">npm</a></li>
+          <li><a href="https://github.com/samyakbhuta/ui-components">GitHub</a></li>
+          <li><a href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/CHANGELOG.md">Changelog</a></li>
+          <li><a href="/showcase.html">All experiments</a></li>
+        </ul>
+        <p>MIT licensed. In beta, like ui-sdk: pin a version until 1.0.</p>
+      </footer>
+    </main>
+    <script type="module" src="/src/home.ts"></script>
   </body>
 </html>
