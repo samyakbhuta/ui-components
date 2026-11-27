@@ -11,7 +11,7 @@ This guide is for developers who want to use the components from this repo in th
 - `<ai-suggestions>`: prompts to send with one press
 - `<ai-chat-list>`: the sidebar of saved chats
 
-They're standard Web Components, so they work in a plain HTML page and in React, Vue, Svelte or Angular. They're packaged as `@samyakbhuta/ui-components`. Each component's full API is in its README, in the package's `docs/` folder and in `packages/ui-components/src/` in this repo. This guide covers getting them into your app.
+They're standard Web Components, so they work in a plain HTML page and in React, Vue, Svelte or Angular, with types for React, Vue and Svelte templates. They're packaged as `@samyakbhuta/ui-components`. Each component's full API is in its README, in the package's `docs/` folder and in `packages/ui-components/src/` in this repo. This guide covers getting them into your app.
 
 ## What you need
 
@@ -23,27 +23,13 @@ They're standard Web Components, so they work in a plain HTML page and in React,
 
 ### 1. Install it
 
-Once the package is published:
-
 ```bash
-npm install @samyakbhuta/ui-components @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18
+npm install @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18
 ```
 
-Until then, build it from this repo and install the file it makes:
+The `beta` tag always points at the newest beta. A release only moves `latest` when the owner moves it by hand, so `latest` can lag behind for a while.
 
-```bash
-npm run build:package
-```
-
-```bash
-cd packages/ui-components && npm pack
-```
-
-```bash
-npm install /path/to/samyakbhuta-ui-components-0.1.0-beta.0.tgz @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18
-```
-
-Run the last command in your app, with the path to the `.tgz` file that `npm pack` printed.
+To try a change that isn't released yet, run `npm run build:package` in this repo, then `npm pack` in `packages/ui-components/`, and install the `.tgz` file it prints instead.
 
 ### 2. Let the page follow light and dark mode
 
@@ -96,6 +82,8 @@ Then use the tags:
 | `@samyakbhuta/ui-components/ai-chat-list` | `<ai-chat-list>` |
 | `@samyakbhuta/ui-components/markdown` | `renderMarkdown()` and `renderPlainText()` on their own |
 | `@samyakbhuta/ui-components/highlight` | The syntax highlighter on its own |
+| `@samyakbhuta/ui-components/react`, `/vue`, `/svelte` | Types only: every tag's props and events in JSX or templates. See [Types for JSX and templates](#types-for-jsx-and-templates). |
+| `@samyakbhuta/ui-components/elements` | Types only: `CustomElements`, the map of each tag's element class, props and events, for typing another framework |
 | `@samyakbhuta/ui-components/ai-composer.css` (and the others) | Each component's stylesheet, for use inside a shadow root |
 
 The package also ships `custom-elements.json`, a Custom Elements Manifest that editors and tools like Storybook can read for tag, property and event autocomplete.
@@ -189,47 +177,51 @@ To turn on Mode, Model, Thinking, `/` commands and `@` references, see the compo
 
 Web Components are HTML elements, so every framework can render them. The differences are in how you pass lists and objects (as properties, not attributes) and how you listen for their events.
 
-### React
+### Types for JSX and templates
 
-React 19 sets properties on custom elements, so plain props work for lists. A ref and `addEventListener` works in every version, including React 18:
-
-```tsx
-import { useEffect, useRef } from "react";
-import "@samyakbhuta/ui-components/ai-composer";
-import { defaultModels } from "@samyakbhuta/ui-components/ai-composer";
-
-export function Composer({ onSend }: { onSend: (text: string) => void }) {
-  const ref = useRef<HTMLElementTagNameMap["ai-composer"]>(null);
-
-  useEffect(() => {
-    const composer = ref.current!;
-    composer.models = defaultModels;
-    const send = (event: CustomEvent<{ text: string }>) => onSend(event.detail.text);
-    composer.addEventListener("promptsubmit", send);
-    return () => composer.removeEventListener("promptsubmit", send);
-  }, [onSend]);
-
-  return <ai-composer ref={ref} attachments="" default-model="sonnet-5.5" />;
-}
-```
-
-For TypeScript to accept `<ai-composer>` in JSX, declare the tags once:
+The package types every tag for React, Vue and Svelte: each prop, the values it takes, and each event with its `detail`. Your editor completes them, and a typo or a wrong value fails the type check. Add one line, once, in any file your project type-checks:
 
 ```ts
-import type { DetailedHTMLProps, HTMLAttributes } from "react";
+import type {} from "@samyakbhuta/ui-components/react"; // or /vue or /svelte
+```
 
-declare module "react" {
-  namespace JSX {
-    interface IntrinsicElements {
-      "ai-composer": DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> & Record<string, unknown>;
-      "ai-transcript": DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement>;
-      "ai-message": DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> & Record<string, unknown>;
-    }
-  }
+The map underneath, `CustomElements` from `@samyakbhuta/ui-components/elements`, lists each tag's element class, props and events, for typing another framework.
+
+React 19, Vue and Svelte all set a prop as a property when the element has one, and as an attribute otherwise. So lists and objects pass straight through, and so do flags like `attachments={false}`. Import the components before the framework first renders them, so the properties exist by then.
+
+### React
+
+React 19 sets properties on custom elements, and `on` with an event's exact name listens to it:
+
+```tsx
+import "@samyakbhuta/ui-components/ai-composer";
+import { defaultModels } from "@samyakbhuta/ui-components/ai-composer";
+import type {} from "@samyakbhuta/ui-components/react";
+
+export function Composer({ onSend }: { onSend: (text: string) => void }) {
+  return (
+    <ai-composer
+      attachments
+      models={defaultModels}
+      default-model="sonnet-5.5"
+      onpromptsubmit={(event) => onSend(event.detail.text)}
+    />
+  );
 }
 ```
 
-Boolean attributes such as `attachments` need a string value in JSX (`attachments=""`), since React leaves out `false` and passes `true` through as a string.
+React 18 doesn't set properties or listen to custom events. There, set them through a ref:
+
+```tsx
+const ref = useRef<HTMLElementTagNameMap["ai-composer"]>(null);
+useEffect(() => {
+  const composer = ref.current!;
+  composer.models = defaultModels;
+  const send = (event: CustomEvent<{ text: string }>) => onSend(event.detail.text);
+  composer.addEventListener("promptsubmit", send);
+  return () => composer.removeEventListener("promptsubmit", send);
+}, [onSend]);
+```
 
 ### Vue
 
@@ -243,7 +235,7 @@ export default {
 };
 ```
 
-Vue sets a binding as a property when the element has one, so lists pass straight through, and `@` listens to custom events:
+Vue sets a binding as a property when the element has one, and `@` listens to custom events. With `import type {} from "@samyakbhuta/ui-components/vue"`, vue-tsc and the Vue extension check both, including `$event.detail`:
 
 ```vue
 <ai-composer attachments :models="models" @promptsubmit="send($event.detail)" />
@@ -251,10 +243,10 @@ Vue sets a binding as a property when the element has one, so lists pass straigh
 
 ### Svelte
 
-Svelte sets properties on custom elements and listens to any event:
+Svelte 5 sets properties on custom elements and listens to any event. With `import type {} from "@samyakbhuta/ui-components/svelte"`, svelte-check and the Svelte extension check them:
 
 ```svelte
-<ai-composer attachments models={models} onpromptsubmit={(event) => send(event.detail)}></ai-composer>
+<ai-composer attachments {models} onpromptsubmit={(event) => send(event.detail)}></ai-composer>
 ```
 
 ### Angular
@@ -341,7 +333,7 @@ The browser tests in `e2e/` test this repo's pages, so use them as examples for 
 
 ## Keeping up to date
 
-The package follows semantic versioning, with a changelog in `CHANGELOG.md`. While it's in beta (`0.1.0-beta.x`), any release can change the API, so pin an exact version and read the changelog before you upgrade.
+The package follows semantic versioning, with a [changelog](https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/CHANGELOG.md). While it's in beta (`0.1.0-beta.x`), any release can change the API, so pin an exact version and read the changelog before you upgrade.
 
 ## Option 2: copy the source instead
 
@@ -360,7 +352,8 @@ Copied code doesn't update itself. When this repo changes, compare the folders a
 | The tag renders nothing | The component was never imported. Import it once in your entry. |
 | It looks unstyled | It's inside a shadow root, where page styles don't reach. Add the component's stylesheet there, like `@samyakbhuta/ui-components/ai-composer.css`. |
 | It stays light in dark mode | Add `color-scheme: light dark` to `:root`. |
-| `HTMLElement is not defined` | It was imported on the server. See [Server-side rendering](#server-side-rendering). |
+| `HTMLElement is not defined` on a server | Only with copied source: copy `styles.ts` with the components, which makes importing on a server safe. See [Server-side rendering](#server-side-rendering). |
+| TypeScript doesn't know `<ai-composer>` in JSX or a template | Add `import type {} from "@samyakbhuta/ui-components/react"` (or `/vue`, `/svelte`) once. See [Types for JSX and templates](#types-for-jsx-and-templates). |
 | TypeScript: "An import path can only end with a '.ts' extension…" | Only with copied source. Turn on `allowImportingTsExtensions` with `moduleResolution: "bundler"`. |
 | Vue warns "Failed to resolve component: ai-composer" | Add `isCustomElement` for `ai-` and `ui-` tags. |
 | A list like `models` does nothing | It was passed as an attribute. Set it as a property (see your framework's section). |

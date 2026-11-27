@@ -107,8 +107,10 @@ Every attribute can change at any time, and what people have typed, attached and
 | `value` | `string` | The prompt's text. Setting it fires `valuechange`. |
 | `mode`, `model`, `thinking` | `string \| undefined` | The chosen values, or `undefined` while that control is off. |
 | `files` | `File[]` (read-only) | The attached files. Use `addFiles()` and `clear()` to change them. Image attachments show a thumbnail. |
-| `history` | `string[]` | Sent prompts, oldest first, up to 100. Set it to seed or clear the history. |
-| `busy`, `disabled` | `boolean` | The same as the attributes. |
+| `history` | `string[]` | Sent prompts, oldest first, up to 100. Set it to seed or clear the history. Setting `true` or `false` turns the `history` attribute on or off instead, which is what frameworks do for `<ai-composer history>`. |
+| `attachments`, `busy`, `disabled` | `boolean` | The same as the attributes. |
+| `voice` | `boolean \| "hide"` | The same as the attribute. `false` turns it off. |
+| `pasteAsFile` | `boolean \| number` | The same as `paste-as-file`: `true` for the default of 2,000 characters, or a number. `false` turns it off. |
 
 `ComposerOption` is `{ value, label, description?, disabled? }`. A `description` shows under the label in the Model and Thinking menus, and as a tooltip on a mode. A `disabled` option shows but can't be chosen.
 

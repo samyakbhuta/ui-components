@@ -238,6 +238,11 @@ export class AiSourcesElement extends BaseElement {
   }
 }
 
+/** The events this element fires, by name. */
+export type SourcesEvents = {
+  sourceschange: CustomEvent<null>;
+};
+
 adoptStyles(styles);
 define("ai-sources", AiSourcesElement);
 
@@ -245,7 +250,5 @@ declare global {
   interface HTMLElementTagNameMap {
     "ai-sources": AiSourcesElement;
   }
-  interface HTMLElementEventMap {
-    sourceschange: CustomEvent<null>;
-  }
+  interface HTMLElementEventMap extends SourcesEvents {}
 }

@@ -51,7 +51,7 @@ reply.done(); // renders what's left and fires messagecomplete
 | Member | What it does |
 | --- | --- |
 | `text` | The message's source. Setting it replaces the message. |
-| `from`, `format`, `streaming`, `actions`, `error`, `feedback`, `versions`, `version` | The same as the attributes. `actions` is an array of `copy`, `retry` and `edit`; `error` and `feedback` are `null` when unset. |
+| `from`, `format`, `streaming`, `actions`, `error`, `feedback`, `versions`, `version` | The same as the attributes. `actions` is an array of `copy`, `retry`, `edit` and `feedback`, and also takes the attribute's words as a string; `error` and `feedback` are `null` when unset. |
 | `attachments` | Files shown above the text: `File` objects, like the ones `<ai-composer>` sends, or `{ name, type?, size?, url? }`. Images show as thumbnails; other files show their name and size. |
 | `strings` | Words to replace; see below. |
 | `icons` | SVG markup for `copy`, `copied`, `retry`, `edit`, `good`, `bad`, `error`, `previous`, `next` and `file`. |

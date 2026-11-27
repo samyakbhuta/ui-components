@@ -52,6 +52,18 @@
       "types": "./dist/ai-chat-list.d.ts",
       "default": "./dist/ai-chat-list.js"
     },
+    "./react": {
+      "types": "./dist/react.d.ts"
+    },
+    "./vue": {
+      "types": "./dist/vue.d.ts"
+    },
+    "./svelte": {
+      "types": "./dist/svelte.d.ts"
+    },
+    "./elements": {
+      "types": "./dist/elements.d.ts"
+    },
     "./markdown": {
       "types": "./dist/markdown.d.ts",
       "default": "./dist/markdown.js"

@@ -27,7 +27,9 @@ Our own components live in the package `packages/ui-components/` (`@samyakbhuta/
 - `<ai-suggestions>` (`packages/ui-components/src/ai-suggestions/README.md`): prompts to send with one press, through the `<ai-composer>` named by `for`.
 - `<ai-chat-list>` (`packages/ui-components/src/ai-chat-list/README.md`): the list of saved chats for a sidebar, with Rename, Export and Delete. The chat shell keeps its chats in `src/experiments/chat-shell/chat-store.ts`.
 
-When you change a component's API, update its README, its tests, the live examples in `src/experiments/ai-composer/main.ts` (`/experiments/ai-composer.html`), and `packages/ui-components/CHANGELOG.md`.
+When you change a component's API, update its README, its tests, the live examples in `src/experiments/ai-composer/main.ts` (`/experiments/ai-composer.html`), `packages/ui-components/CHANGELOG.md`, and its props or events in `packages/ui-components/src/elements.ts`.
+
+`elements.ts` is the map of every tag's props and events that `react.ts`, `vue.ts` and `svelte.ts` turn into JSX and template types. `elements.test.ts` fails when an attribute or writable property is missing from it. Type a prop as its setter takes it. Frameworks set a property whenever the element has one, so a property must accept what a framework passes for the attribute of the same name, like `true` for a bare attribute or a string of words. The type tests in `packages/ui-components/types-test/` run with `npm run typecheck`; each `@ts-expect-error` there must stay an error.
 
 ## The package
 
@@ -38,7 +40,8 @@ When you change a component's API, update its README, its tests, the live exampl
   - `scripts/finish-build.mjs`, which copies the plain CSS files and READMEs, cleans the manifest, and points declarations at `.js`.
 - Each component adds its CSS to the page through `adoptStyles()` and registers through `define()`, both in `src/styles.ts`. Keep it that way, so the package needs no CSS setup and is safe to import on a server (`src/server-import.test.ts`).
 - Every file that registers an element must stay covered by `sideEffects` in the package's `package.json`, both `dist/` and `src/`, or bundlers tree-shake the registration away and the tags stay empty.
-- New entry points need a one-line file in `packages/ui-components/src/` (like `ai-composer.ts`), an entry in its `vite.config.ts`, and an `exports` entry in its `package.json`.
+- New entry points need a one-line file in `packages/ui-components/src/` (like `ai-composer.ts`), an entry in its `vite.config.ts`, and an `exports` entry in its `package.json`. A new component also needs its tag in `src/elements.ts`.
+- `./react`, `./vue`, `./svelte` and `./elements` export types only, with no JavaScript. The framework types come from devDependencies (`@types/react`, `vue`, `svelte`), so the package doesn't depend on any framework.
 - Don't publish from your machine: CircleCI stages releases and the owner approves them (see Releasing). To check what a release would contain, run `npm publish --dry-run --tag beta` in `packages/ui-components/`. `scripts/check-tag.mjs` refuses to publish a prerelease under `latest`, since npm 10 doesn't always apply `publishConfig.tag`.
 
 ## Releasing
@@ -47,8 +50,9 @@ The package is on npm as `@samyakbhuta/ui-components`. CircleCI stages each rele
 
 1. Bump `version` in `packages/ui-components/package.json`. Use `X.Y.Z-beta.N` while ui-sdk is in beta.
 2. Date its entry in `packages/ui-components/CHANGELOG.md`, and merge to `main`.
-3. Tag the merge commit `ui-components-v<version>` and push the tag.
+3. Create a GitHub release on the merge commit with the tag `ui-components-v<version>`, and paste that version's changelog entry as its notes. The tag starts the release workflow.
 4. The owner approves the staged version on npmjs.com (Staged Packages) or with `npm stage approve <stage-id>`. Only then is it on npm.
+5. While the package is in beta, the owner also moves `latest` to it, so a plain `npm install` gets it: `npm dist-tag add @samyakbhuta/ui-components@<version> latest`, with 2FA. CircleCI can't: its trusted publisher can only stage.
 
 The workflow:
 
@@ -56,7 +60,7 @@ The workflow:
 - runs the type-check, unit tests and package build;
 - stages the version with `npm stage publish`, under `beta` for a version with a hyphen and under `latest` otherwise.
 
-npm gives a package's first version the `latest` tag whatever `--tag` says, and it won't remove `latest` while that's the only version. So `latest` also points at 0.1.0-beta.0 until the first stable release replaces it.
+A beta is staged under `beta` only, so `latest` stays where it was until step 5. Docs tell people to install `@beta`, which is right whether or not `latest` has caught up.
 
 npm only accepts a trusted publisher for a package that already exists, so the first release was published with a temporary token, which has been removed. Don't add an npm token to CircleCI: it would let releases skip the owner's approval.
 

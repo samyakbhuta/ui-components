@@ -8,3 +8,4 @@ export * from "./ai-sources.ts";
 export * from "./ai-suggestions.ts";
 export * from "./ai-transcript.ts";
 export * from "./markdown.ts";
+export type * from "./elements.ts";
