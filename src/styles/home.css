@@ -134,14 +134,14 @@
   margin: 0.75rem 0 0;
 }
 
-/* Package manager tabs above the install command. */
-.home-install-tabs ui-tabs-list {
+/* Tabs: the package managers above the install command, and the two quick starts. */
+.home-tabs ui-tabs-list {
   display: flex;
   gap: 0.25rem;
   margin-top: 0.5rem;
 }
 
-.home-install-tabs ui-tabs-tab button {
+.home-tabs ui-tabs-tab button {
   min-height: 2rem;
   padding: 0.25rem 0.75rem;
   border: 1px solid transparent;
@@ -153,21 +153,21 @@
   cursor: pointer;
 }
 
-.home-install-tabs ui-tabs-tab button[data-selected] {
+.home-tabs ui-tabs-tab button[data-selected] {
   border-color: var(--home-border);
   background: var(--home-code);
   color: CanvasText;
   font-weight: 600;
 }
 
-.home-install-tabs ui-tabs-tab button:focus-visible {
+.home-tabs ui-tabs-tab button:focus-visible {
   outline: 2px solid CanvasText;
   outline-offset: 2px;
 }
 
-/* Until the tabs load, show npm only. */
-ui-tabs:not(:defined) ui-tabs-panel:not([value="npm"]),
-.home-install-tabs ui-tabs-panel[hidden] {
+/* Until the tabs load, show the first panel only. */
+ui-tabs:not(:defined) ui-tabs-panel:not(:first-of-type),
+.home-tabs ui-tabs-panel[hidden] {
   display: none;
 }
 

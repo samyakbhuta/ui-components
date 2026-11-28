@@ -1,4 +1,6 @@
 import { expect, test } from "vitest";
+import partsPackage from "../examples/from-parts/package.json";
+import partsPage from "../examples/from-parts/index.html?raw";
 import starterPackage from "../examples/quick-start/package.json";
 import starterPage from "../examples/quick-start/index.html?raw";
 import frontPage from "../index.html?raw";
@@ -10,16 +12,27 @@ const dedent = (text: string) => {
   const indent = Math.min(...lines.filter((line) => line.trim()).map((line) => line.match(/^ */)![0].length));
   return lines.map((line) => line.slice(indent)).join("\n").trim();
 };
+const shown = (label: string) => unescape(frontPage.match(new RegExp(`data-copy-label="${label}"><code>([\\s\\S]*?)</code></pre>`))![1]).trim();
+const body = (page: string) => dedent(page.match(/<body>([\s\S]*?)<\/body>/)![1]);
 
-test("the front page's quick start is the starter project's page, word for word", () => {
-  const front = unescape(frontPage.match(/data-copy-label="quick start"><code>([\s\S]*?)<\/code><\/pre>/)![1]);
-  const starter = starterPage.match(/<body>([\s\S]*?)<\/body>/)![1];
-  expect(dedent(starter)).toBe(front.trim());
+test("the front page's quick starts are the starter projects' pages, word for word", () => {
+  expect(body(starterPage)).toBe(shown("quick start"));
+  expect(body(partsPage)).toBe(shown("parts example"));
+  expect(shown("starter command")).toBe("npx degit samyakbhuta/ui-components/examples/quick-start my-chat");
+  expect(shown("parts starter command")).toBe("npx degit samyakbhuta/ui-components/examples/from-parts my-chat");
 });
 
-test("the starter depends on the ui-sdk version the package is built against", () => {
-  const { dependencies } = starterPackage;
+test("one starter uses <ai-chat>, and the other builds the chat from the parts", () => {
+  expect(starterPage).toContain("<ai-chat");
+  expect(partsPage).not.toContain("<ai-chat");
+  expect(partsPage).toContain("<ai-composer></ai-composer>");
+});
+
+test("the starters depend on the ui-sdk version the package is built against", () => {
   const { peerDependencies } = componentsPackage;
-  expect(`^${dependencies["@ui-sdk/web"]}`).toBe(peerDependencies["@ui-sdk/web"]);
-  expect(`^${dependencies["@ui-sdk/core"]}`).toBe(peerDependencies["@ui-sdk/core"]);
+  for (const { dependencies } of [starterPackage, partsPackage]) {
+    expect(`^${dependencies["@ui-sdk/web"]}`).toBe(peerDependencies["@ui-sdk/web"]);
+    expect(`^${dependencies["@ui-sdk/core"]}`).toBe(peerDependencies["@ui-sdk/core"]);
+  }
+  expect(partsPackage.dependencies).toEqual(starterPackage.dependencies);
 });

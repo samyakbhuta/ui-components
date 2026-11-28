@@ -17,35 +17,20 @@
     </style>
   </head>
   <body>
-    <ai-transcript style="height: 60vh"></ai-transcript>
-    <ai-composer></ai-composer>
+    <ai-chat style="height: 80vh"></ai-chat>
 
     <script type="module">
       import "@samyakbhuta/ui-components";
 
-      const transcript = document.querySelector("ai-transcript");
-      const composer = document.querySelector("ai-composer");
+      const chat = document.querySelector("ai-chat");
 
       // A stand-in for your model: it streams your words back.
-      async function* model(prompt) {
-        for (const word of `You said: ${prompt}`.split(" ")) {
+      chat.model = async function* ({ prompt }) {
+        for (const word of `You said: ${prompt.text}`.split(" ")) {
           await new Promise((resolve) => setTimeout(resolve, 80));
           yield `${word} `;
         }
-      }
-
-      composer.addEventListener("promptsubmit", async (event) => {
-        const yours = document.createElement("ai-message");
-        yours.from = "user";
-        yours.text = event.detail.text;
-        const reply = document.createElement("ai-message");
-        reply.streaming = true;
-        transcript.append(yours, reply);
-        composer.busy = true;
-        for await (const chunk of model(event.detail.text)) reply.appendText(chunk);
-        reply.done();
-        composer.busy = false;
-      });
+      };
     </script>
   </body>
 </html>
