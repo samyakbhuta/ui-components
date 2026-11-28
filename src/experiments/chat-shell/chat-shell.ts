@@ -13,6 +13,7 @@ import "@samyakbhuta/ui-components/ai-plan";
 import type { ApprovalElementEventMap } from "@samyakbhuta/ui-components/ai-approval";
 import type { PlanElementEventMap } from "@samyakbhuta/ui-components/ai-plan";
 import "@samyakbhuta/ui-components/ai-notice";
+import { type NoticeElementEventMap, resetDate } from "@samyakbhuta/ui-components/ai-notice";
 import "@samyakbhuta/ui-components/ai-questions";
 import type { Source } from "@samyakbhuta/ui-components/ai-sources";
 import "@samyakbhuta/ui-components/ai-transcript";
@@ -680,7 +681,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       heading: notice.heading,
       text: notice.text || undefined,
       tone: notice.getAttribute("tone") ? notice.tone : undefined,
-      resetsAt: notice.resetsAt?.toISOString(),
+      resetsAt: resetDate(notice.resetsAt)?.toISOString(),
       actions: notice.actions.length ? notice.actions.map((action) => ({ ...action })) : undefined,
       unlocked: notice.hasAttribute("data-unlocked") || undefined,
     };
@@ -706,10 +707,10 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   function syncLock() {
     const notices = [...transcript.querySelectorAll("ai-notice")];
     const latest = notices.at(-1);
-    const locking = latest && !latest.expired && !latest.hasAttribute("data-unlocked") ? latest : null;
+    const locking = latest && !latest.hasAttribute("expired") && !latest.hasAttribute("data-unlocked") ? latest : null;
     composer.disabled = locking !== null;
     if (locking) {
-      const until = locking.resetsAt;
+      const until = resetDate(locking.resetsAt);
       composer.setAttribute(
         "hint",
         until ? `Sending is paused until ${until.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.` : "Sending is paused. See the notice above.",
@@ -1209,7 +1210,11 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   );
 
   // The usage limit's buttons. Each way round it unlocks the box and carries on.
-  transcript.addEventListener("noticeaction", (event) => {
+  // ui-sdk events don't bubble, so the transcript hears them on the way down.
+  transcript.addEventListener(
+    "noticeaction",
+    (pressed) => {
+    const event = pressed as NoticeElementEventMap["noticeaction"];
     const notice = event.target as HTMLElementTagNameMap["ai-notice"];
     const message = notice.closest("ai-message") as AiMessageElement | null;
     const { value } = event.detail;
@@ -1229,12 +1234,18 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     syncLock();
     const detail = message ? asked.get(message) : undefined;
     queueMicrotask(() => (detail ? startReply(detail, undefined, { limit: value === "extra" ? "extra" : "smaller-model" }) : save()));
-  });
+    },
+    { capture: true },
+  );
 
-  transcript.addEventListener("noticeexpire", () => {
-    syncLock();
-    save();
-  });
+  transcript.addEventListener(
+    "noticeexpire",
+    () => {
+      syncLock();
+      save();
+    },
+    { capture: true },
+  );
 
   transcript.addEventListener("messageaction", (event) => {
     const message = event.target as AiMessageElement;

@@ -524,8 +524,8 @@ test("a notice with a reset time unlocks then, and a saved one locks again only 
     expect(chat.locked).toBe(true);
     expect(chat.composer.getAttribute("hint")).toBe("Paused until 14:30");
 
-    vi.advanceTimersByTime(31 * 60_000);
-    expect(chat.querySelector("ai-notice")!.expired).toBe(true);
+    await vi.advanceTimersByTimeAsync(31 * 60_000);
+    expect(chat.querySelector("ai-notice")!.hasAttribute("expired")).toBe(true);
     expect(chat.locked).toBe(false);
     expect(chat.composer.disabled).toBe(false);
 

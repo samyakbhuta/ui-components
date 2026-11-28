@@ -134,6 +134,7 @@ chat.model = async function* () {
 | --- | --- | --- |
 | `chatchange` | `{ messages }` | The conversation changed and is worth saving: a reply finished or stopped, a question was asked or answered, or a reply was rated. |
 | `chaterror` | `{ error }` | The model threw, or its request failed. The reply shows the error's message, with Retry. Stop doesn't fire it. |
+| `noticeaction` | `{ value, reason, source }` | A button or link on a notice in the chat was pressed. The chat passes it on from the `<ai-notice>`, since ui-sdk-style events don't bubble. Cancelable: on a link, `preventDefault()` keeps it from opening. |
 
 The composer's own events, like `promptsubmit`, bubble from the chat too.
 

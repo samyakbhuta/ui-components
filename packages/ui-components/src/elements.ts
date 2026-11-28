@@ -222,7 +222,13 @@ export interface AiNoticeProps {
   dismissible?: boolean;
   text?: string;
   actions?: NoticeAction[];
+  /** Whether it shows. Dismiss closes it. */
+  open?: boolean;
+  /** Whether it starts shown, read once. */
+  defaultOpen?: boolean;
   strings?: Partial<NoticeStrings>;
+  /** ui-sdk's own: logs the primitive's state and changes to the console. */
+  debug?: boolean;
 }
 
 export interface AiChatProps {

@@ -15,14 +15,15 @@ test.describe("on the docs page", () => {
 
     await limit.getByRole("button", { name: "Notify me" }).focus();
     await page.keyboard.press("Enter");
-    await expect(section.locator(".event-log")).toHaveText('noticeaction {"value":"notify"}');
+    await expect(section.locator(".event-log")).toHaveText('noticeaction {"reason":"press","source":"keyboard","value":"notify"}');
     await expect(limit.getByRole("button", { name: "We'll remind you" })).toBeDisabled();
 
     // The upgrade link is the main action; the demo keeps it on the page.
     const upgrade = limit.getByRole("link", { name: "Upgrade plan" });
     await expect(upgrade).toHaveAttribute("data-primary", "");
     await upgrade.click();
-    await expect(section.locator(".event-log")).toHaveText('noticeaction {"value":"upgrade"}');
+    // A link's event carries the click too.
+    await expect(section.locator(".event-log")).toHaveText(/^noticeaction .*"reason":"press".*"value":"upgrade"/);
     await expect(page).toHaveURL(/ai-composer\.html/);
   });
 
@@ -32,7 +33,7 @@ test.describe("on the docs page", () => {
     await expect(offline).toHaveAccessibleName("Note: You're offline");
     await offline.getByRole("button", { name: "Dismiss" }).click();
     await expect(offline).toBeHidden();
-    await expect(section.locator(".event-log")).toHaveText("noticedismiss null");
+    await expect(section.locator(".event-log")).toHaveText('openchange {"reason":"close-press","source":"mouse","value":false}');
   });
 
   test("each tone's border, icon and text are readable @theme", async ({ page }) => {

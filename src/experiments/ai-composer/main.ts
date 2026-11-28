@@ -102,7 +102,6 @@ function logEvents(root: HTMLElement) {
     "openchange",
     "noticeaction",
     "noticeexpire",
-    "noticedismiss",
     "messagequote",
     "quoteschange",
     "quoteopen",

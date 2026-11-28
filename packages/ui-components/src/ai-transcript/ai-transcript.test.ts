@@ -202,7 +202,9 @@ test("a reply with a notice, like a usage limit, is read out with it, and the no
   reply.done();
   await frame();
   expect(announced()).toBe("You've reached your usage limit. Upgrade, or wait until it resets.");
-  expect(notice.querySelector("[data-part='announcement']")!.textContent).toBe("");
+  // The notice itself stays quiet inside a transcript: ui-sdk's shared live region has nothing from it.
+  await new Promise(requestAnimationFrame);
+  expect([...document.querySelectorAll("[aria-live]")].map((region) => region.textContent).join(" ")).not.toContain("usage limit");
 });
 
 test("`waiting` is the newest card still waiting on the person, and the jump button says what for", async () => {
