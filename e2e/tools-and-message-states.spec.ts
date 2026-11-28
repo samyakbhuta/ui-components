@@ -24,7 +24,11 @@ test.describe("on the docs page", () => {
   test("tool calls run, finish or fail, and open to show their input and result", async ({ page }) => {
     const section = page.locator("#tools");
     const calls = section.locator("ai-tool-call");
+    // The demo starts as the page loads, and may be done before a slow run looks, so start it again.
+    await page.clock.install();
+    await section.getByRole("button", { name: "Run them again" }).click();
     await expect(calls.first()).toHaveAttribute("aria-busy", "true");
+    await page.clock.runFor(4000);
     await expect(calls.nth(2)).toHaveAttribute("data-error", "", { timeout: 10_000 });
     await expect(calls.first()).toHaveAttribute("data-done", "");
 
