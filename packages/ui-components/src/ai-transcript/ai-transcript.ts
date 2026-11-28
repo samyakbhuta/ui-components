@@ -16,6 +16,8 @@ export type TranscriptStrings = {
   plan: (heading: string) => string;
   /** Read after the reply for each `<ai-questions>` set in it still waiting: its first question, and how many. */
   questions: (first: string, count: number) => string;
+  /** Read after the reply for each `<ai-notice>` in it that still applies: its heading, message and reset line. */
+  notice: (heading: string, text: string, resets: string) => string;
 };
 
 export const defaultTranscriptStrings: TranscriptStrings = {
@@ -26,6 +28,7 @@ export const defaultTranscriptStrings: TranscriptStrings = {
   approval: (label) => `${label} Waiting for your approval.`,
   plan: (heading) => `${heading} Waiting for your review.`,
   questions: (first, count) => `${count} questions, starting with: ${first} Waiting for your answers.`,
+  notice: (heading, text, resets) => [heading, text, resets].filter(Boolean).map((part) => (/[.!?]$/.test(part) ? part : `${part}.`)).join(" "),
 };
 
 /** How close to the bottom, in pixels, still counts as "at the bottom". */
@@ -189,8 +192,8 @@ export class AiTranscriptElement extends BaseElement {
     const body = message.querySelector("[data-part='body']");
     const text = (body ?? message).textContent?.trim() ?? "";
     // A question, an approval or a plan the reply asks for is read after it, so people know the
-    // agent is waiting on them.
-    const waiting = [...message.querySelectorAll("ai-question:not([answered]), ai-approval:not([decided]), ai-plan:not([decided]), ai-questions:not([answered])")]
+    // agent is waiting on them; so is a notice, like a usage limit.
+    const waiting = [...message.querySelectorAll("ai-question:not([answered]), ai-approval:not([decided]), ai-plan:not([decided]), ai-questions:not([answered]), ai-notice:not([expired]):not([hidden])")]
       .map((element) => {
         // A set's questions are read as the set.
         if (element.localName === "ai-question" && element.parentElement?.closest("ai-questions")) return "";
@@ -205,6 +208,10 @@ export class AiTranscriptElement extends BaseElement {
         }
         const heading = element.querySelector("[data-part='heading']")?.textContent?.trim();
         if (!heading) return "";
+        if (element.localName === "ai-notice") {
+          const read = (part: string) => element.querySelector<HTMLElement>(`[data-part='${part}']:not([hidden])`)?.textContent?.trim() ?? "";
+          return this.#strings.notice(heading, read("text"), read("resets"));
+        }
         return element.localName === "ai-plan" ? this.#strings.plan(heading) : this.#strings.approval(heading);
       })
       .filter(Boolean);

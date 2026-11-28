@@ -9,6 +9,8 @@ import "@samyakbhuta/ui-components/ai-question";
 import "@samyakbhuta/ui-components/ai-questions";
 import "@samyakbhuta/ui-components/ai-approval";
 import "@samyakbhuta/ui-components/ai-plan";
+import "@samyakbhuta/ui-components/ai-notice";
+import type { NoticeAction } from "@samyakbhuta/ui-components/ai-notice";
 import "@samyakbhuta/ui-components/ai-chat";
 import type { ChatModel } from "@samyakbhuta/ui-components/ai-chat";
 import "@samyakbhuta/ui-components/ai-transcript";
@@ -98,6 +100,9 @@ function logEvents(root: HTMLElement) {
     "questionsanswer",
     "approvaldecision",
     "plandecision",
+    "noticeaction",
+    "noticeexpire",
+    "noticedismiss",
     "chatchange",
     "chaterror",
   ];
@@ -139,6 +144,18 @@ const giftQuestions = [
 ];
 
 /** The docs page's pretend model for <ai-chat>: it shows each kind of chunk, by what you ask. */
+/** The usage limit's ways round it, as the docs and the chat demo offer them. */
+const limitActions: NoticeAction[] = [
+  { value: "upgrade", label: "Upgrade plan", href: "#notice", primary: true },
+  { value: "smaller-model", label: "Switch to a smaller model" },
+  { value: "extra", label: "Use extra credits" },
+  { value: "notify", label: "Notify me" },
+];
+
+/** What a press on "Notify me" turns the button into. */
+const notified = (actions: NoticeAction[]) =>
+  actions.map((action) => (action.value === "notify" ? { ...action, label: "We'll remind you", disabled: true } : action));
+
 const pretendChatModel: ChatModel = async function* ({ messages, signal }) {
   const pause = (ms: number) =>
     new Promise<void>((resolve, reject) => {
@@ -157,6 +174,16 @@ const pretendChatModel: ChatModel = async function* ({ messages, signal }) {
     const city = yield { type: "question", question: "Which city should the trip start in?", options: ["Paris", "Rome", "Lisbon"], other: true, skippable: true };
     const name = city && "labels" in city ? city.labels[0] : "Lisbon";
     yield* stream(`**${name}** it is. Saturday: a long walk and lunch. Sunday: a museum, then the train home.`);
+    return;
+  }
+  if (/\blimit\b/i.test(asked)) {
+    yield {
+      type: "notice",
+      heading: "You've reached your usage limit",
+      text: "You've used this plan's messages for now. Upgrade, or carry on another way.",
+      resetsAt: new Date(Date.now() + 2 * 60_000).toISOString(),
+      actions: limitActions,
+    };
     return;
   }
   if (/\bgift\b/i.test(asked)) {
@@ -667,14 +694,46 @@ plan.addEventListener("plandecision", (event) => {
     },
   },
   {
+    id: "notice",
+    title: "<ai-notice>",
+    intro:
+      "Something that stops the chat and needs action, like a usage limit. It says when it resets, counting down, and offers your buttons and links. Once the time comes, it says so and steps back. Press a button: the event shows below.",
+    html: `<ai-notice class="sample-limit" heading="You've reached your usage limit">
+  You've used this plan's messages for now. Upgrade, or carry on another way.
+</ai-notice>
+<ai-notice class="sample-offline" heading="You're offline" tone="info" dismissible>
+  Messages will send once you're back online.
+</ai-notice>`,
+    script: `notice.resetsAt = new Date(Date.now() + 2 * 60 * 60 * 1000) // "Resets at 5:00 PM · in 2 hours"
+notice.actions = [
+  { value: "upgrade", label: "Upgrade plan", href: "/pricing", primary: true },
+  { value: "smaller-model", label: "Switch to a smaller model" },
+  { value: "extra", label: "Use extra credits" },
+  { value: "notify", label: "Notify me" },
+]
+notice.addEventListener("noticeaction", (event) => {
+  if (event.detail.value === "notify") notice.actions = withNotifyDone // "We'll remind you", disabled
+})`,
+    setup: (root) => {
+      const limit = root.querySelector<HTMLElementTagNameMap["ai-notice"]>(".sample-limit")!;
+      limit.resetsAt = new Date(Date.now() + 2 * 60 * 60_000);
+      limit.actions = limitActions;
+      limit.addEventListener("noticeaction", (event) => {
+        // The link stays on this page in the demo.
+        if (event.detail.value === "upgrade") event.preventDefault();
+        if (event.detail.value === "notify") limit.actions = notified(limit.actions);
+      });
+    },
+  },
+  {
     id: "chat",
     title: "<ai-chat>",
     intro:
-      "A whole chat in one tag: give it a model that streams a reply, and it runs the conversation. This pretend model shows each kind of chunk: thinking, a tool call, text, sources and follow-ups; a question that waits for your answer (ask for a trip); an approval that waits for your decision (ask it to clean up); and a plan to accept, reject or revise (ask it to plan a surprise party); and several questions at once (ask for help picking a gift). Stop and Retry work too.",
+      "A whole chat in one tag: give it a model that streams a reply, and it runs the conversation. This pretend model shows each kind of chunk: thinking, a tool call, text, sources and follow-ups; a question that waits for your answer (ask for a trip); an approval that waits for your decision (ask it to clean up); and a plan to accept, reject or revise (ask it to plan a surprise party); and several questions at once (ask for help picking a gift). Ask it to show the usage limit to see the message box lock until it resets, or until you pick a way round it. Stop and Retry work too.",
     html: `<ai-chat class="sample-chat" style="height: 34rem">
   <p slot="empty">Ask anything, or try a suggestion.</p>
 </ai-chat>`,
-    script: `chat.suggestions = ["What are custom elements?", "Plan a weekend trip", "Clean up my build folder", "Plan a surprise birthday party", "Help me pick a gift"]
+    script: `chat.suggestions = ["What are custom elements?", "Plan a weekend trip", "Clean up my build folder", "Plan a surprise birthday party", "Help me pick a gift", "Show me the usage limit"]
 chat.model = async function* ({ messages, signal }) {
   yield { type: "thinking", text: "Looking it up." }
   yield { type: "tool", id: "1", name: "web_search", input: { query } }
@@ -684,11 +743,22 @@ chat.model = async function* ({ messages, signal }) {
   const city = yield { type: "question", question: "Which city?", options: ["Paris", "Rome"] }
   const decision = yield { type: "approval", name: "run_command", input: "rm -rf dist" }
   const review = yield { type: "plan", heading: "Surprise party", plan, accepts: [{ value: "auto", label: "auto mode" }] }
-}`,
+  yield { type: "notice", heading: "You've reached your usage limit", resetsAt, actions } // locks the box
+}
+chat.addEventListener("noticeaction", (event) => {
+  if (event.detail.value === "extra") chat.unlock()
+})`,
     setup: (root) => {
       const chat = root.querySelector<HTMLElementTagNameMap["ai-chat"]>(".sample-chat")!;
-      chat.suggestions = ["What are custom elements?", "Plan a weekend trip", "Clean up my build folder", "Plan a surprise birthday party", "Help me pick a gift"];
+      chat.suggestions = ["What are custom elements?", "Plan a weekend trip", "Clean up my build folder", "Plan a surprise birthday party", "Help me pick a gift", "Show me the usage limit"];
       chat.model = pretendChatModel;
+      chat.addEventListener("noticeaction", (event) => {
+        const notice = event.target as HTMLElementTagNameMap["ai-notice"];
+        const { value } = event.detail;
+        if (value === "upgrade") event.preventDefault();
+        else if (value === "notify") notice.actions = notified(notice.actions);
+        else chat.unlock();
+      });
     },
   },
   {

@@ -18,6 +18,7 @@ const pages = [
     "ai-questions",
     "ai-approval",
     "ai-plan",
+    "ai-notice",
     "ai-chat-list",
   ].map((name) => `/guides/components/${name}.html`),
 ];

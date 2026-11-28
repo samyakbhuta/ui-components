@@ -2,6 +2,7 @@ import { settle } from "@ui-sdk/core/testing";
 import { expect, test } from "vitest";
 import "../ai-message/ai-message.ts";
 import "../ai-approval/ai-approval.ts";
+import "../ai-notice/ai-notice.ts";
 import "../ai-plan/ai-plan.ts";
 import "../ai-questions/ai-questions.ts";
 import "../ai-question/ai-question.ts";
@@ -183,4 +184,21 @@ test("it follows new content until scrolled up, and a new message of yours follo
   expect(transcript.following).toBe(true);
   expect(top).toBe(700);
   expect((transcript.querySelector("[data-part='jump']") as HTMLElement).hidden).toBe(true);
+});
+
+test("a reply with a notice, like a usage limit, is read out with it, and the notice doesn't announce itself too", async () => {
+  const { transcript, announced } = await mount();
+  const reply = document.createElement("ai-message");
+  reply.streaming = true;
+  transcript.append(reply);
+  const notice = document.createElement("ai-notice");
+  notice.slot = "footer";
+  notice.heading = "You've reached your usage limit";
+  notice.text = "Upgrade, or wait until it resets";
+  reply.append(notice);
+  await settle();
+  reply.done();
+  await frame();
+  expect(announced()).toBe("You've reached your usage limit. Upgrade, or wait until it resets.");
+  expect(notice.querySelector("[data-part='announcement']")!.textContent).toBe("");
 });

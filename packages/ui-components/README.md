@@ -17,6 +17,7 @@ Web Components for AI chat apps, built on [ui-sdk](https://www.npmjs.com/package
 | `<ai-questions>` | Several questions at once, shown one at a time with arrows. Every answer is sent together, then summed up. |
 | `<ai-approval>` | An agent asks permission before it acts: Allow once, Always allow or Deny, with what it would run shown as text. |
 | `<ai-plan>` | An agent proposes a plan before it starts. People open it in place, then Accept it, Accept and switch mode, Reject it, or Revise it by saying what to change. |
+| `<ai-notice>` | Something that stops the chat and needs action, like a usage limit. It says when it resets, counting down, and offers your buttons and links, like Upgrade plan. In `<ai-chat>` it locks the message box until then. |
 | `<ai-chat>` | A whole chat in one tag. Give it a model that streams a reply, and it runs the conversation, with Stop, Retry, thinking, tool calls, sources, questions and approvals. |
 | `<ai-chat-list>` | The list of saved chats for a sidebar, with Rename, Export and Delete. |
 
@@ -33,7 +34,7 @@ npm install @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/co
 Importing a component registers its tag and adds its styles to the page; there's no CSS to set up. Import everything, or only what you use:
 
 ```ts
-import "@samyakbhuta/ui-components"; // all thirteen
+import "@samyakbhuta/ui-components"; // all fourteen
 import "@samyakbhuta/ui-components/ai-composer"; // or one at a time
 ```
 
@@ -89,7 +90,7 @@ Add this to your page's CSS so the components follow light and dark mode:
 
 ## Docs
 
-Each component's full API is in this package's `docs/` folder: `ai-composer.md`, `ai-message.md`, `ai-transcript.md`, `ai-thinking.md`, `ai-tool-call.md`, `ai-sources.md`, `ai-suggestions.md`, `ai-question.md`, `ai-questions.md`, `ai-approval.md`, `ai-plan.md`, `ai-chat.md` and `ai-chat-list.md`.
+Each component's full API is in this package's `docs/` folder: `ai-composer.md`, `ai-message.md`, `ai-transcript.md`, `ai-thinking.md`, `ai-tool-call.md`, `ai-sources.md`, `ai-suggestions.md`, `ai-question.md`, `ai-questions.md`, `ai-approval.md`, `ai-plan.md`, `ai-notice.md`, `ai-chat.md` and `ai-chat-list.md`.
 
 What changed in each release is in the [changelog](https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/CHANGELOG.md).
 

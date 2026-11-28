@@ -10,6 +10,7 @@ import "@samyakbhuta/ui-components/ai-suggestions";
 import "@samyakbhuta/ui-components/ai-question";
 import "@samyakbhuta/ui-components/ai-approval";
 import "@samyakbhuta/ui-components/ai-plan";
+import "@samyakbhuta/ui-components/ai-notice";
 import "@samyakbhuta/ui-components/ai-questions";
 import type { Source } from "@samyakbhuta/ui-components/ai-sources";
 import "@samyakbhuta/ui-components/ai-transcript";
@@ -33,6 +34,7 @@ import {
   type StoredMessage,
   type StoredApproval,
   type StoredPlan,
+  type StoredNotice,
   type StoredQuestionSet,
   type StoredPrompt,
   type StoredQuestion,
@@ -82,7 +84,33 @@ export const suggestions = [
   "Clean up my project's build folder",
   "Plan a surprise birthday party",
   "Help me pick a gift",
+  "Show me the usage limit",
 ];
+
+/** Asking about the usage limit makes the pretend assistant hit one, with <ai-notice>. */
+const limiting = (text: string) => /\blimit\b/i.test(text);
+
+/** The usage limit the pretend assistant hits. It resets two minutes from now, so the unlock can be seen. */
+export function usageLimit(): StoredNotice {
+  return {
+    heading: "You've reached your usage limit",
+    text: "You've used this plan's messages for now. Upgrade, or carry on another way.",
+    resetsAt: new Date(Date.now() + 2 * 60_000).toISOString(),
+    actions: [
+      { value: "upgrade", label: "Upgrade plan", href: "#pricing", primary: true },
+      { value: "smaller-model", label: "Switch to a smaller model" },
+      { value: "extra", label: "Use extra credits" },
+      { value: "notify", label: "Notify me" },
+    ],
+  };
+}
+
+/** What the pretend assistant says after a way round the limit. */
+export function limitReply(step: NonNullable<StoredScript["limit"]>) {
+  if (step === "smaller-model") return "Switched to **Haiku 5.5**, which has its own allowance. You can carry on.";
+  if (step === "extra") return "Extra usage is on, so you can carry on. It's billed per message until your limit resets.";
+  return "";
+}
 
 /** Asking for help with a gift makes the pretend assistant ask three questions at once, with <ai-questions>. */
 const gifting = (text: string) => /\bgift\b/i.test(text);
@@ -471,6 +499,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     ) ?? null;
 
   function showTitle() {
+    syncLock();
     const title = current.title || "New chat";
     heading.textContent = title;
     // While the agent waits on an answer, say so in the box, and in the tab's title when it's in the background.
@@ -525,6 +554,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
           question: questionOf(message),
           approval: approvalOf(message),
           plan: planOf(message),
+          notice: noticeOf(message),
           questionSet: questionSetOf(message),
           script: scripts.get(message),
         };
@@ -613,6 +643,51 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       accepts: proposed.accepts.length ? proposed.accepts : undefined,
       decision: proposed.decision ?? undefined,
     };
+  }
+
+  function noticeOf(message: AiMessageElement): StoredNotice | undefined {
+    const notice = message.querySelector("ai-notice");
+    if (!notice) return undefined;
+    return {
+      heading: notice.heading,
+      text: notice.text || undefined,
+      tone: notice.getAttribute("tone") ? notice.tone : undefined,
+      resetsAt: notice.resetsAt?.toISOString(),
+      actions: notice.actions.length ? notice.actions.map((action) => ({ ...action })) : undefined,
+      unlocked: notice.hasAttribute("data-unlocked") || undefined,
+    };
+  }
+
+  function noticeFor(stored: StoredNotice) {
+    const notice = document.createElement("ai-notice");
+    notice.slot = "footer";
+    notice.heading = stored.heading;
+    if (stored.tone) notice.tone = stored.tone;
+    notice.text = stored.text ?? "";
+    notice.actions = stored.actions ?? [];
+    if (stored.resetsAt) notice.resetsAt = stored.resetsAt;
+    notice.toggleAttribute("data-unlocked", Boolean(stored.unlocked));
+    return notice;
+  }
+
+  /**
+   * While a usage limit applies, the box is locked and says until when. Choosing a way round it,
+   * or the reset time passing, unlocks it.
+   */
+  const unlockedHint = composer.getAttribute("hint");
+  function syncLock() {
+    const notices = [...transcript.querySelectorAll("ai-notice")];
+    const latest = notices.at(-1);
+    const locking = latest && !latest.expired && !latest.hasAttribute("data-unlocked") ? latest : null;
+    composer.disabled = locking !== null;
+    if (locking) {
+      const until = locking.resetsAt;
+      composer.setAttribute(
+        "hint",
+        until ? `Sending is paused until ${until.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.` : "Sending is paused. See the notice above.",
+      );
+    } else if (unlockedHint === null) composer.removeAttribute("hint");
+    else composer.setAttribute("hint", unlockedHint);
   }
 
   function planFor(stored: StoredPlan) {
@@ -738,6 +813,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     if (stored.approval) message.append(approvalFor(stored.approval));
     if (stored.questionSet) message.append(questionSetFor(stored.questionSet));
     if (stored.plan) message.append(planFor(stored.plan));
+    if (stored.notice) message.append(noticeFor(stored.notice));
     if (stored.script) scripts.set(message, stored.script);
     if (stored.meta) message.append(meta(stored.meta));
     showWork(message, message.version === message.versions);
@@ -864,6 +940,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
             ? partyReply(script.party, script.mode, script.reason)
             : script?.gift
               ? giftReply(script.gift === "answered" ? giftAnswers() : undefined)
+            : script?.limit
+              ? limitReply(script.limit)
             : pretendReply(detail);
       const end = failing(detail.text) ? Math.floor(text.length / 3) : text.length;
       for (let index = 0; index < end; index += 6) {
@@ -881,6 +959,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
               ? planFor(partyPlan)
               : script?.gift === "ask"
                 ? questionSetFor(giftQuestions)
+              : script?.limit === "ask"
+                ? noticeFor(usageLimit())
               : undefined;
         if (asking) {
           // A question or an approval takes the place of follow-ups until it's settled.
@@ -954,7 +1034,20 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       const step = Number(asking.dataset.step);
       return send(detail, step ? { trip: step + 1 } : undefined);
     }
-    send(detail, planning(detail.text) ? { trip: 1 } : cleaning(detail.text) ? { cleanup: "ask" } : throwingParty(detail.text) ? { party: "ask" } : gifting(detail.text) ? { gift: "ask" } : undefined);
+    send(
+      detail,
+      planning(detail.text)
+        ? { trip: 1 }
+        : cleaning(detail.text)
+          ? { cleanup: "ask" }
+          : throwingParty(detail.text)
+            ? { party: "ask" }
+            : gifting(detail.text)
+              ? { gift: "ask" }
+              : limiting(detail.text)
+                ? { limit: "ask" }
+                : undefined,
+    );
   });
 
   document.addEventListener("visibilitychange", showTitle, { signal: page.signal });
@@ -1043,6 +1136,34 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
             : { party: "revised", reason: feedback ?? undefined };
       startReply(detail, undefined, script);
     });
+  });
+
+  // The usage limit's buttons. Each way round it unlocks the box and carries on.
+  transcript.addEventListener("noticeaction", (event) => {
+    const notice = event.target as HTMLElementTagNameMap["ai-notice"];
+    const message = notice.closest("ai-message") as AiMessageElement | null;
+    const { value } = event.detail;
+    if (value === "upgrade") {
+      // A real app would open its pricing page.
+      event.preventDefault();
+      if (!message?.querySelector(".upgrade-note")) message?.append(Object.assign(meta("A real app would open its pricing page here."), { className: "message-meta upgrade-note" }));
+      return;
+    }
+    if (value === "notify") {
+      notice.actions = notice.actions.map((action) => (action.value === "notify" ? { ...action, label: "We'll remind you", disabled: true } : action));
+      return save();
+    }
+    if (composer.busy) return event.preventDefault();
+    notice.toggleAttribute("data-unlocked", true);
+    if (value === "smaller-model") composer.model = "haiku-5.5";
+    syncLock();
+    const detail = message ? asked.get(message) : undefined;
+    queueMicrotask(() => (detail ? startReply(detail, undefined, { limit: value === "extra" ? "extra" : "smaller-model" }) : save()));
+  });
+
+  transcript.addEventListener("noticeexpire", () => {
+    syncLock();
+    save();
   });
 
   transcript.addEventListener("messageaction", (event) => {

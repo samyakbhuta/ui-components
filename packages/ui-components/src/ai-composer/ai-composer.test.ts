@@ -685,3 +685,14 @@ test("a counter shows near max-length and says when the limit is reached", async
   expect(counter.hasAttribute("data-limit")).toBe(true);
   expect(composer.querySelector("[data-part='status']")!.textContent).toBe("Character limit reached");
 });
+
+test("code can change Mode, Model and Thinking while the composer is disabled", async () => {
+  const { composer } = await mount("<ai-composer disabled></ai-composer>", everything);
+  composer.model = "haiku-5.5";
+  composer.mode = "plan";
+  composer.thinking = "high";
+  await settle();
+  expect([composer.model, composer.mode, composer.thinking]).toEqual(["haiku-5.5", "plan", "high"]);
+  // Still disabled for people.
+  expect(composer.querySelector<HTMLElement & { disabled: boolean }>("[data-part='model']")!.disabled).toBe(true);
+});
