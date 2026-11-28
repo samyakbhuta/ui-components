@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI chat with a welcome</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        max-width: 48rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <ai-chat style="height: 80vh">
+      <h2 slot="empty">What can I help with?</h2>
+    </ai-chat>
+
+    <script type="module">
+      import "@samyakbhuta/ui-components";
+
+      const chat = document.querySelector("ai-chat");
+
+      // Prompts people can send with one press, while the chat is empty.
+      chat.suggestions = [
+        "Explain web components simply",
+        "Write a short poem about the sea",
+        { label: "Plan my week", value: "Help me plan my week. Ask me what I have on." },
+      ];
+
+      // A stand-in for your model: it streams your words back.
+      chat.model = async function* ({ prompt }) {
+        for (const word of `You said: ${prompt.text}`.split(" ")) {
+          await new Promise((resolve) => setTimeout(resolve, 80));
+          yield `${word} `;
+        }
+      };
+    </script>
+  </body>
+</html>

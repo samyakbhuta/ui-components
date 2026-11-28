@@ -124,7 +124,7 @@ chat.model = async function* ({ messages, signal }) {
 };
 ```
 
-That's the whole chat: the messages, Stop, Retry, and errors with their message. The model can also yield thinking, tool calls, sources and follow-ups, and ask a question or for approval and wait for the answer. `messages` and `chatchange` save and restore the conversation. The chat's README (`docs/ai-chat.md` in the package) has all of it.
+That's the whole chat: the messages, Stop, Retry, and errors with their message. The model can also yield thinking, tool calls, sources and follow-ups, and ask a question or for approval and wait for the answer. `messages` and `chatchange` save and restore the conversation. The chat's README (`docs/ai-chat.md` in the package) has all of it, and [Making `<ai-chat>` your own](making-ai-chat-your-own.md) walks through each of these as a recipe.
 
 `<ai-chat>` decides the layout: the conversation, with the composer under it. You can set up its composer and transcript with attributes, add a heading for the empty chat, and style its parts, but not move them around or add your own markup between them. For that, build it from the parts, as below.
 

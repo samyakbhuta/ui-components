@@ -17,4 +17,4 @@ CircleCI (`.circleci/config.yml`) runs the type-check, unit tests and browser te
 
 The site is live at https://uisdk-components.netlify.app: a front page for the package, the chat demo and the docs page. Netlify deploys `main` there, with a preview for each pull request.
 
-To use the components in another app, see [docs/using-the-components.md](docs/using-the-components.md). What changed in each release is in the [changelog](https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/CHANGELOG.md). See `AGENTS.md` for how the project is put together.
+To use the components in another app, see [docs/using-the-components.md](docs/using-the-components.md). To change `<ai-chat>` one step at a time, follow the recipes in [docs/making-ai-chat-your-own.md](docs/making-ai-chat-your-own.md). What changed in each release is in the [changelog](https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/CHANGELOG.md). See `AGENTS.md` for how the project is put together.

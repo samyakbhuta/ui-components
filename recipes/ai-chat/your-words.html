@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI chat in your own words</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        max-width: 48rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <ai-chat style="height: 80vh"></ai-chat>
+
+    <script type="module">
+      import "@samyakbhuta/ui-components";
+
+      const chat = document.querySelector("ai-chat");
+
+      // The chat's own words.
+      chat.strings = {
+        stopped: "You stopped this answer.",
+        error: "Sorry, that didn't work. Press Retry to try again.",
+      };
+
+      // The message box's words.
+      chat.composer.strings = {
+        prompt: "Your question",
+        placeholder: "Ask about our cakes…",
+        send: "Ask",
+        stop: "Stop answering",
+        enterHint: "Enter to ask · Shift+Enter for a new line",
+      };
+
+      // The conversation's words, for screen readers.
+      chat.transcript.strings = {
+        label: "Your questions and our answers",
+        jump: "Back to the newest answer",
+      };
+
+      // A stand-in for your model: it streams your words back.
+      chat.model = async function* ({ prompt }) {
+        for (const word of `You said: ${prompt.text}`.split(" ")) {
+          await new Promise((resolve) => setTimeout(resolve, 80));
+          yield `${word} `;
+        }
+      };
+    </script>
+  </body>
+</html>
