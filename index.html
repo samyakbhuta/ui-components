@@ -33,7 +33,7 @@
           Latest on npm: <a href="https://www.npmjs.com/package/@samyakbhuta/ui-components?activeTab=versions"></a>.
           <a href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/CHANGELOG.md">What's new</a>
         </p>
-        <ui-tabs class="home-install-tabs" default-value="npm">
+        <ui-tabs class="home-tabs home-install-tabs" default-value="npm">
           <ui-tabs-list aria-label="Package manager">
             <ui-tabs-tab value="npm"><button type="button">npm</button></ui-tabs-tab>
             <ui-tabs-tab value="pnpm"><button type="button">pnpm</button></ui-tabs-tab>
@@ -56,7 +56,7 @@
 &lt;/script&gt;</code></pre>
             <p class="home-note">
               For a plain HTML file, with nothing to install. esm.sh serves the package and ui-sdk as modules. Pin a
-              version, like <code>@0.1.0-beta.3</code>, before you ship.
+              version, like <code>@0.1.0-beta.4</code>, before you ship.
             </p>
           </ui-tabs-panel>
           <ui-tabs-panel value="bun">
@@ -72,11 +72,44 @@
 
       <section aria-labelledby="quick-start-title">
         <h2 id="quick-start-title">Quick start</h2>
-        <p>
-          A working chat in one page. Replace <code>model()</code> with a call to your own model; it gets the prompt
-          and yields the reply a piece at a time.
-        </p>
-        <pre class="home-code" data-copy-label="quick start"><code>&lt;ai-transcript style="height: 60vh"&gt;&lt;/ai-transcript&gt;
+        <p>A working chat in one page, two ways. Each starts as a project of its own.</p>
+        <ui-tabs class="home-tabs home-start-tabs" default-value="one-tag">
+          <ui-tabs-list aria-label="Quick start">
+            <ui-tabs-tab value="one-tag"><button type="button">One tag</button></ui-tabs-tab>
+            <ui-tabs-tab value="parts"><button type="button">From the parts</button></ui-tabs-tab>
+          </ui-tabs-list>
+          <ui-tabs-panel value="one-tag">
+            <p>
+              <code>&lt;ai-chat&gt;</code> runs the whole conversation: the messages, the replies streaming in, Stop,
+              Retry and errors. Replace <code>model</code> with a call to your own model; it gets the conversation and
+              yields the reply a piece at a time. It can also yield thinking, tool calls, sources, questions and
+              approvals, as <a href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-chat/README.md#the-model">its reference</a> shows.
+            </p>
+            <pre class="home-code" data-copy-label="quick start"><code>&lt;ai-chat style="height: 80vh"&gt;&lt;/ai-chat&gt;
+
+&lt;script type="module"&gt;
+  import "@samyakbhuta/ui-components";
+
+  const chat = document.querySelector("ai-chat");
+
+  // A stand-in for your model: it streams your words back.
+  chat.model = async function* ({ prompt }) {
+    for (const word of `You said: ${prompt.text}`.split(" ")) {
+      await new Promise((resolve) =&gt; setTimeout(resolve, 80));
+      yield `${word} `;
+    }
+  };
+&lt;/script&gt;</code></pre>
+            <p>Start a project from it, then <code>npm install</code> and <code>npm run dev</code>:</p>
+            <pre class="home-install" data-copy-label="starter command"><code>npx degit samyakbhuta/ui-components/examples/quick-start my-chat</code></pre>
+          </ui-tabs-panel>
+          <ui-tabs-panel value="parts">
+            <p>
+              The same chat, built from <code>&lt;ai-transcript&gt;</code>, <code>&lt;ai-composer&gt;</code> and
+              <code>&lt;ai-message&gt;</code>. Your code runs the conversation, so you can lay the parts out your own
+              way, put your own markup between them, and decide what each turn shows.
+            </p>
+            <pre class="home-code" data-copy-label="parts example"><code>&lt;ai-transcript style="height: 60vh"&gt;&lt;/ai-transcript&gt;
 &lt;ai-composer&gt;&lt;/ai-composer&gt;
 
 &lt;script type="module"&gt;
@@ -106,8 +139,10 @@
     composer.busy = false;
   });
 &lt;/script&gt;</code></pre>
-        <p>Or start a project from it, then <code>npm install</code> and <code>npm run dev</code>:</p>
-        <pre class="home-install" data-copy-label="starter command"><code>npx degit samyakbhuta/ui-components/examples/quick-start my-chat</code></pre>
+            <p>Start a project from it, then <code>npm install</code> and <code>npm run dev</code>:</p>
+            <pre class="home-install" data-copy-label="parts starter command"><code>npx degit samyakbhuta/ui-components/examples/from-parts my-chat</code></pre>
+          </ui-tabs-panel>
+        </ui-tabs>
         <p>
           Using React, Vue or Svelte? Add <code>import type {} from "@samyakbhuta/ui-components/react"</code> (or
           <code>/vue</code>, <code>/svelte</code>) once, and every tag is typed. The

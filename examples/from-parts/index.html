@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI chat from the parts</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        max-width: 48rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <ai-transcript style="height: 60vh"></ai-transcript>
+    <ai-composer></ai-composer>
+
+    <script type="module">
+      import "@samyakbhuta/ui-components";
+
+      const transcript = document.querySelector("ai-transcript");
+      const composer = document.querySelector("ai-composer");
+
+      // A stand-in for your model: it streams your words back.
+      async function* model(prompt) {
+        for (const word of `You said: ${prompt}`.split(" ")) {
+          await new Promise((resolve) => setTimeout(resolve, 80));
+          yield `${word} `;
+        }
+      }
+
+      composer.addEventListener("promptsubmit", async (event) => {
+        const yours = document.createElement("ai-message");
+        yours.from = "user";
+        yours.text = event.detail.text;
+        const reply = document.createElement("ai-message");
+        reply.streaming = true;
+        transcript.append(yours, reply);
+        composer.busy = true;
+        for await (const chunk of model(event.detail.text)) reply.appendText(chunk);
+        reply.done();
+        composer.busy = false;
+      });
+    </script>
+  </body>
+</html>

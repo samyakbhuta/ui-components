@@ -35,6 +35,20 @@ import "@samyakbhuta/ui-components"; // all eleven
 import "@samyakbhuta/ui-components/ai-composer"; // or one at a time
 ```
 
+The quickest chat is one tag. Give `<ai-chat>` a model that yields the reply a piece at a time, and it runs the conversation, with Stop, Retry and errors:
+
+```html
+<ai-chat style="height: 80vh"></ai-chat>
+```
+
+```ts
+document.querySelector("ai-chat")!.model = async function* ({ messages, signal }) {
+  // …call your model with the messages and the signal, and yield its reply as it streams in
+};
+```
+
+To lay out the chat your own way, build it from the parts, and run the conversation in your code:
+
 ```html
 <ai-transcript style="height: 70vh">
   <p slot="empty">What can I help with?</p>

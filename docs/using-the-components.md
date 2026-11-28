@@ -32,7 +32,7 @@ npm install @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/co
 
 The `beta` tag always points at the newest beta. A release only moves `latest` when the owner moves it by hand, so `latest` can lag behind for a while.
 
-To start from a working project instead, run `npx degit samyakbhuta/ui-components/examples/quick-start my-chat`, or press **Open in StackBlitz** on [the site](https://uisdk-components.netlify.app) to try it in your browser. For a plain HTML file with nothing to install, import the package from esm.sh: `import "https://esm.sh/@samyakbhuta/ui-components@beta"`, and pin a version before you ship.
+To start from a working project instead, run `npx degit samyakbhuta/ui-components/examples/quick-start my-chat` for a chat in one `<ai-chat>` tag, or `examples/from-parts` for the same chat built from the parts. Or press **Open in StackBlitz** on [the site](https://uisdk-components.netlify.app) to try the first in your browser. For a plain HTML file with nothing to install, import the package from esm.sh: `import "https://esm.sh/@samyakbhuta/ui-components@beta"`, and pin a version before you ship.
 
 To try a change that isn't released yet, run `npm run build:package` in this repo, then `npm pack` in `packages/ui-components/`, and install the `.tgz` file it prints instead.
 
@@ -99,9 +99,38 @@ The package also ships `custom-elements.json`, a Custom Elements Manifest that e
 
 `<ai-chat-list>` only lists chats; saving them is up to your app. For this repo's approach (chats in `localStorage`, plus Markdown export), copy `src/experiments/chat-shell/chat-store.ts` into your app.
 
-## A complete chat in a few lines
+## A complete chat in one tag
 
-This wires the components to your own server. It assumes an endpoint, `/api/chat`, that takes the prompt as JSON and streams the answer back as plain text. Replace it with however you call your model.
+`<ai-chat>` puts the parts together and runs the conversation. Give it a `model`: a function that gets the conversation and yields the reply a piece at a time. This one assumes an endpoint, `/api/chat`, that takes the messages as JSON and streams the answer back as plain text. Replace it with however you call your model.
+
+```html
+<ai-chat style="height: 80vh"></ai-chat>
+```
+
+```ts
+import "@samyakbhuta/ui-components/ai-chat";
+
+const chat = document.querySelector("ai-chat")!;
+chat.model = async function* ({ messages, signal }) {
+  const response = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages }),
+    signal, // Stop cancels the request
+  });
+  if (!response.ok || !response.body) throw new Error(`The server answered ${response.status}`);
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  for (let part = await reader.read(); !part.done; part = await reader.read()) yield part.value;
+};
+```
+
+That's the whole chat: the messages, Stop, Retry, and errors with their message. The model can also yield thinking, tool calls, sources and follow-ups, and ask a question or for approval and wait for the answer. `messages` and `chatchange` save and restore the conversation. The chat's README (`docs/ai-chat.md` in the package) has all of it.
+
+`<ai-chat>` decides the layout: the conversation, with the composer under it. You can set up its composer and transcript with attributes, add a heading for the empty chat, and style its parts, but not move them around or add your own markup between them. For that, build it from the parts, as below.
+
+## Building the chat from the parts
+
+This is the same chat, with your code running the conversation, so you decide the layout and what each turn shows. It assumes an endpoint, `/api/chat`, that takes the prompt as JSON and streams the answer back as plain text. Replace it with however you call your model.
 
 ```ts
 import "@samyakbhuta/ui-components/ai-composer";

@@ -65,7 +65,7 @@ test("the install command copies for the chosen package manager, which is rememb
   await page.goto("/");
   await page.getByRole("tab", { name: "pnpm" }).click();
   // Its name changes to "Copied…" and back, so hold on to the element.
-  const copy = page.locator("ui-tabs-panel:not([hidden]) .copy-button button");
+  const copy = page.locator(".home-install-tabs ui-tabs-panel:not([hidden]) .copy-button button");
   await expect(copy).toHaveAccessibleName("Copy pnpm command");
   await copy.click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
@@ -80,7 +80,7 @@ test("the install command copies for the chosen package manager, which is rememb
   await page.getByRole("button", { name: "Copy quick start" }).click();
   const quickStart = await page.evaluate(() => navigator.clipboard.readText());
   expect(quickStart).toContain('import "@samyakbhuta/ui-components";');
-  expect(quickStart).toContain("<ai-composer></ai-composer>");
+  expect(quickStart).toContain('<ai-chat style="height: 80vh"></ai-chat>');
 });
 
 test("each component card also links to its API reference", async ({ page }) => {
