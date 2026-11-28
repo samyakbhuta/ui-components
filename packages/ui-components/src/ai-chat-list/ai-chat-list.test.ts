@@ -50,13 +50,13 @@ test("with href, chats are links, and the selected one is the current page", asy
   const { list } = await mount('<ai-chat-list selected="today"></ai-chat-list>', (list) => {
     list.href = (chat) => `#chat/${chat.id}`;
   });
-  const link = within(list).getByRole("link", { name: "Web components" });
+  const link = within(list).getByRole("link", { name: "Open Web components" });
   expect(link.getAttribute("href")).toBe("#chat/today");
   expect(link.getAttribute("aria-current")).toBe("page");
 
   list.selected = "week";
   expect(link.hasAttribute("aria-current")).toBe(false);
-  expect(within(list).getByRole("link", { name: "Recipe" }).getAttribute("aria-current")).toBe("page");
+  expect(within(list).getByRole("link", { name: "Open Recipe" }).getAttribute("aria-current")).toBe("page");
 });
 
 test("choosing a chat or New chat fires events, and chatselect can be cancelled", async () => {
@@ -69,9 +69,9 @@ test("choosing a chat or New chat fires events, and chatselect can be cancelled"
   });
   list.addEventListener("chatnew", () => events.push("new"));
 
-  await user.click(within(list).getByRole("link", { name: "Haiku" }));
+  await user.click(within(list).getByRole("link", { name: "Open Haiku" }));
   expect(location.hash).toBe("#chat/yesterday");
-  await user.click(within(list).getByRole("link", { name: "Trip ideas" }));
+  await user.click(within(list).getByRole("link", { name: "Open Trip ideas" }));
   expect(location.hash).toBe("#chat/yesterday");
   await user.click(within(list).getByRole("button", { name: "New chat" }));
   expect(events).toEqual(["select:yesterday", "select:old", "new"]);
@@ -79,7 +79,7 @@ test("choosing a chat or New chat fires events, and chatselect can be cancelled"
 
 test("without href, chats are buttons marked current with aria-current", async () => {
   const { list } = await mount('<ai-chat-list selected="today"></ai-chat-list>');
-  expect(within(list).getByRole("button", { name: "Web components" }).getAttribute("aria-current")).toBe("true");
+  expect(within(list).getByRole("button", { name: "Open Web components" }).getAttribute("aria-current")).toBe("true");
 });
 
 test("each chat has an options menu with the chosen actions", async () => {
@@ -114,7 +114,7 @@ test("Rename edits the name in place: Enter saves, Escape cancels", async () => 
 
   expect(renamed).toHaveBeenCalledWith({ id: "week", title: "Pasta recipe" });
   expect(titles()).toContain("Pasta recipe");
-  expect(document.activeElement).toBe(within(list).getByRole("button", { name: "Pasta recipe" }));
+  expect(document.activeElement).toBe(within(list).getByRole("button", { name: "Open Pasta recipe" }));
 
   await user.click(within(list).getByRole("button", { name: "Options for Haiku" }));
   await user.click(within(list).getByRole("menuitem", { name: "Rename" }));
@@ -142,11 +142,55 @@ test("Delete asks first, then removes the chat and moves focus to a neighbour", 
 
   await user.click(within(list).getByRole("button", { name: "Options for Haiku" }));
   await user.click(within(list).getByRole("menuitem", { name: "Delete" }));
-  await user.click(within(await vi.waitFor(() => within(list).getByRole("alertdialog"))).getByRole("button", { name: "Delete" }));
+  await user.click(within(await vi.waitFor(() => within(list).getByRole("alertdialog"))).getByRole("button", { name: "Delete forever" }));
   await vi.waitFor(() => expect(deleted).toHaveBeenCalledWith("yesterday"));
   expect(titles()).toEqual(["Web components", "Recipe", "Trip ideas"]);
-  await vi.waitFor(() => expect(document.activeElement).toBe(within(list).getByRole("button", { name: "Recipe" })));
+  await vi.waitFor(() => expect(document.activeElement).toBe(within(list).getByRole("button", { name: "Open Recipe" })));
   expect(list.querySelector("[role='status']")!.textContent).toBe("Deleted “Haiku”");
+});
+
+test("an agent can't delete a chat on its own: the person is asked first", async () => {
+  const { titles } = await mount();
+  const asked: string[] = [];
+  let approve = false;
+  const agent = createAgent({
+    allow: (step) => {
+      if (step.confirm) asked.push(step.confirm);
+      return !step.confirm || approve;
+    },
+  });
+  const remove = () =>
+    agent.act({
+      steps: [
+        { ref: "Options for Haiku", action: "press", args: ["Delete"] },
+        { ref: "Delete “Haiku”?", action: "press", args: ["Delete forever"] },
+      ],
+    });
+
+  expect((await remove()).ok).toBe(false);
+  await settle();
+  expect(titles()).toContain("Haiku");
+  expect(asked).toEqual(["Deletes “Haiku” and its messages from this browser"]);
+
+  approve = true;
+  const result = await remove();
+  expect(result.ok, result.error?.message).toBe(true);
+  await vi.waitFor(() => expect(titles()).not.toContain("Haiku"));
+});
+
+test("an agent can rename a chat: the name it sets is saved", async () => {
+  const { list, titles } = await mount();
+  const renamed = vi.fn();
+  list.addEventListener("chatrename", (event) => renamed(event.detail));
+  const agent = createAgent();
+  const opened = await agent.act({ steps: [{ ref: "Options for Haiku", action: "press", args: ["Rename"] }] });
+  expect(opened.ok, opened.error?.message).toBe(true);
+  await vi.waitFor(() => expect(within(list).getByRole("textbox", { name: "Chat name" })).toBeDefined());
+  const result = await agent.act({ steps: [{ ref: "Chat name", action: "setValue", args: ["Poems"] }] });
+  expect(result.ok, result.error?.message).toBe(true);
+  await vi.waitFor(() => expect(renamed).toHaveBeenCalledWith({ id: "yesterday", title: "Poems" }));
+  expect(titles()).toContain("Poems");
+  expect(within(list).queryByRole("textbox", { name: "Chat name" })).toBeNull();
 });
 
 test("every word can be replaced", async () => {
@@ -166,13 +210,12 @@ test("agents can start a new chat and open one by name", async () => {
   list.addEventListener("chatselect", (event) => events.push(event.detail.id));
   const agent = createAgent();
   const snapshot = agent.snapshot();
-  expect(snapshot.map((entry) => entry.label)).toEqual(expect.arrayContaining(["New chat", "Haiku", "Options for Haiku"]));
-  // "Recipe" also appears in "Options for Recipe", so the bridge asks for the chat's ref, as an agent would use.
-  const recipe = snapshot.find((entry) => entry.label === "Recipe")!;
+  expect(snapshot.map((entry) => entry.label)).toEqual(expect.arrayContaining(["New chat", "Open Haiku", "Options for Haiku"]));
+  // Each chat's name has a verb of its own, so it can't be mistaken for its Options button.
   const result = await agent.act({
     steps: [
       { ref: "New chat", action: "press" },
-      { ref: recipe.ref, action: "press" },
+      { ref: "Open Recipe", action: "press" },
     ],
   });
   expect(result.ok, result.error?.message).toBe(true);
@@ -186,8 +229,8 @@ test("a chat can show a status, like one waiting on an answer, read after its ti
     { id: "week", title: "Recipe", updatedAt: midday - 3 * day },
   ];
   await settle();
-  const waiting = within(list).getByRole("button", { name: "Trip ideas", description: "Needs your answer" });
+  const waiting = within(list).getByRole("button", { name: "Open Trip ideas", description: "Needs your answer" });
   expect(waiting.querySelector("[data-part='status']")!.textContent).toBe("Needs your answer");
-  expect(within(list).getByRole("button", { name: "Recipe" }).hasAttribute("aria-describedby")).toBe(false);
+  expect(within(list).getByRole("button", { name: "Open Recipe" }).hasAttribute("aria-describedby")).toBe(false);
   expect(list.querySelectorAll("[data-part='item'][data-status]")).toHaveLength(1);
 });

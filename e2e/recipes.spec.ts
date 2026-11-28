@@ -142,28 +142,28 @@ test("8. the sidebar keeps several chats: new, switch, rename and delete, after 
   await expect(page.locator("ai-chat ai-message")).toHaveCount(0);
   await send(page, "Second chat");
   await idle(page);
-  await expect(list.getByRole("button", { name: /^(First|Second) chat$/ })).toHaveCount(2);
+  await expect(list.getByRole("button", { name: /^Open (First|Second) chat$/ })).toHaveCount(2);
 
-  await list.getByRole("button", { name: "First chat", exact: true }).click();
+  await list.getByRole("button", { name: "Open First chat", exact: true }).click();
   await expect(yours(page)).toHaveCount(1);
   await expect(yours(page)).toContainText("First chat");
-  await expect(list.getByRole("button", { name: "First chat", exact: true })).toHaveAttribute("aria-current", /.+/);
+  await expect(list.getByRole("button", { name: "Open First chat", exact: true })).toHaveAttribute("aria-current", /.+/);
 
   await list.getByRole("button", { name: "Options for First chat" }).click();
   await page.getByRole("menuitem", { name: "Rename" }).click();
   await list.getByRole("textbox").fill("Trip ideas");
   await page.keyboard.press("Enter");
-  await expect(list.getByRole("button", { name: "Trip ideas", exact: true })).toBeVisible();
+  await expect(list.getByRole("button", { name: "Open Trip ideas", exact: true })).toBeVisible();
 
   await list.getByRole("button", { name: "Options for Second chat" }).click();
   await page.getByRole("menuitem", { name: "Delete" }).click();
-  await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
-  await expect(list.getByRole("button", { name: "Second chat", exact: true })).toHaveCount(0);
+  await page.getByRole("alertdialog").getByRole("button", { name: "Delete forever" }).click();
+  await expect(list.getByRole("button", { name: "Open Second chat", exact: true })).toHaveCount(0);
 
   await page.reload();
-  await expect(list.getByRole("button", { name: "Trip ideas", exact: true })).toBeVisible();
-  await expect(list.getByRole("button", { name: "Second chat", exact: true })).toHaveCount(0);
-  await list.getByRole("button", { name: "Trip ideas", exact: true }).click();
+  await expect(list.getByRole("button", { name: "Open Trip ideas", exact: true })).toBeVisible();
+  await expect(list.getByRole("button", { name: "Open Second chat", exact: true })).toHaveCount(0);
+  await list.getByRole("button", { name: "Open Trip ideas", exact: true }).click();
   await expect(replies(page)).toContainText(["You said: First chat"]);
 });
 

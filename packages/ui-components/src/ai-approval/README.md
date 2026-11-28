@@ -120,6 +120,8 @@ Pair it with [`<ai-tool-call>`](../ai-tool-call/README.md) to show the tool runn
 | `reasonLabel` | `What should it do instead?`: the text box's accessible name |
 | `reasonPlaceholder` | `Optional: tell it what to do instead` |
 | `decided(decision, reason)` | `Allowed once`, `Always allowed`, `Denied`, or with a reason `Denied. Instead, you suggested: “${reason}”` |
+| `allowConfirm(name)` | `Allows ${name} to run, this once`: what the person is asked when an agent presses Allow once |
+| `alwaysConfirm(name)` | `Always allows ${name}, without asking again`: what the person is asked when an agent presses Always allow |
 
 ## Safety
 
@@ -133,7 +135,7 @@ Showing the input matters: people should see exactly what they're allowing. Pass
 - The element is a group named by its heading and, while waiting, described by "Waiting for your approval".
 - After deciding, focus moves to the decision line, and a status region announces it.
 - The decision isn't told by colour alone: the line says it in words.
-- ui-sdk's agent bridge can press the buttons: `{ ref: "Allow once", action: "press" }`.
+- ui-sdk's agent bridge can press the buttons: `{ ref: "Deny", action: "press" }`. An agent can't approve its own request, though: Allow once and Always allow carry `data-agent-confirm`, so the bridge asks the person first (through `createAgent`'s `allow`), and refuses the step without one.
 
 ## Styling
 

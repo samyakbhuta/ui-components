@@ -103,7 +103,7 @@ test("Revise… opens a box; Enter sends what to change, Escape and Cancel close
   const box = view.getByRole("textbox", { name: "What should change?" });
   expect(document.activeElement).toBe(box);
   expect(part(card, "actions").hidden).toBe(true);
-  expect(view.getByRole("button", { name: "Send" }).matches(":disabled") || part(card, "send").hasAttribute("disabled")).toBe(true);
+  expect(view.getByRole("button", { name: "Send changes" }).matches(":disabled") || part(card, "send").hasAttribute("disabled")).toBe(true);
 
   await user.keyboard("{Escape}");
   expect(part(card, "revise").hidden).toBe(true);
@@ -162,9 +162,35 @@ test("words can be replaced, and the heading, summary and plan are text, never H
   expect(view.getAllByRole("button").map((button) => button.textContent)).toEqual(["Close plan", "Refuser", "Modifier…", "Accepter", "Accepter en mode auto"]);
 });
 
-test("agents can press Accept", async () => {
-  const { decisions } = await mount(`<ai-plan></ai-plan>`);
-  const result = await createAgent().act({ steps: [{ ref: "Accept", action: "press" }] });
+test("an agent can't accept on its own: the person is asked first, and Reject needs no one", async () => {
+  const { decisions } = await mount(`<ai-plan></ai-plan>`, (element) => {
+    element.accepts = [{ value: "auto", label: "auto mode" }];
+  });
+  const asked: string[] = [];
+  let approve = false;
+  const agent = createAgent({
+    allow: (step) => {
+      if (step.confirm) asked.push(step.confirm);
+      return !step.confirm || approve;
+    },
+  });
+  const press = (button: string) => agent.act({ steps: [{ ref: button, action: "press" }] });
+
+  expect((await press("Accept and use auto mode")).ok).toBe(false);
+  expect(decisions).toEqual([]);
+  expect(asked).toEqual(["Accepts the plan and switches to auto mode, so the agent goes ahead with it"]);
+
+  approve = true;
+  const result = await press("Accept and use auto mode");
   expect(result.ok, result.error?.message).toBe(true);
-  expect(decisions).toEqual([{ decision: "accept", mode: null, feedback: null }]);
+  expect(decisions).toEqual([{ decision: "accept", mode: "auto", feedback: null }]);
+});
+
+test("plain Accept asks the person too, while Reject doesn't", async () => {
+  const { decisions } = await mount(`<ai-plan></ai-plan>`);
+  const agent = createAgent({ allow: (step) => !step.confirm });
+  expect((await agent.act({ steps: [{ ref: "Accept", action: "press" }] })).ok).toBe(false);
+  const result = await agent.act({ steps: [{ ref: "Reject", action: "press" }] });
+  expect(result.ok, result.error?.message).toBe(true);
+  expect(decisions).toEqual([{ decision: "reject", mode: null, feedback: null }]);
 });

@@ -51,7 +51,7 @@ test("with no options it is only a prompt box and a Send button", async () => {
   expect(composer.getAttribute("aria-label")).toBe("Prompt");
   expect(prompt.getAttribute("aria-label")).toBe("Prompt");
   expect(prompt.placeholder).toBe("Ask anything…");
-  expect(within(composer).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(["Send"]);
+  expect(within(composer).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(["Send message"]);
   expect(disabled(send())).toBe(true);
   expect(within(composer).queryByRole("radiogroup")).toBeNull();
   expect(within(composer).queryByRole("combobox")).toBeNull();
@@ -71,7 +71,7 @@ test("attachments and voice appear only with their attributes", async () => {
   composer.removeAttribute("attachments");
   composer.removeAttribute("voice");
   await settle();
-  expect(within(composer).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(["Send"]);
+  expect(within(composer).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(["Send message"]);
 });
 
 test("voice is greyed out where speech isn't supported, or left out with voice=\"hide\"", async () => {
@@ -184,7 +184,7 @@ test("while busy, Send becomes Stop, fires promptstop and nothing is sent", asyn
 
   composer.busy = false;
   await settle();
-  expect(send().getAttribute("aria-label")).toBe("Send");
+  expect(send().getAttribute("aria-label")).toBe("Send message");
   await user.click(send());
   expect(sent.map((detail) => detail.text)).toEqual(["next question"]);
 });
@@ -562,7 +562,7 @@ test("agents can use every control, and two composers stay apart by their labels
   const labels = components.map((entry) => entry.label);
   for (const label of ["Mode", "Model", "Thinking", "Attach files", "Prompt", "Reply"]) expect(labels).toContain(label);
 
-  const sends = components.filter((entry) => entry.label === "Send");
+  const sends = components.filter((entry) => entry.label === "Send message");
   expect(sends.map((entry) => entry.section)).toEqual(["Prompt", "Reply"]);
 
   const result = await agent.act({
@@ -809,4 +809,25 @@ test("writing between quotes keeps the order: text so far stays above the next q
   expect(parts()).toEqual(["quote"]);
   expect(prompt.value).toBe("About the first.\n\nAnd this one?");
   composer.remove();
+});
+
+test("an agent can change the text between quotes and remove a quote", async () => {
+  const { composer } = await mount();
+  composer.addQuote({ text: "First quote" });
+  composer.insert("About that.");
+  composer.addQuote({ text: "Second quote" });
+  await settle();
+  const agent = createAgent();
+  const labels = agent.snapshot().map((entry) => entry.label);
+  expect(labels).toEqual(expect.arrayContaining(["Text before quote 2", "Remove quote: First quote", "Remove quote: Second quote"]));
+
+  const result = await agent.act({
+    steps: [
+      { ref: "Text before quote 2", action: "setValue", args: ["About the first."] },
+      { ref: "Remove quote: Second quote", action: "press" },
+    ],
+  });
+  expect(result.ok, result.error?.message).toBe(true);
+  expect(composer.quotes).toEqual([{ text: "First quote" }]);
+  expect(composer.value).toBe("About the first.");
 });

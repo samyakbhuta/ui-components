@@ -1,6 +1,7 @@
 import { waitFor, within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { settle } from "@ui-sdk/core/testing";
+import { createAgent } from "@ui-sdk/web/agent";
 import { afterEach, expect, test, vi } from "vitest";
 import "./ai-chat.ts";
 import type { AiChatElement, ChatAnswer, ChatChunk, ChatMessage, ChatRequest } from "./ai-chat.ts";
@@ -165,7 +166,7 @@ test("a question waits for the answer, which comes back into the model; the repl
 
   const user = userEvent.setup();
   await user.click(view.getByRole("radio", { name: "Rome" }));
-  await user.click(within(chat.querySelector("ai-question")!).getByRole("button", { name: "Send" }));
+  await user.click(within(chat.querySelector("ai-question")!).getByRole("button", { name: "Send answer" }));
   await idle();
   expect(answers).toEqual([{ value: "Rome", labels: ["Rome"], other: null }]);
   expect(replies().map((reply) => reply.text)).toEqual(["First, a question.", "Great, Rome."]);
@@ -245,7 +246,7 @@ test("a saved conversation shows again, and an unanswered question asks the mode
 
   const user = userEvent.setup();
   await user.click(view.getByRole("radio", { name: "Rome" }));
-  await user.click(within(chat.querySelector("ai-question")!).getByRole("button", { name: "Send" }));
+  await user.click(within(chat.querySelector("ai-question")!).getByRole("button", { name: "Send answer" }));
   await idle();
   expect(seen[0].at(-1)!.question!.answer).toEqual({ value: "Rome", labels: ["Rome"], other: null });
   expect(replies().at(-1)!.text).toBe("Rome it is.");
@@ -661,4 +662,51 @@ test("a quote sent while a card waits goes into the typed answer, as > lines, so
   await idle();
   expect(answers[0]).toEqual({ decision: "deny", reason: "> run_command:\n> rm -rf dist\n\nOnly the old builds" });
   expect(chat.composer.quotes).toEqual([]);
+});
+
+test("an agent can use the whole chat: every control is named, it can ask and answer, and an approval needs the person", async () => {
+  const answers: unknown[] = [];
+  const { chat, idle, waiting } = await mount("<ai-chat></ai-chat>", (c) => {
+    c.model = async function* () {
+      answers.push(yield { type: "question", question: "Which city?", options: ["Paris", "Rome"] } as ChatChunk);
+      answers.push(yield { type: "approval", name: "book_hotel", label: "Book a hotel" } as ChatChunk);
+      yield "Done.";
+    };
+  });
+  let approve = false;
+  const agent = createAgent({ allow: (step) => !step.confirm || approve });
+  const components = () => agent.snapshot().filter((entry) => !entry.offPage && entry.component !== "more");
+  for (const entry of components()) expect(entry.label, `${entry.component} ${entry.ref} has no name`).toBeTruthy();
+  expect(components().map((entry) => entry.label)).toEqual(expect.arrayContaining(["Prompt", "Send message"]));
+
+  const asked = await agent.act({
+    steps: [
+      { ref: "Prompt", action: "setValue", args: ["Plan a trip"] },
+      { ref: "Send message", action: "press" },
+    ],
+  });
+  expect(asked.ok, asked.error?.message).toBe(true);
+  await waiting();
+  for (const entry of components()) expect(entry.label, `${entry.component} ${entry.ref} has no name`).toBeTruthy();
+
+  const answered = await agent.act({
+    steps: [
+      { ref: "Which city?", action: "setValue", args: ["Rome"] },
+      { ref: "Send answer", action: "press" },
+    ],
+  });
+  expect(answered.ok, answered.error?.message).toBe(true);
+  await waitFor(() => expect(chat.querySelector("ai-approval")).toBeTruthy());
+  await waiting();
+
+  expect((await agent.act({ steps: [{ ref: "Allow once", action: "press" }] })).ok).toBe(false);
+  expect(chat.waiting).toBe(true);
+  approve = true;
+  const allowed = await agent.act({ steps: [{ ref: "Allow once", action: "press" }] });
+  expect(allowed.ok, allowed.error?.message).toBe(true);
+  await idle();
+  expect(answers).toEqual([
+    { value: "Rome", labels: ["Rome"], other: null },
+    { decision: "allow", reason: null },
+  ]);
 });

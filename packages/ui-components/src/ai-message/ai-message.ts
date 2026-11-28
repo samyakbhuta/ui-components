@@ -674,10 +674,12 @@ export class AiMessageElement extends BaseElement {
         img.src = url;
         img.alt = "";
         button.append(img);
-        button.addEventListener("click", () => {
+        const opener = document.createElement("ui-button");
+        opener.append(button);
+        opener.addEventListener("action", () => {
           if (this.#opening(index, "image")) this.#view(position);
         });
-        item.append(button);
+        item.append(opener);
       } else {
         item.dataset.kind = "file";
         const link = !image && !isFile && safeLink.test(url);
@@ -747,7 +749,7 @@ export class AiMessageElement extends BaseElement {
       const button = viewer.querySelector<HTMLButtonElement>(`[data-part='${part}']`)!;
       button.innerHTML = this.#icons[part === "viewer-previous" ? "previous" : "next"];
       button.hidden = !many;
-      button.disabled = disabled;
+      button.closest("ui-button")!.toggleAttribute("disabled", disabled);
       button.setAttribute("aria-label", label);
       button.title = label;
     }
@@ -780,13 +782,13 @@ export class AiMessageElement extends BaseElement {
           <ui-dialog-close><button type="button" data-part="viewer-close" data-button="icon"></button></ui-dialog-close>
         </div>
         <div data-part="viewer-stage">
-          <button type="button" data-part="viewer-previous" data-button="icon"></button>
+          <ui-button><button type="button" data-part="viewer-previous" data-button="icon"></button></ui-button>
           <img data-part="viewer-image" alt="">
-          <button type="button" data-part="viewer-next" data-button="icon"></button>
+          <ui-button><button type="button" data-part="viewer-next" data-button="icon"></button></ui-button>
         </div>
       </ui-dialog-content>`;
-    viewer.querySelector("[data-part='viewer-previous']")!.addEventListener("click", () => this.#stepImage(-1, true));
-    viewer.querySelector("[data-part='viewer-next']")!.addEventListener("click", () => this.#stepImage(1, true));
+    viewer.querySelector("[data-part='viewer-previous']")!.closest("ui-button")!.addEventListener("action", () => this.#stepImage(-1, true));
+    viewer.querySelector("[data-part='viewer-next']")!.closest("ui-button")!.addEventListener("action", () => this.#stepImage(1, true));
     viewer.querySelector("[data-part='viewer-content']")!.addEventListener("keydown", (event) => {
       const key = (event as KeyboardEvent).key;
       if (key !== "ArrowLeft" && key !== "ArrowRight") return;

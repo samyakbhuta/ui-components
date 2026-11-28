@@ -79,7 +79,7 @@ test("Rename from the keyboard updates the list and the heading, then returns fo
   await page.keyboard.press("Enter");
 
   await expect(heading(page)).toHaveText("Haiku");
-  const renamed = chatList(page).getByRole("link", { name: "Haiku", exact: true });
+  const renamed = chatList(page).getByRole("link", { name: "Open Haiku", exact: true });
   await expect(renamed).toBeVisible();
   await expect(renamed).toBeFocused();
 });

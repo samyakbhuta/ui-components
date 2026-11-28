@@ -42,7 +42,7 @@ export const defaultQuestionStrings: QuestionStrings = {
   other: "Other",
   otherPlaceholder: "Type your own answer",
   otherLabel: "Your own answer",
-  send: "Send",
+  send: "Send answer",
   skip: "Skip",
   multipleHint: (max) => (max ? `Choose up to ${max}.` : "Choose all that apply."),
   answered: (labels) => `Answered: ${labels.join(", ")}`,

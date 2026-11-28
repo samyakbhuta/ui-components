@@ -88,8 +88,10 @@ The event fires before the element shows the decision. To save it with the decis
 | `acceptWith(label)` | `Accept and use ${label}` |
 | `feedbackLabel` | `What should change?`: the Revise box's accessible name |
 | `feedbackPlaceholder` | `Tell it what to change in the plan` |
-| `send`, `cancel` | `Send`, `Cancel`: the Revise box's buttons |
+| `send`, `cancel` | `Send changes`, `Cancel`: the Revise box's buttons |
 | `decided(detail, label)` | `Accepted`, `Accepted, using ${label}`, `Rejected`, or `Asked for changes: “${feedback}”` |
+| `acceptConfirm` | `Accepts the plan, so the agent goes ahead with it`: what the person is asked when an agent presses Accept |
+| `acceptWithConfirm(label)` | `Accepts the plan and switches to ${label}, so the agent goes ahead with it`: the same for each Accept and use button |
 
 ## Safety
 
@@ -102,7 +104,7 @@ The heading, the summary, the plan and what people type are all set as text, nev
 - The element is a group named by its heading and, while waiting, described by "Waiting for your review".
 - After deciding, focus moves to the decision line, and a status region announces it.
 - The decision isn't told by colour alone: the line says it in words.
-- ui-sdk's agent bridge can press the buttons: `{ ref: "Accept", action: "press" }`.
+- ui-sdk's agent bridge can press the buttons: `{ ref: "Reject", action: "press" }`. Accepting lets the agent act, so Accept and each Accept and use button carry `data-agent-confirm`: the bridge asks the person first (through `createAgent`'s `allow`), and refuses the step without one.
 
 ## Styling
 

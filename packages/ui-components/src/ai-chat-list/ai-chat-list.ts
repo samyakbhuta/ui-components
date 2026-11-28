@@ -1,5 +1,6 @@
 import "@ui-sdk/web/alert-dialog";
 import "@ui-sdk/web/button";
+import "@ui-sdk/web/input";
 import "@ui-sdk/web/menu";
 import { createConfirm } from "@ui-sdk/web/alert-dialog";
 import { adoptStyles, BaseElement, define } from "../styles.ts";
@@ -28,6 +29,8 @@ export type ChatListStrings = {
   previous7Days: string;
   previous30Days: string;
   older: string;
+  /** A chat's accessible name: its title with a verb of its own, so it differs from "Options for …". */
+  openChat: (title: string) => string;
   options: (title: string) => string;
   rename: string;
   export: string;
@@ -39,6 +42,8 @@ export type ChatListStrings = {
   deleteDescription: string;
   cancel: string;
   confirmDelete: string;
+  /** What an agent confirming Delete would do, asked of the person first (`data-agent-confirm`). */
+  deleteConfirm: (title: string) => string;
   deleted: (title: string) => string;
 };
 
@@ -52,6 +57,7 @@ export const defaultChatListStrings: ChatListStrings = {
   previous7Days: "Previous 7 days",
   previous30Days: "Previous 30 days",
   older: "Older",
+  openChat: (title) => `Open ${title}`,
   options: (title) => `Options for ${title}`,
   rename: "Rename",
   export: "Export as Markdown",
@@ -61,7 +67,8 @@ export const defaultChatListStrings: ChatListStrings = {
   deleteChat: "Delete chat?",
   deleteDescription: "The chat and its messages will be deleted from this browser. This can't be undone.",
   cancel: "Cancel",
-  confirmDelete: "Delete",
+  confirmDelete: "Delete forever",
+  deleteConfirm: (title) => (title ? `Deletes “${title}” and its messages from this browser` : "Deletes the chat and its messages from this browser"),
   deleted: (title) => `Deleted “${title}”`,
 };
 
@@ -195,13 +202,15 @@ export class AiChatListElement extends BaseElement {
         <ui-alert-dialog-description data-part="dialog-description"></ui-alert-dialog-description>
         <div data-part="dialog-actions">
           <ui-alert-dialog-close><button type="button" data-part="cancel"></button></ui-alert-dialog-close>
-          <ui-alert-dialog-close value="confirm"><button type="button" data-part="confirm-delete"></button></ui-alert-dialog-close>
+          <ui-alert-dialog-close value="confirm" data-part="confirm-close"><button type="button" data-part="confirm-delete"></button></ui-alert-dialog-close>
         </div>
       </ui-alert-dialog-content>`;
     dialog.querySelector("[data-part='dialog-title']")!.textContent = s.deleteChat;
     dialog.querySelector("[data-part='dialog-description']")!.textContent = s.deleteDescription;
     dialog.querySelector("[data-part='cancel']")!.textContent = s.cancel;
     dialog.querySelector("[data-part='confirm-delete']")!.textContent = s.confirmDelete;
+    // An agent can't delete on its own: the bridge asks the person first.
+    dialog.querySelector<HTMLElement>("[data-part='confirm-close']")!.dataset.agentConfirm = s.deleteConfirm("");
     dialog.controller = this.#confirm.controller;
     dialog.addEventListener("payloadchange", (event) => {
       const title = (event as CustomEvent<{ value?: { title: string } }>).detail.value?.title ?? "";
@@ -290,6 +299,7 @@ export class AiChatListElement extends BaseElement {
     name.textContent = title;
     target.append(name);
     target.title = title;
+    target.setAttribute("aria-label", s.openChat(title));
     const status = chat.status?.trim();
     if (status) {
       // Shown in the row, but read as the chat's description so its name stays its title.
@@ -364,8 +374,11 @@ export class AiChatListElement extends BaseElement {
       input.dataset.part = "rename";
       input.value = chat.title;
       input.setAttribute("aria-label", this.#strings.renameLabel);
+      // A ui-sdk Input, so agents can rename too.
+      const field = document.createElement("ui-input");
+      field.append(input);
       wrapper.hidden = true;
-      wrapper.after(input);
+      wrapper.after(field);
       input.focus();
       input.select();
 
@@ -375,7 +388,7 @@ export class AiChatListElement extends BaseElement {
         finished = true;
         this.#renaming = undefined;
         const title = input.value.trim();
-        input.remove();
+        field.remove();
         wrapper.hidden = false;
         if (save && title && title !== chat.title && this.#emit("chatrename", { id, title }, true)) {
           chat.title = title;
@@ -394,6 +407,10 @@ export class AiChatListElement extends BaseElement {
         }
       });
       input.addEventListener("blur", () => finish(true));
+      // An agent can't press Enter, so a name it sets is saved at once.
+      field.addEventListener("valuechange", (event) => {
+        if ((event as CustomEvent<{ source?: string }>).detail.source === "agent") setTimeout(() => finish(true));
+      });
     };
     // The menu hands focus back to its button as it closes, so start once it has closed.
     let started = false;
@@ -416,6 +433,8 @@ export class AiChatListElement extends BaseElement {
     const chat = this.#chats.find((other) => other.id === id);
     if (!chat) return;
     const title = chat.title.trim() || this.#strings.untitled;
+    const confirm = this.querySelector<HTMLElement>("[data-part='confirm-close']");
+    if (confirm) confirm.dataset.agentConfirm = this.#strings.deleteConfirm(title);
     if (!(await this.#confirm({ title }))) return;
     if (!this.#emit("chatdelete", { id }, true)) return;
     // Focus moves to a neighbouring chat, or to New chat when none is left.

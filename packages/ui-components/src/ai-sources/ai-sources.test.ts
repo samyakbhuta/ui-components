@@ -1,6 +1,7 @@
 import { within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { settle } from "@ui-sdk/core/testing";
+import { createAgent } from "@ui-sdk/web/agent";
 import { afterEach, expect, test } from "vitest";
 import "../ai-message/ai-message.ts";
 import type { AiMessageElement } from "../ai-message/ai-message.ts";
@@ -124,4 +125,18 @@ test("strings translate the heading, the button and the citation names", async (
   expect(within(element).getByRole("button", { name: "Ver 2 más" })).toBeDefined();
   expect(element.citation(1)!.querySelector("a")!.getAttribute("aria-label")).toBe("Fuente 1: Using custom elements");
   expect(element.citation(7)).toBeNull();
+});
+
+test("an agent sees every control named, and can show the rest of the sources", async () => {
+  const element = await mountSources((el) => {
+    el.sources = sources;
+    el.max = 1;
+  });
+  const agent = createAgent();
+  const components = agent.snapshot().filter((entry) => !entry.offPage && entry.component !== "more");
+  for (const entry of components) expect(entry.label, `${entry.component} ${entry.ref} has no name`).toBeTruthy();
+  expect(components.map((entry) => entry.label)).toContain("Show 2 more");
+  const result = await agent.act({ steps: [{ ref: "Show 2 more", action: "press" }] });
+  expect(result.ok, result.error?.message).toBe(true);
+  expect(within(element).getAllByRole("listitem")).toHaveLength(3);
 });

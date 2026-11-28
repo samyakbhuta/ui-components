@@ -30,6 +30,10 @@ export type ApprovalStrings = {
   reasonPlaceholder: string;
   /** The line shown, and announced, once decided. With a reason, it says the person suggested something else. */
   decided: (decision: ApprovalDecision, reason: string | null) => string;
+  /** What an agent pressing Allow once would do, asked of the person first (`data-agent-confirm`). */
+  allowConfirm: (name: string) => string;
+  /** What an agent pressing Always allow would do, asked of the person first. */
+  alwaysConfirm: (name: string) => string;
 };
 
 export const defaultApprovalStrings: ApprovalStrings = {
@@ -43,6 +47,8 @@ export const defaultApprovalStrings: ApprovalStrings = {
   reasonPlaceholder: "Optional: tell it what to do instead",
   decided: (decision, reason) =>
     decision === "allow" ? "Allowed once" : decision === "always" ? "Always allowed" : reason ? `Denied. Instead, you suggested: “${reason}”` : "Denied",
+  allowConfirm: (name) => (name ? `Allows ${name} to run, this once` : "Allows this action, this once"),
+  alwaysConfirm: (name) => (name ? `Always allows ${name}, without asking again` : "Always allows this action, without asking again"),
 };
 
 /** The events this element fires, by name. */
@@ -314,6 +320,8 @@ export class AiApprovalElement extends BaseElement {
       wrapper.querySelector("button")!.textContent = s[choice];
       wrapper.toggleAttribute("disabled", disabled);
       if (choice === "always") wrapper.hidden = !this.always;
+      // An agent can't approve its own request: the bridge asks the person first. Deny stays free.
+      if (choice !== "deny") wrapper.dataset.agentConfirm = (choice === "allow" ? s.allowConfirm : s.alwaysConfirm)(this.name);
     }
 
     const line = part("decision");

@@ -81,6 +81,7 @@ Set its custom properties on `ai-transcript` itself, or once on an element aroun
 - It's a region named "Conversation", and it can take focus so it scrolls from the keyboard.
 - Finished replies are announced once, after `aria-busy` clears.
 - Jump to latest is a real button, and it shows only when there's something below.
+- Jump to latest and Quote are ui-sdk Buttons, so AI agents can press them too, by their text, while they show.
 - Quote is a real button, after the messages in the tab order, so it can be reached from the keyboard once words are selected. Pressing it keeps the selection it quotes, and Escape hides it.
 - While something waits, the button's name says what for, in words, not only by colour and the dot. Pressing it moves focus into the card. The dot keeps still with Reduce motion, and in Windows high contrast mode the button takes system colours.
 
