@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `<ai-message>`: each message can show when it was sent, and a reply the model that wrote it: "Sonnet 5.5 · 5 minutes ago". Set the new `time` (an ISO time or a `Date`) and `model`. The time keeps up ("just now", "2 minutes ago", "yesterday"), in the page's language, with the full date and time on hover. The line shows when the message is pointed at or has focus, and always on touch screens. New `strings.time` and `strings.fullTime`, the exported `timeAgo`, and the `meta` part.
+- `<ai-chat>`: each `ChatMessage` gets `createdAt`, and each reply `model`: the label of the model chosen in the composer, or what a new `{ type: "model", name }` chunk says. `messages` saves both, and the messages show them.
 - New `<ai-notice>`: something that stops the chat and needs action, like a usage limit, a lapsed sign-in or a lost connection. It has a heading, a message, a tone (`warning`, `error` or `info`), and a reset time that counts down ("Resets at 3:00 PM · in 2 hours") and then says "You can carry on now.". Its actions are buttons or links, like Upgrade plan or Switch to a smaller model. It fires `noticeaction`, `noticeexpire` and, with `dismissible`, `noticedismiss`.
 - `<ai-chat>`: a model can yield `{ type: "notice", … }`, and the message box locks, saying until when, until the notice resets, is dismissed, or the app calls the new `unlock()`. `locked` says whether it is. `messages` keeps the notice, and a saved chat locks again only while it applies. `<ai-transcript>` reads a notice out with its reply, with the new `strings.notice`.
 - `<ai-composer>`: code can set `mode`, `model` and `thinking` while the composer is disabled, like switching to a smaller model during a usage limit. They used to be ignored.

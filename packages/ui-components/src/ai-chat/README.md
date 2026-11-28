@@ -46,6 +46,7 @@ It returns an async generator (or any async iterable) of chunks, or a promise of
 | `{ type: "tool-result", id, summary?, output?, error? }` | Finishes the tool call with that `id`, or fails it with `error`. |
 | `{ type: "sources", sources }` | An [`<ai-sources>`](../ai-sources/README.md) under the reply, linking its `[1]` markers. |
 | `{ type: "suggestions", suggestions }` | Follow-up questions under the reply, which send when pressed. Only the newest reply keeps them. |
+| `{ type: "model", name }` | Which model answered, like `Haiku 5.5`, shown beside the reply's time. Without it, the reply shows the label of the model chosen in the composer, if it has models. Use it when your server picks the model. |
 | `{ type: "question", question, options, multiple?, other?, max?, skippable? }` | An [`<ai-question>`](../ai-question/README.md). The model waits, and the answer comes back as the value of the `yield`. |
 | `{ type: "questions", label?, questions }` | An [`<ai-questions>`](../ai-questions/README.md) set: several questions, one at a time. The model waits, and `{ answers }` comes back as the value of the `yield`, one per question. Typing in the box answers the question showing. |
 | `{ type: "approval", name, label?, description?, input?, always?, reason? }` | An [`<ai-approval>`](../ai-approval/README.md). The model waits, and the decision comes back as the value of the `yield`. |
@@ -179,7 +180,9 @@ chat.addEventListener("chatchange", (event) => localStorage.setItem("chat", JSON
 chat.messages = JSON.parse(localStorage.getItem("chat") ?? "[]");
 ```
 
-Each `ChatMessage` is `{ role, text }`, plus what the reply held:
+Each `ChatMessage` is `{ role, text, createdAt }`, plus what the reply held:
+- `createdAt`: when it was sent, or when the reply started, as an ISO time. Each message shows it as "5 minutes ago" on hover or focus (see [`<ai-message>`'s Time and model](../ai-message/README.md#time-and-model));
+- `model`: on a reply, the label of the model that wrote it;
 - `error`, `stopped` and `feedback`;
 - `thinking`, `tools` and `sources`;
 - a `question` with its `answer`, a set of `questions` with its `answers`, an `approval` with its `decision`, or a `plan` with its `decision`.
@@ -271,6 +274,7 @@ Style the parts inside through their own custom properties and parts.
 - streaming, a promise, Stop and the signal;
 - errors with `chaterror`, and Retry;
 - thinking, tools, sources and follow-ups;
+- each message's time, and the reply's model, from the composer or a `model` chunk;
 - questions, approvals and plans, pressed and typed;
 - Always allow;
 - restoring a saved chat and answering its open question;

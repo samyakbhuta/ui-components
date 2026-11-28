@@ -63,8 +63,9 @@ test("Export downloads the chat as a Markdown file", async ({ page }) => {
   expect(file.suggestedFilename()).toBe("write-a-haiku-about-web-components.md");
   const markdown = await readFile(await file.path(), "utf8");
   expect(markdown).toMatch(/^# Write a haiku about web components\n/);
-  expect(markdown).toContain("**You** · Auto · Sonnet 5.5 · Thinking: Off\n\nWrite a haiku about web components");
-  expect(markdown).toContain("**Assistant**\n\nCustom tags bloom —");
+  // Each message has its time, and the reply its model.
+  expect(markdown).toMatch(/\*\*You\*\* · [^\n]*\d:\d\d[^\n]* · Auto · Sonnet 5\.5 · Thinking: Off\n\nWrite a haiku about web components/);
+  expect(markdown).toMatch(/\*\*Assistant\*\* · Sonnet 5\.5 · [^\n]*\d:\d\d[^\n]*\n\nCustom tags bloom —/);
 });
 
 test("Rename from the keyboard updates the list and the heading, then returns focus", async ({ page }) => {

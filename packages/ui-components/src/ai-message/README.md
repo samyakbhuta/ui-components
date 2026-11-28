@@ -45,13 +45,16 @@ reply.done(); // renders what's left and fires messagecomplete
 | `feedback` | none | `good` or `bad`: which of Good response and Bad response is pressed, when `actions` includes `feedback`. |
 | `versions` | `1` | How many versions of this reply there are, after Retry or Edit. From 2, Previous and Next arrows step between them. |
 | `version` | the last | Which version is showing, counting from 1. |
+| `time` | none | When it was sent, as an ISO time. Shown as "5 minutes ago", kept up to date, with the full date and time on hover. See [Time and model](#time-and-model). |
+| `model` | none | The model that wrote it, like `Sonnet 5.5`, shown before the time. Set as text. |
 
 ## Properties and methods
 
 | Member | What it does |
 | --- | --- |
 | `text` | The message's source. Setting it replaces the message. |
-| `from`, `format`, `streaming`, `actions`, `error`, `feedback`, `versions`, `version` | The same as the attributes. `actions` is an array of `copy`, `retry`, `edit` and `feedback`, and also takes the attribute's words as a string; `error` and `feedback` are `null` when unset. |
+| `from`, `format`, `streaming`, `actions`, `error`, `feedback`, `versions`, `version`, `model` | The same as the attributes. `actions` is an array of `copy`, `retry`, `edit` and `feedback`, and also takes the attribute's words as a string; `error` and `feedback` are `null` when unset. |
+| `time` | The same as the attribute, as a `Date`, or `null`. Also takes an ISO string or milliseconds. |
 | `attachments` | Files shown above the text: `File` objects, like the ones `<ai-composer>` sends, or `{ name, type?, size?, url? }`. Images show as thumbnails that open full size; other files show their name and size, and open in a new tab when they have a `url`. |
 | `strings` | Words to replace; see below. |
 | `icons` | SVG markup for `copy`, `copied`, `retry`, `edit`, `good`, `bad`, `error`, `previous`, `next`, `file` and `close`. |
@@ -180,6 +183,25 @@ If your highlighter produces an HTML string, sanitize it before turning it into 
 
 The colours are custom properties you can change: `--ai-message-syntax-comment`, `-keyword`, `-string`, `-number`, `-function`, `-type`, `-tag`, `-builtin` and `-variable`. Tokens are `comment`, `string`, `keyword`, `builtin`, `number`, `type`, `function`, `property`, `tag`, `attribute`, `variable`, `inserted` and `deleted`, for your own rules like `ai-message [data-token="comment"] { font-style: normal }`.
 
+### Time and model
+
+```html
+<ai-message time="2026-11-28T15:04:00Z" model="Sonnet 5.5">Here's the summary.</ai-message>
+```
+
+Below the message, a small line says "Sonnet 5.5 · 5 minutes ago". It shows when the message is pointed at, or when something in it has focus, so it stays out of the way. On a touch screen, which can't point, it always shows. To always show it everywhere:
+
+```css
+ai-message [data-part="meta"] {
+  opacity: 1;
+}
+```
+
+- **The time keeps up:** "just now", then "2 minutes ago", "1 hour ago", "yesterday", "3 weeks ago", in the page's language. One timer updates every message on the page, every 30 seconds while any is under an hour old, then each minute. A message taken off the page stops, and catches up when it's back.
+- **The full date and time** shows on hover, from the `<time>` element's `title`, and its `datetime` holds the exact time.
+- **No time and no model:** no line.
+- [`<ai-chat>`](../ai-chat/README.md) sets both on every message for you, and saves them.
+
 ## Translation
 
 Every word the message shows or says comes from `strings`, so an app in another language can replace them all. Give only the ones you want to change; the rest stay in English.
@@ -216,18 +238,20 @@ chat.strings = { message: { closeViewer: "Fermer", previousImage: "Image précé
 | `previousImage`, `nextImage` | `Previous image`, `Next image`: the image viewer's arrows, said by screen readers |
 | `imagePosition(index, count)` | `2 of 3`: shown between the image viewer's arrows |
 | `closeViewer` | `Close`: the image viewer's close button, said by screen readers |
+| `time(at, now, lang)` | `5 minutes ago`: how long ago it was sent. The default, `timeAgo`, is exported, and uses `Intl.RelativeTimeFormat` in `lang`, the page's language |
+| `fullTime(at, lang)` | `Saturday, November 28, 2026 at 3:04 PM`: the time's tooltip |
 
 ## Slots
 
 Put an [`<ai-sources>`](../ai-sources/README.md) in the footer and the reply's `[1]` markers become links to its sources, with a preview on hover or focus.
 
 
-Children with `slot="header"` go above the text, and `slot="footer"` below it, whether they're there at the start or added later. Put an [`<ai-thinking>`](../ai-thinking/README.md) in the header and details like the model in the footer:
+Children with `slot="header"` go above the text, and `slot="footer"` below it, before the time and model, whether they're there at the start or added later. Put an [`<ai-thinking>`](../ai-thinking/README.md) in the header and other details in the footer:
 
 ```html
 <ai-message streaming>
   <ai-thinking slot="header" timer></ai-thinking>
-  <small slot="footer">Sonnet 5.5</small>
+  <small slot="footer">Used 3 tools</small>
 </ai-message>
 ```
 
@@ -240,14 +264,14 @@ Set its custom properties on `ai-message` itself, or once on an element around i
 | Custom property | Default |
 | --- | --- |
 | `--ai-message-bubble` | the user bubble's background |
-| `--ai-message-muted` | quotes, code labels and action icons |
+| `--ai-message-muted` | quotes, code labels, action icons, and the time and model |
 | `--ai-message-code-background` | code and table headers |
 | `--ai-message-border` | code blocks, tables, quotes and rules |
 | `--ai-message-max-width` | `85%`: how wide the text gets |
 | `--ai-message-error` | the error's border and icon, at least 3:1 in light and dark |
 | `--ai-message-thumbnail-size` | `6rem`: the size of image attachments |
 
-Parts: `[data-part="body"]`, `attachments`, `attachment` (with `data-kind="image"` or `"file"`), `attachment-open` (an image's button), `file-link`, `file-name`, `file-size`, the viewer's `viewer`, `viewer-backdrop`, `viewer-content`, `viewer-header`, `viewer-title`, `viewer-position`, `viewer-close`, `viewer-stage`, `viewer-image`, `viewer-previous` and `viewer-next`, `error`, `actions`, `versions`, `version`, `feedback`, `code-block`, `code-header`, `code-language`, `code-copy` and `table`. Buttons show `data-copied` for a moment after copying, and the message has `data-error` while it shows an error.
+Parts: `[data-part="body"]`, `attachments`, `attachment` (with `data-kind="image"` or `"file"`), `attachment-open` (an image's button), `file-link`, `file-name`, `file-size`, the viewer's `viewer`, `viewer-backdrop`, `viewer-content`, `viewer-header`, `viewer-title`, `viewer-position`, `viewer-close`, `viewer-stage`, `viewer-image`, `viewer-previous` and `viewer-next`, `error`, `meta` (the line with `model` and `time`), `actions`, `versions`, `version`, `feedback`, `code-block`, `code-header`, `code-language`, `code-copy` and `table`. Buttons show `data-copied` for a moment after copying, and the message has `data-error` while it shows an error.
 
 ## Accessibility
 
@@ -257,6 +281,7 @@ Parts: `[data-part="body"]`, `attachments`, `attachment` (with `data-kind="image
 - An error is announced once when it's set. Its colour isn't the only cue: it has an icon and a border, and the text says what went wrong.
 - Attachments are a list named "Attachments". Each image is a button named "View" and its file name, and a file with an address is a link named "Open" and its file name "in a new tab".
 - The image viewer is a modal dialog named by the file name. Focus starts on Close and stays inside until it closes, then returns to the thumbnail of the image last shown. The image's alternative text is its file name. "2 of 3" is read out as it changes. The arrows are named "Previous image" and "Next image", are disabled at either end, and move focus to the other one there. In right-to-left text, Left and Right swap, and so do the arrows' icons.
+- The time is a `<time>` element, so screen readers read "5 minutes ago" with the message, even while it's faded out. It isn't part of what [`<ai-transcript>`](../ai-transcript/README.md) reads out when a reply finishes. With Reduce motion on, it appears without fading. In Windows high contrast mode it always shows.
 - While streaming, the message is `aria-busy`. The caret is drawn in CSS, so it isn't read out, and it doesn't blink with Reduce motion turned on.
 - AI agents can press Copy, Retry, Edit, Previous and Next, and set Good response or Bad response with `setPressed`, through ui-sdk's agent bridge.
 
@@ -266,5 +291,5 @@ Parts: `[data-part="body"]`, `attachments`, `attachment` (with `data-kind="image
 - `markdown.ts`: the safe Markdown renderer.
 - `highlight.ts`: the syntax highlighter.
 - `ai-message.css`: its styles.
-- `ai-message.test.ts`: tests for the Markdown it covers, attempts to inject HTML and scripts, streaming, actions, errors, feedback, versions, attachments and the image viewer, slots and agent use.
+- `ai-message.test.ts`: tests for the Markdown it covers, attempts to inject HTML and scripts, streaming, actions, errors, feedback, versions, attachments and the image viewer, the time and model, slots and agent use.
 - `highlight.test.ts`: tests for each language, unfinished code, lossless output and the `highlighter` property.

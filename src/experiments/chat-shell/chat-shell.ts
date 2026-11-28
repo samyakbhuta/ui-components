@@ -541,6 +541,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
           from: message.from,
           text: message.text,
           meta: message.querySelector(".message-meta")?.textContent ?? undefined,
+          createdAt: message.getAttribute("time") ?? undefined,
+          model: message.model || undefined,
           prompt: prompts.get(message),
           thinking: thinking
             ? { seconds: thinking.duration ?? Math.round(thinking.elapsed / 1000), reasoning: thinking.reasoning }
@@ -816,6 +818,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     if (stored.notice) message.append(noticeFor(stored.notice));
     if (stored.script) scripts.set(message, stored.script);
     if (stored.meta) message.append(meta(stored.meta));
+    if (stored.createdAt) message.time = stored.createdAt;
+    if (stored.model) message.model = stored.model;
     showWork(message, message.version === message.versions);
     return message;
   }
@@ -834,6 +838,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     for (const stored of chat.messages) {
       if (stored.from === "user") {
         const message = userMessage(stored.text, stored.meta ?? "", stored.prompt);
+        if (stored.createdAt) message.time = stored.createdAt;
         lastPrompt = stored.prompt ? detailFrom(stored.text, stored.prompt) : undefined;
         transcript.append(message);
       } else {
@@ -880,6 +885,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     const { signal } = controller;
     const message = replyMessage();
     message.streaming = true;
+    message.time = new Date();
+    if (detail.model) message.model = labelOf(defaultModels, detail.model);
     asked.set(message, detail);
     if (script) scripts.set(message, script);
     const earlier = replacing ? (versionTexts.get(replacing) ?? [replacing.text]) : [];
@@ -1071,7 +1078,9 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       references: detail.references,
       files: detail.files.map((file) => file.name),
     };
-    transcript.append(userMessage(detail.text, line, prompt, detail.files));
+    const sent = userMessage(detail.text, line, prompt, detail.files);
+    sent.time = new Date();
+    transcript.append(sent);
     save();
     startReply(detail, undefined, script);
   }
