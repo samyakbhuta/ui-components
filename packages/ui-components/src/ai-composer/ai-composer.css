@@ -4,31 +4,30 @@
  */
 @layer ai-composer {
   ai-composer {
-    --ai-composer-background: Field;
-    --ai-composer-color: FieldText;
-    --ai-composer-border: 1px solid color-mix(in srgb, FieldText 55%, Field);
-    --ai-composer-radius: 1.25rem;
-    --ai-composer-accent: FieldText;
-    --ai-composer-accent-text: Field;
-    --ai-composer-font: inherit;
-    --ai-composer-max-height: 12rem;
-    --ai-composer-muted: color-mix(in srgb, var(--ai-composer-color) 68%, var(--ai-composer-background));
-    --ai-composer-soft: color-mix(in srgb, var(--ai-composer-color) 8%, var(--ai-composer-background));
-    --ai-composer-hover: color-mix(in srgb, var(--ai-composer-color) 10%, var(--ai-composer-background));
-
+    --_ai-composer-background: var(--ai-composer-background, Field);
+    --_ai-composer-color: var(--ai-composer-color, FieldText);
+    --_ai-composer-border: var(--ai-composer-border, 1px solid color-mix(in srgb, FieldText 55%, Field));
+    --_ai-composer-radius: var(--ai-composer-radius, 1.25rem);
+    --_ai-composer-accent: var(--ai-composer-accent, FieldText);
+    --_ai-composer-accent-text: var(--ai-composer-accent-text, Field);
+    --_ai-composer-font: var(--ai-composer-font, inherit);
+    --_ai-composer-max-height: var(--ai-composer-max-height, 12rem);
+    --_ai-composer-muted: var(--ai-composer-muted, color-mix(in srgb, var(--_ai-composer-color) 68%, var(--_ai-composer-background)));
+    --_ai-composer-soft: var(--ai-composer-soft, color-mix(in srgb, var(--_ai-composer-color) 8%, var(--_ai-composer-background)));
+    --_ai-composer-hover: var(--ai-composer-hover, color-mix(in srgb, var(--_ai-composer-color) 10%, var(--_ai-composer-background)));
     display: block;
     container-type: inline-size;
-    font: var(--ai-composer-font);
+    font: var(--_ai-composer-font);
   }
 
   ai-composer [data-part="card"] {
     display: grid;
     gap: 0.5rem;
     padding: 0.75rem;
-    border: var(--ai-composer-border);
-    border-radius: var(--ai-composer-radius);
-    background: var(--ai-composer-background);
-    color: var(--ai-composer-color);
+    border: var(--_ai-composer-border);
+    border-radius: var(--_ai-composer-radius);
+    background: var(--_ai-composer-background);
+    color: var(--_ai-composer-color);
   }
 
   ai-composer [data-part="card"]:has(textarea:focus-visible) {
@@ -37,7 +36,7 @@
 
   ai-composer [data-part="card"][data-dragging] {
     border-style: dashed;
-    background: color-mix(in srgb, var(--ai-composer-color) 6%, var(--ai-composer-background));
+    background: color-mix(in srgb, var(--_ai-composer-color) 6%, var(--_ai-composer-background));
   }
 
   ai-composer[disabled] [data-part="card"] {
@@ -50,7 +49,7 @@
     box-sizing: border-box;
     width: 100%;
     min-height: calc(var(--ai-composer-rows, 1) * 1.5em + 0.5rem);
-    max-height: var(--ai-composer-max-height);
+    max-height: var(--_ai-composer-max-height);
     padding: 0.25rem;
     border: 0;
     background: none;
@@ -63,12 +62,12 @@
 
   /* Firefox dims placeholders with opacity, which would undo this color. */
   ai-composer textarea::placeholder {
-    color: color-mix(in srgb, var(--ai-composer-color) 60%, var(--ai-composer-background));
+    color: color-mix(in srgb, var(--_ai-composer-color) 60%, var(--_ai-composer-background));
     opacity: 1;
   }
 
   ai-composer [data-part="menu-hint"] {
-    color: color-mix(in srgb, var(--ai-composer-color) 60%, var(--ai-composer-background));
+    color: color-mix(in srgb, var(--_ai-composer-color) 60%, var(--_ai-composer-background));
   }
 
   /* Attachments */
@@ -91,7 +90,7 @@
     padding: 0.25rem;
     padding-inline-start: 0.625rem;
     border-radius: 0.5rem;
-    background: var(--ai-composer-soft);
+    background: var(--_ai-composer-soft);
     font-size: 0.8125rem;
   }
 
@@ -111,7 +110,7 @@
 
   ai-composer [data-part="attachment-size"] {
     flex: none;
-    color: color-mix(in srgb, var(--ai-composer-color) 70%, var(--ai-composer-background));
+    color: color-mix(in srgb, var(--_ai-composer-color) 70%, var(--_ai-composer-background));
   }
 
   ai-composer [data-part="attachment-remove"] {
@@ -126,7 +125,7 @@
   }
 
   ai-composer [data-part="attachment-remove"]:hover {
-    background: color-mix(in srgb, var(--ai-composer-color) 14%, var(--ai-composer-background));
+    background: color-mix(in srgb, var(--_ai-composer-color) 14%, var(--_ai-composer-background));
   }
 
   /* Bar */
@@ -182,7 +181,7 @@
 
   ai-composer [data-button]:not(:disabled, [aria-disabled="true"]):hover,
   ai-composer [data-button][aria-expanded="true"] {
-    background: var(--ai-composer-hover);
+    background: var(--_ai-composer-hover);
   }
 
   ai-composer [data-button]:focus-visible {
@@ -194,12 +193,12 @@
   }
 
   ai-composer [data-part="select-name"] {
-    color: var(--ai-composer-muted);
+    color: var(--_ai-composer-muted);
   }
 
   ai-composer [data-part="chevron"] {
     display: inline-flex;
-    color: var(--ai-composer-muted);
+    color: var(--_ai-composer-muted);
   }
 
   ai-composer [data-part="chevron"] svg {
@@ -208,22 +207,22 @@
   }
 
   ai-composer [data-part="voice"] button[data-pressed] {
-    background: var(--ai-composer-accent);
-    color: var(--ai-composer-accent-text);
+    background: var(--_ai-composer-accent);
+    color: var(--_ai-composer-accent-text);
   }
 
   ai-composer [data-part="send-button"] {
-    background: var(--ai-composer-accent);
-    color: var(--ai-composer-accent-text);
+    background: var(--_ai-composer-accent);
+    color: var(--_ai-composer-accent-text);
   }
 
   ai-composer [data-part="send-button"]:not([aria-disabled="true"]):hover {
-    background: color-mix(in srgb, var(--ai-composer-accent) 85%, var(--ai-composer-background));
+    background: color-mix(in srgb, var(--_ai-composer-accent) 85%, var(--_ai-composer-background));
   }
 
   ai-composer [data-part="send-button"][aria-disabled="true"] {
-    background: color-mix(in srgb, var(--ai-composer-color) 15%, var(--ai-composer-background));
-    color: color-mix(in srgb, var(--ai-composer-color) 55%, var(--ai-composer-background));
+    background: color-mix(in srgb, var(--_ai-composer-color) 15%, var(--_ai-composer-background));
+    color: color-mix(in srgb, var(--_ai-composer-color) 55%, var(--_ai-composer-background));
   }
 
   /* Character counter: shown near the limit */
@@ -232,12 +231,12 @@
     padding-inline: 0.25rem;
     font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
-    color: var(--ai-composer-muted);
+    color: var(--_ai-composer-muted);
   }
 
   ai-composer [data-part="counter"][data-limit] {
     font-weight: 600;
-    color: color-mix(in srgb, #d00 70%, var(--ai-composer-color));
+    color: color-mix(in srgb, #d00 70%, var(--_ai-composer-color));
   }
 
   /* Footer: status and hint */
@@ -274,19 +273,19 @@
     isolation: isolate;
     padding: 0.125rem;
     border-radius: 999px;
-    background: var(--ai-composer-soft);
+    background: var(--_ai-composer-soft);
   }
 
   ai-composer [data-slot="segmented-control-item"] {
     padding: 0.3125rem 0.75rem;
     border-radius: 999px;
     font-size: 0.8125rem;
-    color: color-mix(in srgb, var(--ai-composer-color) 72%, var(--ai-composer-background));
+    color: color-mix(in srgb, var(--_ai-composer-color) 72%, var(--_ai-composer-background));
     cursor: default;
   }
 
   ai-composer [data-slot="segmented-control-item"][data-checked] {
-    color: var(--ai-composer-color);
+    color: var(--_ai-composer-color);
     font-weight: 600;
   }
 
@@ -306,9 +305,9 @@
     width: var(--segmented-control-indicator-width);
     height: var(--segmented-control-indicator-height);
     box-sizing: border-box;
-    border: 1px solid color-mix(in srgb, var(--ai-composer-color) 55%, var(--ai-composer-background));
+    border: 1px solid color-mix(in srgb, var(--_ai-composer-color) 55%, var(--_ai-composer-background));
     border-radius: 999px;
-    background: var(--ai-composer-background);
+    background: var(--_ai-composer-background);
     transition-property: top, left, width, height;
     transition-duration: 200ms;
   }

@@ -4,11 +4,10 @@
  */
 @layer ai-transcript {
   ai-transcript {
-    --ai-transcript-gap: 1.25rem;
-
+    --_ai-transcript-gap: var(--ai-transcript-gap, 1.25rem);
     display: flex;
     flex-direction: column;
-    gap: var(--ai-transcript-gap);
+    gap: var(--_ai-transcript-gap);
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -35,7 +34,7 @@
     display: flex;
     justify-content: center;
     height: 0;
-    margin-top: calc(var(--ai-transcript-gap) * -1);
+    margin-top: calc(var(--_ai-transcript-gap) * -1);
     overflow: visible;
   }
 

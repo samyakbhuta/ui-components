@@ -3,19 +3,18 @@
  */
 @layer ai-tool-call {
   ai-tool-call {
-    --ai-tool-call-color: color-mix(in srgb, CanvasText 64%, Canvas);
-    --ai-tool-call-highlight: CanvasText;
-    --ai-tool-call-done: #1f7a35;
-    --ai-tool-call-done: light-dark(#1f7a35, #7fd08f);
-    --ai-tool-call-error: #b3261e;
-    --ai-tool-call-error: light-dark(#b3261e, #ff8a80);
-    --ai-tool-call-border: color-mix(in srgb, CanvasText 18%, Canvas);
-    --ai-tool-call-background: color-mix(in srgb, CanvasText 5%, Canvas);
-    --ai-tool-call-max-height: 16rem;
-
+    --_ai-tool-call-color: var(--ai-tool-call-color, color-mix(in srgb, CanvasText 64%, Canvas));
+    --_ai-tool-call-highlight: var(--ai-tool-call-highlight, CanvasText);
+    --_ai-tool-call-done: var(--ai-tool-call-done, #1f7a35);
+    --_ai-tool-call-done: var(--ai-tool-call-done, light-dark(#1f7a35, #7fd08f));
+    --_ai-tool-call-error: var(--ai-tool-call-error, #b3261e);
+    --_ai-tool-call-error: var(--ai-tool-call-error, light-dark(#b3261e, #ff8a80));
+    --_ai-tool-call-border: var(--ai-tool-call-border, color-mix(in srgb, CanvasText 18%, Canvas));
+    --_ai-tool-call-background: var(--ai-tool-call-background, color-mix(in srgb, CanvasText 5%, Canvas));
+    --_ai-tool-call-max-height: var(--ai-tool-call-max-height, 16rem);
     display: block;
     font-size: 0.875rem;
-    color: var(--ai-tool-call-color);
+    color: var(--_ai-tool-call-color);
   }
 
   ai-tool-call + ai-tool-call {
@@ -71,18 +70,18 @@
     content: "";
     width: 0.75rem;
     height: 0.75rem;
-    border: 2px solid var(--ai-tool-call-border);
-    border-top-color: var(--ai-tool-call-highlight);
+    border: 2px solid var(--_ai-tool-call-border);
+    border-top-color: var(--_ai-tool-call-highlight);
     border-radius: 50%;
     animation: ai-tool-call-spin 0.8s linear infinite;
   }
 
   ai-tool-call[data-done] [data-part="icon"] {
-    color: var(--ai-tool-call-done);
+    color: var(--_ai-tool-call-done);
   }
 
   ai-tool-call[data-error] [data-part="icon"] {
-    color: var(--ai-tool-call-error);
+    color: var(--_ai-tool-call-error);
   }
 
   ai-tool-call [data-part="label"] {
@@ -93,8 +92,8 @@
   }
 
   ai-tool-call [data-shimmer] {
-    background: linear-gradient(90deg, transparent 30%, var(--ai-tool-call-highlight) 50%, transparent 70%) 0 0 / 250% 100% no-repeat,
-      linear-gradient(var(--ai-tool-call-color), var(--ai-tool-call-color));
+    background: linear-gradient(90deg, transparent 30%, var(--_ai-tool-call-highlight) 50%, transparent 70%) 0 0 / 250% 100% no-repeat,
+      linear-gradient(var(--_ai-tool-call-color), var(--_ai-tool-call-color));
     background-clip: text;
     color: transparent;
     animation: ai-tool-call-shimmer 2s linear infinite;
@@ -114,12 +113,12 @@
 
   ai-tool-call pre {
     margin: 0 0 0.5rem;
-    max-height: var(--ai-tool-call-max-height);
+    max-height: var(--_ai-tool-call-max-height);
     overflow: auto;
     padding: 0.5rem 0.75rem;
-    border: 1px solid var(--ai-tool-call-border);
+    border: 1px solid var(--_ai-tool-call-border);
     border-radius: 0.5rem;
-    background: var(--ai-tool-call-background);
+    background: var(--_ai-tool-call-background);
     color: CanvasText;
     font-family: ui-monospace, monospace;
     font-size: 0.8125rem;
@@ -133,7 +132,7 @@
   }
 
   ai-tool-call pre[data-part="error"] {
-    border-color: var(--ai-tool-call-error);
+    border-color: var(--_ai-tool-call-error);
   }
 
   ai-tool-call [data-part="announcement"] {
@@ -164,12 +163,12 @@
   @media (prefers-reduced-motion: reduce) {
     ai-tool-call[data-running] [data-part="icon"]::before {
       animation: none;
-      border-color: var(--ai-tool-call-highlight);
+      border-color: var(--_ai-tool-call-highlight);
     }
 
     ai-tool-call [data-shimmer] {
       background: none;
-      color: var(--ai-tool-call-color);
+      color: var(--_ai-tool-call-color);
       animation: none;
     }
 

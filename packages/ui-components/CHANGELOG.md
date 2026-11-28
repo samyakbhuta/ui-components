@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- `<ai-chat>`'s `strings` also takes words for the parts it makes, so a chat can be translated in full: `message` (Copy, Retry, Edit and the rest), `thinking`, `toolCall`, `sources`, `question` and `approval`. Each is passed on as that part's `strings`, including to parts already on the page when `strings` changes. The buttons under each reply used to keep their English names.
+- Custom properties can be set on any element around a component, like `ai-chat` or `:root`, to style every one inside at once. Each component used to set its defaults on itself, so only rules on the component itself took effect. Its defaults now sit in private properties, like `--_ai-composer-accent`, which read the public ones first. Rules on the component itself work as before.
+
 ## 0.1.0-beta.4 (2026-11-28)
 
 - New `<ai-chat>`: a whole chat in one tag. Give it a `model` that streams a reply, as an async generator or a promise, and it runs the conversation: your messages and the replies, Stop (through an `AbortSignal`), Retry, errors and `chaterror`, starters and follow-ups. A model can also yield thinking, tool calls and their results, and sources. When it yields a question or an approval, the chat waits for the person, and their answer or decision comes back as the value of that `yield`; typing in the box answers too. `messages` saves and restores the conversation as plain data, `chatchange` says when to save, and `alwaysAllowed` keeps the tools chosen with Always allow.

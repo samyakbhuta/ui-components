@@ -3,13 +3,12 @@
  */
 @layer ai-chat {
   ai-chat {
-    --ai-chat-gap: 0.75rem;
-    --ai-chat-muted: color-mix(in srgb, CanvasText 68%, Canvas);
-
+    --_ai-chat-gap: var(--ai-chat-gap, 0.75rem);
+    --_ai-chat-muted: var(--ai-chat-muted, color-mix(in srgb, CanvasText 68%, Canvas));
     /* The conversation fills the height you give the chat; the composer stays at the bottom. */
     display: grid;
     grid-template-rows: minmax(0, 1fr) auto;
-    gap: var(--ai-chat-gap);
+    gap: var(--_ai-chat-gap);
     min-height: 0;
   }
 
@@ -19,7 +18,7 @@
 
   ai-chat [data-part="stopped"] {
     margin: 0.25rem 0 0;
-    color: var(--ai-chat-muted);
+    color: var(--_ai-chat-muted);
     font-size: 0.8125rem;
   }
 

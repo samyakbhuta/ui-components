@@ -237,7 +237,7 @@ Change what the chat says, to match your app's voice. Here it's a bakery's helpe
 
 **Try it:** check the placeholder and the hint under the box. Then send a message and press Stop while the answer streams in, to see your note under it.
 
-**Good to know:** the buttons under each reply, like Copy and Retry, keep their English names for now: `<ai-chat>` doesn't pass words on to them yet.
+**Good to know:** in 0.1.0-beta.4, the version the quick start installs, the buttons under each reply, like Copy and Retry, keep their English names. From the release after it, `chat.strings` also takes words for every part the chat makes, like `message: { copy: "Copier", retry: "Réessayer" }`, so a chat can be translated in full.
 
 **Going further:** every word you can change is listed in the [chat's Translation table](../packages/ui-components/src/ai-chat/README.md#translation) and the [message box's](../packages/ui-components/src/ai-composer/README.md#translation).
 
@@ -307,7 +307,7 @@ Give the chat your brand's colour, softer corners and more room, in light and da
 **Try it:** send a message, then switch your computer between light and dark mode.
 
 **Good to know:**
-- Set each component's properties on that component: `--ai-composer-…` on `ai-composer`, `--ai-message-…` on `ai-message`. Each component sets its own defaults on itself, so putting them on `ai-chat` or `:root` has no effect.
+- Set each component's properties on that component, as here: `--ai-composer-…` on `ai-composer`, `--ai-message-…` on `ai-message`. That works in every version. From the release after 0.1.0-beta.4, you can also set them all once, on `ai-chat` or `:root`.
 - Pick colours with enough contrast: the arrow on the Send button needs at least 4.5:1 against its background, in both modes. The colours here pass.
 - Your CSS always wins over the components' own, so you don't need `!important`.
 

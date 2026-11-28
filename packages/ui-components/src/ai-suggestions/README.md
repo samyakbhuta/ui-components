@@ -62,6 +62,8 @@ Nothing is sent while the composer is `busy` or `disabled`.
 
 The CSS sits in the `ai-suggestions` cascade layer, so your unlayered rules win over it.
 
+Set its custom properties on `ai-suggestions` itself, or once on an element around it, like `ai-chat` or `:root`, and every `<ai-suggestions>` inside takes them.
+
 | Custom property | Default | What it changes |
 | --- | --- | --- |
 | `--ai-suggestions-border` | a mix of `CanvasText` and `Canvas` | Each suggestion's border. |

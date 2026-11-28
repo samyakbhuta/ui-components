@@ -139,6 +139,8 @@ Showing the input matters: people should see exactly what they're allowing. Pass
 
 The CSS sits in the `ai-approval` cascade layer.
 
+Set its custom properties on `ai-approval` itself, or once on an element around it, like `ai-chat` or `:root`, and every `<ai-approval>` inside takes them.
+
 **Custom properties:**
 - `--ai-approval-border`
 - `--ai-approval-muted`

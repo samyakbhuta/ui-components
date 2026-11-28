@@ -198,6 +198,8 @@ The CSS sits in the `ai-chat` cascade layer.
 - **Parts:** `[data-part="starters"]`, `follow-ups` and `stopped`.
 - `ai-chat[waiting]` styles a chat that's waiting on the person.
 
+Set its custom properties on `ai-chat` itself, or once on an element around it, like `:root`. Custom properties for the parts inside, like `--ai-composer-accent` or `--ai-message-bubble`, can go on `ai-chat` too, to style just that chat.
+
 Style the parts inside through their own custom properties and parts.
 
 ## Tests

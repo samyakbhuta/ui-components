@@ -87,6 +87,8 @@ list.strings = {
 
 The CSS sits in the `ai-chat-list` cascade layer. Custom properties: `--ai-chat-list-muted`, `--ai-chat-list-hover`, `--ai-chat-list-current` and `--ai-chat-list-status`. Parts: `[data-part="nav"]`, `new`, `groups`, `group`, `group-label`, `list`, `item` (with `data-current` on the open chat, and `data-status` on one with a `status`), `chat`, `title`, `status`, `options`, `menu`, `popup`, `rename`, `empty`, and the dialog's `backdrop`, `dialog`, `dialog-title`, `dialog-description`, `dialog-actions`, `cancel` and `confirm-delete`.
 
+Set its custom properties on `ai-chat-list` itself, or once on an element around it, like `ai-chat` or `:root`, and every `<ai-chat-list>` inside takes them.
+
 Long titles shorten with an ellipsis; the full title is in the tooltip. With a mouse, the options button shows on the chat you point at, the open chat and the focused one; on touch screens it always shows.
 
 ## Accessibility

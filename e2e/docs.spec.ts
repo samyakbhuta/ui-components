@@ -162,6 +162,23 @@ test("the thinking examples show their labels and summaries", async ({ page }) =
   await expect(labels.nth(3)).toHaveText("Thought for 3s", { timeout: 6_000 });
 });
 
+test("custom properties set once, on :root or on ai-chat, reach the components inside", async ({ page }) => {
+  await page.addStyleTag({
+    content: ":root { --ai-composer-accent: rgb(1, 2, 3); } #chat ai-chat { --ai-message-bubble: rgb(4, 5, 6); --ai-chat-gap: 30px; }",
+  });
+  const chat = example(page, "chat").locator("ai-chat");
+  await chat.getByRole("textbox", { name: "Prompt" }).fill("Hello");
+  const send = chat.getByRole("button", { name: "Send" });
+  await expect(send).toHaveCSS("background-color", "rgb(1, 2, 3)");
+  // Every composer on the page takes the :root value, not only the chat's.
+  const other = example(page, "everything").locator("ai-composer");
+  await other.getByRole("textbox", { name: "Prompt" }).fill("Hi");
+  await expect(other.getByRole("button", { name: "Send" })).toHaveCSS("background-color", "rgb(1, 2, 3)");
+  await send.click();
+  await expect(chat.locator("ai-message[from='user'] [data-part='body']")).toHaveCSS("background-color", "rgb(4, 5, 6)");
+  await expect(chat).toHaveCSS("row-gap", "30px");
+});
+
 test.describe("with Reduce motion turned on", () => {
   test.use({ reducedMotion: "reduce" });
 

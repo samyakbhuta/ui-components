@@ -79,6 +79,8 @@ sources.strings = {
 
 The CSS sits in the `ai-sources` cascade layer, so your unlayered rules win over it. It also styles citations inside `<ai-message>`.
 
+Set its custom properties on `ai-sources` itself, or once on an element around it, like `ai-chat` or `:root`, and every `<ai-sources>` inside takes them.
+
 | Custom property | Default | What it changes |
 | --- | --- | --- |
 | `--ai-sources-muted` | a mix of `CanvasText` and `Canvas` | The heading, the site names and the preview's description. |

@@ -323,17 +323,23 @@ If you copied the source instead of installing the package, the same holds, as l
 ## Styling to match your app
 
 - **Your CSS wins.** Each component's CSS sits in its own cascade layer (`ai-composer`, `ai-message` and so on), so any rule of yours that isn't in a layer overrides it, whatever its specificity.
-- **Theme with custom properties first.** For example:
+- **Theme with custom properties first.** Set them on the component, or once on an element around it, and every one inside takes them. For example:
 
   ```css
-  ai-composer {
+  /* Every composer on the page. */
+  :root {
     --ai-composer-accent: #6d28d9;
     --ai-composer-accent-text: white;
+  }
+
+  /* One chat, and the parts inside it. */
+  ai-chat.support {
     --ai-composer-radius: 0.5rem;
+    --ai-message-bubble: #ede9fe;
   }
   ```
 
-  Each README lists its properties, and `data-part` attributes for anything deeper.
+  Each README lists its properties, and `data-part` attributes for anything deeper. Up to 0.1.0-beta.4, the properties only work set on the component itself, like `ai-composer { … }`.
 - **Fonts:** they come from your page.
 - **Colours:** they follow your page's `color-scheme`.
 

@@ -4,14 +4,13 @@
  */
 @layer ai-thinking {
   ai-thinking {
-    --ai-thinking-color: color-mix(in srgb, CanvasText 64%, Canvas);
-    --ai-thinking-highlight: CanvasText;
-    --ai-thinking-duration: 2s;
-    --ai-thinking-band: 20%;
-
+    --_ai-thinking-color: var(--ai-thinking-color, color-mix(in srgb, CanvasText 64%, Canvas));
+    --_ai-thinking-highlight: var(--ai-thinking-highlight, CanvasText);
+    --_ai-thinking-duration: var(--ai-thinking-duration, 2s);
+    --_ai-thinking-band: var(--ai-thinking-band, 20%);
     display: block;
     font-size: 0.875rem;
-    color: var(--ai-thinking-color);
+    color: var(--_ai-thinking-color);
   }
 
   ai-thinking [data-part="summary"] {
@@ -59,15 +58,15 @@
   ai-thinking [data-shimmer] {
     background: linear-gradient(
         90deg,
-        transparent calc(50% - var(--ai-thinking-band)),
-        var(--ai-thinking-highlight) 50%,
-        transparent calc(50% + var(--ai-thinking-band))
+        transparent calc(50% - var(--_ai-thinking-band)),
+        var(--_ai-thinking-highlight) 50%,
+        transparent calc(50% + var(--_ai-thinking-band))
       )
       0 0 / 250% 100% no-repeat,
-      linear-gradient(var(--ai-thinking-color), var(--ai-thinking-color));
+      linear-gradient(var(--_ai-thinking-color), var(--_ai-thinking-color));
     background-clip: text;
     color: transparent;
-    animation: ai-thinking-shimmer var(--ai-thinking-duration) linear infinite;
+    animation: ai-thinking-shimmer var(--_ai-thinking-duration) linear infinite;
   }
 
   ai-thinking [data-part="reasoning"] {
@@ -99,7 +98,7 @@
   @media (prefers-reduced-motion: reduce) {
     ai-thinking [data-shimmer] {
       background: none;
-      color: var(--ai-thinking-color);
+      color: var(--_ai-thinking-color);
       animation: ai-thinking-fade 3s ease-in-out infinite alternate;
     }
 
@@ -110,7 +109,7 @@
 
   @keyframes ai-thinking-fade {
     to {
-      color: var(--ai-thinking-highlight);
+      color: var(--_ai-thinking-highlight);
     }
   }
 

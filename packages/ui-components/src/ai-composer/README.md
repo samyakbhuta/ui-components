@@ -175,6 +175,8 @@ Children with a `slot` attribute move into place, whether they're there at the s
 
 The CSS is imported with the component and sits in the `ai-composer` cascade layer, so any unlayered rule on your page wins over it. It uses system colors, so it follows light and dark mode.
 
+Set its custom properties on `ai-composer` itself, or once on an element around it, like `ai-chat` or `:root`, and every `<ai-composer>` inside takes them.
+
 | Custom property | Default |
 | --- | --- |
 | `--ai-composer-background` | `Field` |
