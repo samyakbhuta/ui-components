@@ -139,7 +139,7 @@ test("words can be replaced, and the label, name and input are text, never HTML"
   expect(view.getAllByRole("button").map((button) => button.textContent)).toEqual(["Autoriser", "Toujours", "Refuser"]);
 });
 
-test("an agent can't allow on its own: the person is asked first, and Deny needs no one", async () => {
+test("an agent can't allow on its own: the person is asked first", async () => {
   const { approval, decisions } = await mount(`<ai-approval name="search" always></ai-approval>`);
   const asked: string[] = [];
   let approve = false;
@@ -155,7 +155,7 @@ test("an agent can't allow on its own: the person is asked first, and Deny needs
   expect((await press("Always allow")).ok).toBe(false);
   expect(decisions).toEqual([]);
   expect(asked).toEqual(["Allows search to run, this once", "Always allows search, without asking again"]);
-  expect(approval.querySelector("[data-part='deny']")!.hasAttribute("data-agent-confirm")).toBe(false);
+  expect(approval.decision).toBeNull();
 
   approve = true;
   const result = await press("Allow once");
@@ -163,8 +163,40 @@ test("an agent can't allow on its own: the person is asked first, and Deny needs
   expect(decisions).toEqual([{ decision: "allow", reason: null }]);
 });
 
-test("an agent can deny without asking anyone", async () => {
-  const { decisions } = await mount(`<ai-approval name="search"></ai-approval>`);
+test("an agent can't deny on its own either: the person is asked, with what it typed", async () => {
+  const { decisions } = await mount(`<ai-approval name="search" reason></ai-approval>`);
+  const asked: string[] = [];
+  let approve = false;
+  const agent = createAgent({
+    allow: (step) => {
+      if (step.confirm) asked.push(step.confirm);
+      return !step.confirm || approve;
+    },
+  });
+  const deny = () =>
+    agent.act({
+      steps: [
+        { ref: "What should it do instead?", action: "setValue", args: ["Search the docs first"] },
+        { ref: "Deny", action: "press" },
+      ],
+    });
+
+  expect((await deny()).ok).toBe(false);
+  expect(decisions).toEqual([]);
+  expect(asked).toEqual(["Denies search, and tells it instead: “Search the docs first”"]);
+
+  approve = true;
+  const result = await deny();
+  expect(result.ok, result.error?.message).toBe(true);
+  expect(decisions).toEqual([{ decision: "deny", reason: "Search the docs first" }]);
+});
+
+test("an app can let agents decide alone, by emptying a confirm sentence", async () => {
+  const { approval, decisions } = await mount(`<ai-approval name="search"></ai-approval>`, (a) => {
+    a.strings = { denyConfirm: () => "" };
+  });
+  expect(approval.querySelector("[data-part='deny']")!.hasAttribute("data-agent-confirm")).toBe(false);
+  expect(approval.querySelector("[data-part='allow']")!.hasAttribute("data-agent-confirm")).toBe(true);
   const result = await createAgent({ allow: (step) => !step.confirm }).act({ steps: [{ ref: "Deny", action: "press" }] });
   expect(result.ok, result.error?.message).toBe(true);
   expect(decisions).toEqual([{ decision: "deny", reason: null }]);

@@ -566,6 +566,9 @@ test("cleaning up asks for approval first; Allow once runs the command and the c
   expect(within(document.body).getByRole("group", { name: "Run a command", description: "Waiting for your approval" })).toBe(approval);
   expect(approval.querySelector("[data-part='input']")!.textContent).toBe("rm -rf dist");
   expect(prompt.placeholder).toBe("Allow or deny above, or tell it what to do instead");
+  // What's typed now denies it, so an agent's Send asks the person first.
+  const sendButton = composer.querySelector<HTMLElement>("[data-part='send']")!;
+  expect(sendButton.dataset.agentConfirm).toBe("Denies run_command, and tells it what's typed instead");
   expect(within(list).getByRole("link", { name: "Open Clean up my project's build folder", description: "Needs your approval" })).toBeDefined();
   // Nothing has run yet.
   expect(replies()[0].querySelector("ai-tool-call")).toBeNull();
@@ -579,6 +582,7 @@ test("cleaning up asks for approval first; Allow once runs the command and the c
   expect(call.summary).toBe("Ran rm -rf dist");
   expect(replies()[1].text).toContain("The build folder is gone");
   expect(prompt.placeholder).toBe("Ask anything…");
+  expect(sendButton.hasAttribute("data-agent-confirm")).toBe(false);
 
   const [saved] = new ChatStore().list();
   expect(saved.messages[1].approval?.decision).toEqual({ decision: "allow", reason: null });

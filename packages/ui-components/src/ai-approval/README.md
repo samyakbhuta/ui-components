@@ -122,6 +122,7 @@ Pair it with [`<ai-tool-call>`](../ai-tool-call/README.md) to show the tool runn
 | `decided(decision, reason)` | `Allowed once`, `Always allowed`, `Denied`, or with a reason `Denied. Instead, you suggested: “${reason}”` |
 | `allowConfirm(name)` | `Allows ${name} to run, this once`: what the person is asked when an agent presses Allow once |
 | `alwaysConfirm(name)` | `Always allows ${name}, without asking again`: what the person is asked when an agent presses Always allow |
+| `denyConfirm(name, reason)` | `Denies ${name}, so it won't run`, or with a reason typed `Denies ${name}, and tells it instead: “${reason}”`: what the person is asked when an agent presses Deny |
 
 ## Safety
 
@@ -135,7 +136,7 @@ Showing the input matters: people should see exactly what they're allowing. Pass
 - The element is a group named by its heading and, while waiting, described by "Waiting for your approval".
 - After deciding, focus moves to the decision line, and a status region announces it.
 - The decision isn't told by colour alone: the line says it in words.
-- ui-sdk's agent bridge can press the buttons: `{ ref: "Deny", action: "press" }`. An agent can't approve its own request, though: Allow once and Always allow carry `data-agent-confirm`, so the bridge asks the person first (through `createAgent`'s `allow`), and refuses the step without one.
+- ui-sdk's agent bridge can press the buttons, like `{ ref: "Allow once", action: "press" }`, but an agent decides nothing here on its own. Allow once, Always allow and Deny all carry `data-agent-confirm`, so the bridge asks the person first (through `createAgent`'s `allow`, with the sentence from `strings`), and refuses the step without one. To let agents make a choice alone, answer yes for it in your `allow`, or set its sentence to `""`, which takes the mark off: `approval.strings = { denyConfirm: () => "" }`.
 
 ## Styling
 
