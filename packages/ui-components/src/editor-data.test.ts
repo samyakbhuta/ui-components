@@ -31,7 +31,7 @@ const hover = (markup: string) => {
 
 test("VS Code completes every tag", () => {
   expect(complete("<ai-|")).toEqual(expect.arrayContaining(Object.keys(attributes)));
-  expect(Object.keys(attributes)).toHaveLength(12);
+  expect(Object.keys(attributes)).toHaveLength(13);
 });
 
 test("VS Code completes attributes and their values, and explains them on hover", () => {

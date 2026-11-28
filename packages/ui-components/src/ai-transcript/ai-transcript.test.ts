@@ -3,6 +3,7 @@ import { expect, test } from "vitest";
 import "../ai-message/ai-message.ts";
 import "../ai-approval/ai-approval.ts";
 import "../ai-plan/ai-plan.ts";
+import "../ai-questions/ai-questions.ts";
 import "../ai-question/ai-question.ts";
 import "./ai-transcript.ts";
 import type { AiTranscriptElement } from "./ai-transcript.ts";
@@ -122,6 +123,25 @@ test("a reply that proposes a plan is read out with it", async () => {
   reply.done();
   await frame();
   expect(announced()).toBe("Here's my plan. Clean up the build Waiting for your review.");
+});
+
+test("a reply that asks several questions is read out as one set", async () => {
+  const { transcript, announced } = await mount();
+  const reply = document.createElement("ai-message");
+  reply.streaming = true;
+  transcript.append(reply);
+  reply.text = "A few questions first.";
+  const set = document.createElement("ai-questions");
+  set.slot = "footer";
+  set.questions = [
+    { question: "Who is it for?", options: ["A friend"] },
+    { question: "Budget?", options: ["Under £20"] },
+  ];
+  reply.append(set);
+  await settle();
+  reply.done();
+  await frame();
+  expect(announced()).toBe("A few questions first. 2 questions, starting with: Who is it for? Waiting for your answers.");
 });
 
 test('announce="none" keeps replies quiet', async () => {

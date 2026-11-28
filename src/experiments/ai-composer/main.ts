@@ -6,6 +6,7 @@ import "@samyakbhuta/ui-components/ai-tool-call";
 import "@samyakbhuta/ui-components/ai-sources";
 import "@samyakbhuta/ui-components/ai-suggestions";
 import "@samyakbhuta/ui-components/ai-question";
+import "@samyakbhuta/ui-components/ai-questions";
 import "@samyakbhuta/ui-components/ai-approval";
 import "@samyakbhuta/ui-components/ai-plan";
 import "@samyakbhuta/ui-components/ai-chat";
@@ -92,6 +93,7 @@ function logEvents(root: HTMLElement) {
     "messageversion",
     "questionanswer",
     "questionskip",
+    "questionsanswer",
     "approvaldecision",
     "plandecision",
     "chatchange",
@@ -127,6 +129,13 @@ function resetDemo(root: HTMLElement, settled: string, events: string[], reset: 
   sync();
 }
 
+/** The questions of the gift demos: someone to buy for, what they like, and a budget. */
+const giftQuestions = [
+  { question: "Who is it for?", options: ["A friend", "A parent", "A child"], other: true },
+  { question: "What do they enjoy?", options: ["Books", "Cooking", "Games", "Gardening"], multiple: true, max: 2 },
+  { question: "What's your budget?", options: ["Under £20", "£20 to £50", "Over £50"], skippable: true },
+];
+
 /** The docs page's pretend model for <ai-chat>: it shows each kind of chunk, by what you ask. */
 const pretendChatModel: ChatModel = async function* ({ messages, signal }) {
   const pause = (ms: number) =>
@@ -146,6 +155,17 @@ const pretendChatModel: ChatModel = async function* ({ messages, signal }) {
     const city = yield { type: "question", question: "Which city should the trip start in?", options: ["Paris", "Rome", "Lisbon"], other: true, skippable: true };
     const name = city && "labels" in city ? city.labels[0] : "Lisbon";
     yield* stream(`**${name}** it is. Saturday: a long walk and lunch. Sunday: a museum, then the train home.`);
+    return;
+  }
+  if (/\bgift\b/i.test(asked)) {
+    yield* stream("Happy to help. A few quick questions first. ");
+    const reply = yield { type: "questions", label: "About the gift", questions: giftQuestions };
+    const answers = reply && "answers" in reply ? reply.answers : [];
+    const said = (index: number) => {
+      const answer = answers[index];
+      return answer && !("skipped" in answer) ? answer.labels.join(" and ").toLowerCase() : "";
+    };
+    yield* stream(`For ${said(0) || "them"}, who enjoys ${said(1) || "a bit of everything"}${said(2) ? `, ${said(2).replace("£", "around £")}` : ""}: a nice book on the subject, a class they can go to, or a handmade voucher for a day out together.`);
     return;
   }
   if (/\bparty\b/i.test(asked)) {
@@ -567,6 +587,28 @@ question.answer = savedAnswer // shows a saved answer, like when a chat opens ag
     },
   },
   {
+    id: "questions",
+    title: "<ai-questions>",
+    intro:
+      "Several questions at once, one at a time, with arrows to move between them. A single choice picked by tap or click moves on by itself; Continue does too. Send on the last one sends every answer together, and the card then sums them up.",
+    html: `<ai-questions class="gift-questions" label="About the gift"></ai-questions>
+<button type="button" class="reset-demo">Reset demo</button>`,
+    script: `questions.questions = [
+  { question: "Who is it for?", options: ["A friend", "A parent", "A child"], other: true },
+  { question: "What do they enjoy?", options: ["Books", "Cooking", "Games", "Gardening"], multiple: true, max: 2 },
+  { question: "What's your budget?", options: ["Under £20", "£20 to £50", "Over £50"], skippable: true },
+]
+questions.addEventListener("questionsanswer", (event) => console.log(event.detail.answers))`,
+    setup: (root) => {
+      const set = root.querySelector<HTMLElementTagNameMap["ai-questions"]>(".gift-questions")!;
+      set.questions = giftQuestions;
+      resetDemo(root, "ai-questions[answered]", ["questionsanswer"], () => {
+        set.questions = giftQuestions;
+        return set.querySelector<HTMLElement>("[role='radio']");
+      });
+    },
+  },
+  {
     id: "approval",
     title: "<ai-approval>",
     intro:
@@ -620,11 +662,11 @@ plan.addEventListener("plandecision", (event) => {
     id: "chat",
     title: "<ai-chat>",
     intro:
-      "A whole chat in one tag: give it a model that streams a reply, and it runs the conversation. This pretend model shows each kind of chunk: thinking, a tool call, text, sources and follow-ups; a question that waits for your answer (ask for a trip); an approval that waits for your decision (ask it to clean up); and a plan to accept, reject or revise (ask it to plan a surprise party). Stop and Retry work too.",
+      "A whole chat in one tag: give it a model that streams a reply, and it runs the conversation. This pretend model shows each kind of chunk: thinking, a tool call, text, sources and follow-ups; a question that waits for your answer (ask for a trip); an approval that waits for your decision (ask it to clean up); and a plan to accept, reject or revise (ask it to plan a surprise party); and several questions at once (ask for help picking a gift). Stop and Retry work too.",
     html: `<ai-chat class="sample-chat" style="height: 34rem">
   <p slot="empty">Ask anything, or try a suggestion.</p>
 </ai-chat>`,
-    script: `chat.suggestions = ["What are custom elements?", "Plan a weekend trip", "Clean up my build folder", "Plan a surprise birthday party"]
+    script: `chat.suggestions = ["What are custom elements?", "Plan a weekend trip", "Clean up my build folder", "Plan a surprise birthday party", "Help me pick a gift"]
 chat.model = async function* ({ messages, signal }) {
   yield { type: "thinking", text: "Looking it up." }
   yield { type: "tool", id: "1", name: "web_search", input: { query } }
@@ -637,7 +679,7 @@ chat.model = async function* ({ messages, signal }) {
 }`,
     setup: (root) => {
       const chat = root.querySelector<HTMLElementTagNameMap["ai-chat"]>(".sample-chat")!;
-      chat.suggestions = ["What are custom elements?", "Plan a weekend trip", "Clean up my build folder", "Plan a surprise birthday party"];
+      chat.suggestions = ["What are custom elements?", "Plan a weekend trip", "Clean up my build folder", "Plan a surprise birthday party", "Help me pick a gift"];
       chat.model = pretendChatModel;
     },
   },

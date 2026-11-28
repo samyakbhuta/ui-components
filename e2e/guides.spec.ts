@@ -15,6 +15,7 @@ const pages = [
     "ai-sources",
     "ai-suggestions",
     "ai-question",
+    "ai-questions",
     "ai-approval",
     "ai-plan",
     "ai-chat-list",

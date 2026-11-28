@@ -12,6 +12,7 @@ const tags = [
   "ai-sources",
   "ai-suggestions",
   "ai-question",
+  "ai-questions",
   "ai-approval",
   "ai-plan",
   "ai-chat",

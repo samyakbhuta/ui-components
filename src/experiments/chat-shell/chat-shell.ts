@@ -10,6 +10,7 @@ import "@samyakbhuta/ui-components/ai-suggestions";
 import "@samyakbhuta/ui-components/ai-question";
 import "@samyakbhuta/ui-components/ai-approval";
 import "@samyakbhuta/ui-components/ai-plan";
+import "@samyakbhuta/ui-components/ai-questions";
 import type { Source } from "@samyakbhuta/ui-components/ai-sources";
 import "@samyakbhuta/ui-components/ai-transcript";
 import {
@@ -32,6 +33,7 @@ import {
   type StoredMessage,
   type StoredApproval,
   type StoredPlan,
+  type StoredQuestionSet,
   type StoredPrompt,
   type StoredQuestion,
   type StoredScript,
@@ -79,7 +81,34 @@ export const suggestions = [
   "Plan a weekend trip for me",
   "Clean up my project's build folder",
   "Plan a surprise birthday party",
+  "Help me pick a gift",
 ];
+
+/** Asking for help with a gift makes the pretend assistant ask three questions at once, with <ai-questions>. */
+const gifting = (text: string) => /\bgift\b/i.test(text);
+
+/** The questions the pretend assistant asks about the gift. */
+export const giftQuestions: StoredQuestionSet = {
+  label: "About the gift",
+  questions: [
+    { question: "Who is it for?", options: ["A friend", "A parent", "A child"], other: true },
+    { question: "What do they enjoy?", options: ["Books", "Cooking", "Games", "Gardening"], multiple: true, max: 2 },
+    { question: "What's your budget?", options: ["Under £20", "£20 to £50", "Over £50"], skippable: true },
+  ],
+};
+
+/** What the pretend assistant says about the gift, before and after the answers. */
+export function giftReply(answers?: StoredQuestionSet["answers"]) {
+  if (!answers) return "Happy to help. Three quick questions first, so the ideas fit.";
+  const said = (index: number) => {
+    const answer = answers[index];
+    return answer && !("skipped" in answer) ? answer.labels.join(" and ").toLowerCase() : "";
+  };
+  const who = said(0) || "them";
+  const likes = said(1) || "a bit of everything";
+  const budget = said(2) ? ` and ${said(2).replace(/^under/, "under").replace(/^over/, "over")}` : "";
+  return `Some ideas for ${who}, who enjoys ${likes}${budget}:\n\n- A beautiful book about what they love.\n- A class or workshop you could do together.\n- A handmade voucher for a day out, with a small treat to open on the day.`;
+}
 
 /** Asking for a party makes the pretend agent propose a plan first, with <ai-plan>. */
 const throwingParty = (text: string) => /\bparty\b/i.test(text);
@@ -173,6 +202,7 @@ const waitsOn = (messages: StoredMessage[]) => {
   if (last.question && !last.question.answer) return "Needs your answer";
   if (last.approval && !last.approval.decision) return "Needs your approval";
   if (last.plan && !last.plan.decision) return "Needs your review";
+  if (last.questionSet && !last.questionSet.answers) return "Needs your answers";
   return null;
 };
 
@@ -436,8 +466,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
 
   /** The newest reply's question or approval, while it waits on the person. */
   const openRequest = () =>
-    messages().at(-1)?.querySelector<HTMLElementTagNameMap["ai-question"] | HTMLElementTagNameMap["ai-approval"] | HTMLElementTagNameMap["ai-plan"]>(
-      "ai-question:not([answered]), ai-approval:not([decided]), ai-plan:not([decided])",
+    messages().at(-1)?.querySelector<HTMLElementTagNameMap["ai-question"] | HTMLElementTagNameMap["ai-approval"] | HTMLElementTagNameMap["ai-plan"] | HTMLElementTagNameMap["ai-questions"]>(
+      "ai-questions:not([answered]), ai-question:not([answered]):not(ai-questions ai-question), ai-approval:not([decided]), ai-plan:not([decided])",
     ) ?? null;
 
   function showTitle() {
@@ -495,13 +525,15 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
           question: questionOf(message),
           approval: approvalOf(message),
           plan: planOf(message),
+          questionSet: questionSetOf(message),
           script: scripts.get(message),
         };
       });
   }
 
   function questionOf(message: AiMessageElement): StoredQuestion | undefined {
-    const asking = message.querySelector("ai-question");
+    // A set's questions are saved with the set.
+    const asking = message.querySelector("ai-question:not(ai-questions ai-question)") as HTMLElementTagNameMap["ai-question"] | null;
     if (!asking) return undefined;
     return {
       question: asking.question,
@@ -554,6 +586,21 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     asking.reason = stored.reason ?? false;
     if (stored.decision) asking.decision = stored.decision;
     return asking;
+  }
+
+  function questionSetOf(message: AiMessageElement): StoredQuestionSet | undefined {
+    const set = message.querySelector("ai-questions");
+    if (!set) return undefined;
+    return { label: set.label || undefined, questions: set.questions, answers: set.answers ?? undefined };
+  }
+
+  function questionSetFor(stored: StoredQuestionSet) {
+    const set = document.createElement("ai-questions");
+    set.slot = "footer";
+    if (stored.label) set.label = stored.label;
+    set.questions = stored.questions;
+    if (stored.answers) set.answers = stored.answers;
+    return set;
   }
 
   function planOf(message: AiMessageElement): StoredPlan | undefined {
@@ -689,6 +736,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     if (stored.sources?.length) message.append(sourcesFor(stored.sources));
     if (stored.question) message.append(questionFor(stored.question));
     if (stored.approval) message.append(approvalFor(stored.approval));
+    if (stored.questionSet) message.append(questionSetFor(stored.questionSet));
     if (stored.plan) message.append(planFor(stored.plan));
     if (stored.script) scripts.set(message, stored.script);
     if (stored.meta) message.append(meta(stored.meta));
@@ -814,6 +862,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
           ? cleanupReply(preapproved ? "allowed" : script.cleanup, script.reason)
           : script?.party
             ? partyReply(script.party, script.mode, script.reason)
+            : script?.gift
+              ? giftReply(script.gift === "answered" ? giftAnswers() : undefined)
             : pretendReply(detail);
       const end = failing(detail.text) ? Math.floor(text.length / 3) : text.length;
       for (let index = 0; index < end; index += 6) {
@@ -829,6 +879,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
             ? approvalFor(cleanupApproval)
             : script?.party === "ask"
               ? planFor(partyPlan)
+              : script?.gift === "ask"
+                ? questionSetFor(giftQuestions)
               : undefined;
         if (asking) {
           // A question or an approval takes the place of follow-ups until it's settled.
@@ -877,6 +929,19 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       (request as HTMLElementTagNameMap["ai-approval"]).decision = { decision: "deny", reason: detail.text };
       return send(detail, { cleanup: "denied", reason: detail.text });
     }
+    // With a set of questions open, what's typed answers the one showing.
+    if (request?.localName === "ai-questions") {
+      const set = request as HTMLElementTagNameMap["ai-questions"];
+      const question = set.querySelectorAll("ai-question")[set.index];
+      if (question) {
+        const answer = typedAnswer(question, detail.text);
+        if (!("skipped" in answer)) {
+          question.value = answer.value;
+          question.submit();
+        }
+      }
+      return;
+    }
     // With a plan open, what's typed asks for changes.
     if (request?.localName === "ai-plan") {
       (request as HTMLElementTagNameMap["ai-plan"]).decision = { decision: "revise", mode: null, feedback: detail.text };
@@ -889,7 +954,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       const step = Number(asking.dataset.step);
       return send(detail, step ? { trip: step + 1 } : undefined);
     }
-    send(detail, planning(detail.text) ? { trip: 1 } : cleaning(detail.text) ? { cleanup: "ask" } : throwingParty(detail.text) ? { party: "ask" } : undefined);
+    send(detail, planning(detail.text) ? { trip: 1 } : cleaning(detail.text) ? { cleanup: "ask" } : throwingParty(detail.text) ? { party: "ask" } : gifting(detail.text) ? { gift: "ask" } : undefined);
   });
 
   document.addEventListener("visibilitychange", showTitle, { signal: page.signal });
@@ -946,6 +1011,19 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       if (!detail) return save();
       startReply(detail, undefined, decision === "deny" ? { cleanup: "denied", reason: reason ?? undefined } : { cleanup: "allowed" });
     });
+  });
+
+  /** The answers sent with the newest set of questions. */
+  function giftAnswers() {
+    return [...transcript.querySelectorAll("ai-questions")].at(-1)?.answers ?? undefined;
+  }
+
+  // The answers to a set of questions continue the same turn.
+  transcript.addEventListener("questionsanswer", (event) => {
+    if (composer.busy) return event.preventDefault();
+    const message = (event.target as HTMLElement).closest("ai-message") as AiMessageElement | null;
+    const detail = message ? asked.get(message) : undefined;
+    queueMicrotask(() => (detail ? startReply(detail, undefined, { gift: "answered" }) : save()));
   });
 
   // A plan's decision continues the same turn. Accepting with a mode switches the composer to it.

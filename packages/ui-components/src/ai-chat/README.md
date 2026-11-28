@@ -47,6 +47,7 @@ It returns an async generator (or any async iterable) of chunks, or a promise of
 | `{ type: "sources", sources }` | An [`<ai-sources>`](../ai-sources/README.md) under the reply, linking its `[1]` markers. |
 | `{ type: "suggestions", suggestions }` | Follow-up questions under the reply, which send when pressed. Only the newest reply keeps them. |
 | `{ type: "question", question, options, multiple?, other?, max?, skippable? }` | An [`<ai-question>`](../ai-question/README.md). The model waits, and the answer comes back as the value of the `yield`. |
+| `{ type: "questions", label?, questions }` | An [`<ai-questions>`](../ai-questions/README.md) set: several questions, one at a time. The model waits, and `{ answers }` comes back as the value of the `yield`, one per question. Typing in the box answers the question showing. |
 | `{ type: "approval", name, label?, description?, input?, always?, reason? }` | An [`<ai-approval>`](../ai-approval/README.md). The model waits, and the decision comes back as the value of the `yield`. |
 | `{ type: "plan", heading?, summary?, plan?, href?, accepts? }` | An [`<ai-plan>`](../ai-plan/README.md): a plan to review, with `plan` as Markdown. The model waits, and the decision comes back as the value of the `yield`. |
 
@@ -143,7 +144,7 @@ chat.messages = JSON.parse(localStorage.getItem("chat") ?? "[]");
 Each `ChatMessage` is `{ role, text }`, plus what the reply held:
 - `error`, `stopped` and `feedback`;
 - `thinking`, `tools` and `sources`;
-- a `question` with its `answer`, an `approval` with its `decision`, or a `plan` with its `decision`.
+- a `question` with its `answer`, a set of `questions` with its `answers`, an `approval` with its `decision`, or a `plan` with its `decision`.
 
 Attachments are kept as they were sent. `File` objects don't survive `JSON.stringify`, so store what you need, like each file's name, before saving.
 
@@ -195,6 +196,7 @@ chat.strings = {
 | `question` | Questions. See [`<ai-question>`'s](../ai-question/README.md#translation). |
 | `approval` | Approvals. See [`<ai-approval>`'s](../ai-approval/README.md#translation). |
 | `plan` | Plans. See [`<ai-plan>`'s](../ai-plan/README.md#translation). |
+| `questions` | Sets of questions: the arrows, Continue and the summary. See [`<ai-questions>`'s](../ai-questions/README.md#translation). |
 
 Leave a key out and that part keeps its own defaults. The composer and the transcript have theirs through `chat.composer.strings` and `chat.transcript.strings`.
 

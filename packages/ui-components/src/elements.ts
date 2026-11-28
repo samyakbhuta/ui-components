@@ -30,6 +30,7 @@ import type {
 import type { AiSourcesElement, Source, SourcesEvents, SourcesStrings } from "./ai-sources/ai-sources.ts";
 import type { AiChatElement, ChatEvents, ChatMessage, ChatModel, ChatStrings } from "./ai-chat/ai-chat.ts";
 import type { AiApprovalElement, ApprovalDecisionDetail, ApprovalEvents, ApprovalStrings } from "./ai-approval/ai-approval.ts";
+import type { AiQuestionsElement, QuestionsEvents, QuestionsItem, QuestionsStrings } from "./ai-questions/ai-questions.ts";
 import type { AiPlanElement, PlanAcceptOption, PlanDecisionDetail, PlanEvents, PlanStrings } from "./ai-plan/ai-plan.ts";
 import type { AiQuestionElement, QuestionAnswer, QuestionEvents, QuestionOption, QuestionStrings } from "./ai-question/ai-question.ts";
 import type { AiSuggestionsElement, Suggestion, SuggestionsEvents, SuggestionsStrings } from "./ai-suggestions/ai-suggestions.ts";
@@ -166,6 +167,15 @@ export interface AiApprovalProps {
   strings?: Partial<ApprovalStrings>;
 }
 
+export interface AiQuestionsProps {
+  label?: string;
+  disabled?: boolean;
+  questions?: QuestionsItem[];
+  index?: number;
+  answers?: QuestionAnswer[] | null;
+  strings?: Partial<QuestionsStrings>;
+}
+
 export interface AiPlanProps {
   heading?: string;
   summary?: string;
@@ -208,6 +218,7 @@ export interface CustomElements {
   "ai-sources": { element: AiSourcesElement; props: AiSourcesProps; events: SourcesEvents };
   "ai-suggestions": { element: AiSuggestionsElement; props: AiSuggestionsProps; events: SuggestionsEvents };
   "ai-question": { element: AiQuestionElement; props: AiQuestionProps; events: QuestionEvents };
+  "ai-questions": { element: AiQuestionsElement; props: AiQuestionsProps; events: QuestionsEvents };
   "ai-approval": { element: AiApprovalElement; props: AiApprovalProps; events: ApprovalEvents };
   "ai-plan": { element: AiPlanElement; props: AiPlanProps; events: PlanEvents };
   "ai-chat": { element: AiChatElement; props: AiChatProps; events: ChatEvents };

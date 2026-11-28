@@ -40,7 +40,7 @@ The element is the scroll container, so give it a height, or put it in a grid or
 | `announce="none"` | Stops reading finished replies out. |
 | `aria-label` | Names the conversation. It defaults to `strings.label`. |
 | `following` (read-only) | `true` while it follows new content. |
-| `strings` | Words to replace: `label` (`Conversation`), `jump` (`Jump to latest`), `reply(text)`, what's read out for a finished reply, `waiting(question)`, read after it for each [`<ai-question>`](../ai-question/README.md) in the reply still waiting for an answer (`${question} Waiting for your answer.`), `approval(label)`, the same for each [`<ai-approval>`](../ai-approval/README.md) still waiting for a decision (`${label} Waiting for your approval.`), and `plan(heading)`, the same for each [`<ai-plan>`](../ai-plan/README.md) (`${heading} Waiting for your review.`). |
+| `strings` | Words to replace: `label` (`Conversation`), `jump` (`Jump to latest`), `reply(text)`, what's read out for a finished reply, `waiting(question)`, read after it for each [`<ai-question>`](../ai-question/README.md) in the reply still waiting for an answer (`${question} Waiting for your answer.`), `approval(label)`, the same for each [`<ai-approval>`](../ai-approval/README.md) still waiting for a decision (`${label} Waiting for your approval.`), `plan(heading)`, the same for each [`<ai-plan>`](../ai-plan/README.md) (`${heading} Waiting for your review.`), and `questions(first, count)`, for each [`<ai-questions>`](../ai-questions/README.md) set (`${count} questions, starting with: ${first} Waiting for your answers.`). |
 | `scrollToLatest({ smooth })` | Scrolls to the newest message and follows again. |
 
 ```ts

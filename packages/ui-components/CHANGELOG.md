@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- New `<ai-questions>`: several questions at once, shown one at a time with "1 of 3" and arrows. Each is an `<ai-question>`. A single choice picked by tap or click moves on by itself, Continue moves on otherwise, and Send on the last sends every answer together, then the card sums them up. It fires `questionsanswer`, and `answers` restores saved ones.
+- `<ai-chat>`: a model can yield `{ type: "questions", questions }` and get every answer back at once. Typing in the box answers the question showing. `<ai-transcript>` reads out a waiting set.
 - New `<ai-plan>`: an agent proposes a plan before it starts. Open plan shows the plan in place, as Markdown, or links to your app's page with `href`. People Accept it, Reject it, or Revise it by saying what to change, and `accepts` adds "Accept and use …" buttons that accept and switch mode at once. It has the same waiting signs as `<ai-approval>`, fires `plandecision`, and `decision` restores a saved one.
 - `<ai-chat>`: a model can yield `{ type: "plan", … }` and wait for the review. Accepting with a mode switches the composer's Mode to it, typing in the box while the plan waits asks for changes, and a saved open plan asks the model again once decided. `<ai-transcript>` reads out a waiting plan, with the new `strings.plan`.
 - `<ai-chat>`'s `strings` also takes words for the parts it makes, so a chat can be translated in full: `message` (Copy, Retry, Edit and the rest), `thinking`, `toolCall`, `sources`, `question` and `approval`. Each is passed on as that part's `strings`, including to parts already on the page when `strings` changes. The buttons under each reply used to keep their English names.

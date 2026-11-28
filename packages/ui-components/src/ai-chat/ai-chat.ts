@@ -3,6 +3,7 @@ import "../ai-composer/ai-composer.ts";
 import "../ai-message/ai-message.ts";
 import "../ai-plan/ai-plan.ts";
 import "../ai-question/ai-question.ts";
+import "../ai-questions/ai-questions.ts";
 import "../ai-sources/ai-sources.ts";
 import "../ai-suggestions/ai-suggestions.ts";
 import "../ai-thinking/ai-thinking.ts";
@@ -12,6 +13,7 @@ import type { AiApprovalElement, ApprovalDecisionDetail, ApprovalStrings } from 
 import type { AiComposerElement, PromptSubmitDetail } from "../ai-composer/ai-composer.ts";
 import type { AiMessageElement, MessageAttachment, MessageFeedback, MessageStrings } from "../ai-message/ai-message.ts";
 import type { AiPlanElement, PlanAcceptOption, PlanDecisionDetail, PlanStrings } from "../ai-plan/ai-plan.ts";
+import type { AiQuestionsElement, QuestionsAnswerDetail, QuestionsItem, QuestionsStrings } from "../ai-questions/ai-questions.ts";
 import type { AiQuestionElement, QuestionAnswer, QuestionOption, QuestionStrings } from "../ai-question/ai-question.ts";
 import type { Source, SourcesStrings } from "../ai-sources/ai-sources.ts";
 import type { Suggestion } from "../ai-suggestions/ai-suggestions.ts";
@@ -57,6 +59,14 @@ export type ChatPlan = {
   accepts?: PlanAcceptOption[];
 };
 
+/** Several questions at once, shown one at a time. `yield` it, and every answer comes back together. */
+export type ChatQuestions = {
+  type: "questions";
+  /** The set's accessible name. Defaults to "Questions". */
+  label?: string;
+  questions: QuestionsItem[];
+};
+
 /** One piece of a reply, as the model yields it. A string is text to add. */
 export type ChatChunk =
   | string
@@ -68,10 +78,11 @@ export type ChatChunk =
   | { type: "suggestions"; suggestions: Suggestion[] }
   | ChatQuestion
   | ChatApproval
-  | ChatPlan;
+  | ChatPlan
+  | ChatQuestions;
 
 /** What comes back from a question, an approval or a plan, as the value of its `yield`. */
-export type ChatAnswer = QuestionAnswer | ApprovalDecisionDetail | PlanDecisionDetail;
+export type ChatAnswer = QuestionAnswer | ApprovalDecisionDetail | PlanDecisionDetail | QuestionsAnswerDetail;
 
 /** A tool the reply ran. */
 export type ChatToolCall = { id: string; name: string; label?: string; summary?: string; input?: unknown; output?: unknown; error?: string };
@@ -92,6 +103,7 @@ export type ChatMessage = {
   question?: ChatQuestion & { answer?: QuestionAnswer };
   approval?: ChatApproval & { decision?: ApprovalDecisionDetail };
   plan?: ChatPlan & { decision?: PlanDecisionDetail };
+  questions?: ChatQuestions & { answers?: QuestionAnswer[] };
 };
 
 /** What `model` gets. `messages` ends with the newest message; `signal` aborts when Stop is pressed. */
@@ -131,6 +143,7 @@ export type ChatStrings = {
   question?: Partial<QuestionStrings>;
   approval?: Partial<ApprovalStrings>;
   plan?: Partial<PlanStrings>;
+  questions?: Partial<QuestionsStrings>;
 };
 
 export const defaultChatStrings: ChatStrings = {
@@ -153,7 +166,7 @@ export type ChatEvents = {
 type Turn = { data: ChatMessage; element: AiMessageElement };
 
 /** A card the model waits on. */
-type Card = AiQuestionElement | AiApprovalElement | AiPlanElement;
+type Card = AiQuestionElement | AiApprovalElement | AiPlanElement | AiQuestionsElement;
 
 /** The parts the chat makes, and which key of `strings` holds each one's words. */
 const partWords = {
@@ -164,6 +177,7 @@ const partWords = {
   "ai-question": "question",
   "ai-approval": "approval",
   "ai-plan": "plan",
+  "ai-questions": "questions",
 } as const;
 type Part = keyof typeof partWords;
 
@@ -177,6 +191,7 @@ const copy = (message: ChatMessage): ChatMessage => ({
   question: message.question ? { ...message.question } : undefined,
   approval: message.approval ? { ...message.approval } : undefined,
   plan: message.plan ? { ...message.plan } : undefined,
+  questions: message.questions ? { ...message.questions } : undefined,
 });
 
 /** An answer typed in the composer: the choice it names, or else an answer of one's own. */
@@ -277,7 +292,10 @@ export class AiChatElement extends BaseElement {
     for (const [tag, key] of Object.entries(partWords) as [Part, (typeof partWords)[Part]][]) {
       if (previous[key] === this.#strings[key]) continue;
       for (const { element } of this.#turns) {
-        for (const part of element.localName === tag ? [element] : element.querySelectorAll(tag)) this.#giveWords(part);
+        for (const part of element.localName === tag ? [element] : element.querySelectorAll(tag)) {
+          // The questions in a set take their button words from the set.
+          if (!part.parentElement?.closest("ai-questions")) this.#giveWords(part);
+        }
       }
     }
   }
@@ -380,6 +398,15 @@ export class AiChatElement extends BaseElement {
         const answer = typedAnswer(this.#questionOf(question), prompt.text);
         question.answer = answer;
         this.#settle(answer);
+      } else if (card.localName === "ai-questions") {
+        // What's typed answers the question showing; the set moves on, or sends them all.
+        const set = card as AiQuestionsElement;
+        const question = set.querySelectorAll<AiQuestionElement>("ai-question")[set.index];
+        const answer = question ? typedAnswer(this.#questionOf(question), prompt.text) : null;
+        if (question && answer && !("skipped" in answer)) {
+          question.value = answer.value;
+          question.submit();
+        }
       } else if (card.localName === "ai-plan") {
         const decision: PlanDecisionDetail = { decision: "revise", mode: null, feedback: prompt.text };
         (card as AiPlanElement).decision = decision;
@@ -539,6 +566,20 @@ export class AiChatElement extends BaseElement {
               else current.data.approval = { ...(asked as ChatApproval), decision: answer as ApprovalDecisionDetail };
               break;
             }
+            case "questions": {
+              const current = reply();
+              const asked: ChatQuestions = { ...chunk, questions: [...chunk.questions] };
+              current.data.questions = asked;
+              const card = this.#questionsElement(chunk);
+              current.element.append(card);
+              finish();
+              turn = null;
+              thinking = null;
+              this.#changed();
+              answer = await this.#wait(card, controller.signal);
+              current.data.questions = { ...asked, answers: (answer as QuestionsAnswerDetail).answers };
+              break;
+            }
             case "plan": {
               // Like a question: the card ends the reply so far, and the model waits for the decision.
               const current = reply();
@@ -678,6 +719,12 @@ export class AiChatElement extends BaseElement {
       else this.#resumeOn(card);
       element.append(card);
     }
+    if (data.questions) {
+      const card = this.#questionsElement(data.questions);
+      if (data.questions.answers) card.answers = data.questions.answers;
+      else this.#resumeOn(card);
+      element.append(card);
+    }
     if (data.plan) {
       const card = this.#planElement(data.plan);
       if (data.plan.decision) card.decision = data.plan.decision;
@@ -708,6 +755,9 @@ export class AiChatElement extends BaseElement {
           turn.data.approval = { ...turn.data.approval, decision };
           if (decision?.decision === "always") this.#allowed.add(turn.data.approval.name);
         }
+        if (card.localName === "ai-questions" && turn.data.questions) {
+          turn.data.questions = { ...turn.data.questions, answers: (card as AiQuestionsElement).answers ?? undefined };
+        }
         if (card.localName === "ai-plan" && turn.data.plan) {
           turn.data.plan = { ...turn.data.plan, decision: (card as AiPlanElement).decision ?? undefined };
         }
@@ -715,7 +765,7 @@ export class AiChatElement extends BaseElement {
         void this.#run({ text: user?.text ?? "", files: [], references: [] });
       });
     };
-    const event = { "ai-question": "questionanswer", "ai-approval": "approvaldecision", "ai-plan": "plandecision" }[card.localName]!;
+    const event = { "ai-question": "questionanswer", "ai-approval": "approvaldecision", "ai-plan": "plandecision", "ai-questions": "questionsanswer" }[card.localName]!;
     card.addEventListener(event, resume, { once: true });
     if (card.localName === "ai-question") card.addEventListener("questionskip", resume, { once: true });
   }
@@ -754,6 +804,19 @@ export class AiChatElement extends BaseElement {
       const decision = event.detail;
       if (decision.decision === "always") this.#allowed.add(chunk.name);
       queueMicrotask(() => this.#settle(decision));
+    });
+    return card;
+  }
+
+  #questionsElement(chunk: ChatQuestions) {
+    const card = this.#part("ai-questions");
+    card.slot = "footer";
+    if (chunk.label) card.label = chunk.label;
+    card.questions = chunk.questions;
+    card.addEventListener("questionsanswer", (event) => {
+      if (card !== this.#waitingOn) return;
+      const detail = event.detail;
+      queueMicrotask(() => this.#settle(detail));
     });
     return card;
   }
@@ -825,6 +888,7 @@ export class AiChatElement extends BaseElement {
       if (this.#placeholder === null) this.#placeholder = composer.getAttribute("placeholder") ?? "";
       const placeholders: Record<string, string> = {
         "ai-question": this.#strings.answerPlaceholder,
+        "ai-questions": this.#strings.answerPlaceholder,
         "ai-approval": this.#strings.approvalPlaceholder,
         "ai-plan": this.#strings.planPlaceholder,
       };
