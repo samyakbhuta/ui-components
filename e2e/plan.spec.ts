@@ -1,4 +1,4 @@
-import { contrastRatio, expect, sidewaysOverflow, test } from "./fixtures";
+import { contrastRatio, expect, sidewaysOverflow, skipThinking, test, waitForReply } from "./fixtures";
 
 test.use({ viewport: { width: 1000, height: 900 } });
 
@@ -108,4 +108,50 @@ test("a plan fits a phone screen, with the buttons stacked", async ({ page }) =>
   const accept = await plan.locator("[data-part='primary']").boundingBox();
   const reject = await plan.locator("[data-part='secondary']").boundingBox();
   expect(accept!.y).toBeLessThan(reject!.y);
+});
+
+test.describe("in the chat shell", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/experiments/chat-shell.html");
+    await skipThinking(page);
+  });
+
+  test("a refactor proposes a plan; Accept and use auto mode switches the Mode, and a reload keeps it", async ({ page }) => {
+    await page.getByRole("button", { name: "Refactor the chat shell into modules" }).click();
+    await waitForReply(page);
+    const plan = page.locator("ai-plan");
+    await expect(plan).toHaveAccessibleDescription("Waiting for your review");
+    await expect(page.getByRole("textbox", { name: "Prompt" })).toHaveAttribute("placeholder", "Accept or reject the plan above, or say what to change");
+    await expect(page.locator("ai-chat-list").getByRole("link", { name: "Refactor the chat shell into modules" })).toHaveAccessibleDescription("Needs your review");
+
+    await expect(page.getByRole("radio", { name: "Plan" })).toBeChecked();
+    await plan.getByRole("button", { name: "Open plan" }).click();
+    await expect(plan.getByRole("heading", { name: "Steps" })).toBeVisible();
+    await plan.getByRole("button", { name: "Accept and use auto mode" }).click();
+    await waitForReply(page);
+    await expect(page.getByRole("radio", { name: "Auto" })).toBeChecked();
+    await expect(page.locator("ai-message:not([from='user'])").last()).toContainText("Starting in Auto mode");
+
+    await page.reload();
+    await expect(page.locator("ai-plan [data-part='decision']")).toHaveText("Accepted, using auto mode");
+    await expect(page.locator("ai-plan").getByRole("button", { name: "Accept" })).toHaveCount(0);
+  });
+
+  test("typing while the plan waits asks for changes", async ({ page }) => {
+    await page.getByRole("button", { name: "Refactor the chat shell into modules" }).click();
+    await waitForReply(page);
+    await page.getByRole("textbox", { name: "Prompt" }).fill("Keep the sidebar in one file");
+    await page.keyboard.press("Enter");
+    await waitForReply(page);
+    await expect(page.locator("ai-plan [data-part='decision']")).toHaveText("Asked for changes: “Keep the sidebar in one file”");
+    await expect(page.locator("ai-message:not([from='user'])").last()).toContainText("Got it: Keep the sidebar in one file.");
+  });
+
+  test("a plan fits a phone screen", async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.getByRole("button", { name: "Refactor the chat shell into modules" }).click();
+    await waitForReply(page);
+    await page.locator("ai-plan").getByRole("button", { name: "Open plan" }).click();
+    expect(await sidewaysOverflow(page)).toBe(0);
+  });
 });
