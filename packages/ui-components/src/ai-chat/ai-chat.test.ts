@@ -275,3 +275,76 @@ test("starters show while it's empty and send; markup inside sets up the compose
   expect(replies()[0].text).toBe("A haiku.");
   expect(chat.messages[0].text).toBe("Write a haiku");
 });
+
+test("strings gives its words to every part the chat makes, as it streams in or from saved messages", async () => {
+  const { chat, replies, waiting } = await mount("<ai-chat></ai-chat>", (c) => {
+    c.strings = {
+      message: { copy: "Copier", retry: "Réessayer", edit: "Modifier" },
+      thinking: { thoughtFor: (duration) => `Réflexion : ${duration}` },
+      toolCall: { done: (name) => `${name} : terminé` },
+      sources: { heading: "Sources citées" },
+      question: { send: "Envoyer" },
+      approval: { allow: "Autoriser une fois", deny: "Refuser" },
+    };
+    c.model = async function* () {
+      yield { type: "thinking", text: "Voyons." };
+      yield { type: "tool", id: "t1", name: "recherche" };
+      yield { type: "tool-result", id: "t1" };
+      yield "Voilà [1].";
+      yield { type: "sources", sources: [{ title: "MDN", url: "https://developer.mozilla.org/" }] };
+      yield { type: "question", question: "Laquelle ?", options: ["A", "B"] };
+    };
+  });
+  await send(chat, "Bonjour");
+  await waiting();
+
+  const user = chat.querySelector<HTMLElement>("ai-message[from='user']")!;
+  expect(within(user).getByRole("button", { name: "Copier" })).toBeTruthy();
+  expect(within(user).getByRole("button", { name: "Modifier" })).toBeTruthy();
+  const reply = replies()[0];
+  expect(reply.strings.retry).toBe("Réessayer");
+  expect(reply.querySelector("ai-thinking")!.textContent).toContain("Réflexion : ");
+  expect(reply.querySelector("ai-tool-call")!.textContent).toContain("recherche : terminé");
+  expect(reply.querySelector("ai-sources")!.textContent).toContain("Sources citées");
+  expect(within(chat.querySelector<HTMLElement>("ai-question")!).getByRole("button", { name: "Envoyer" })).toBeTruthy();
+
+  // A saved approval shows with the words too.
+  chat.messages = [
+    { role: "user", text: "Nettoie" },
+    { role: "assistant", text: "", approval: { type: "approval", name: "rm", label: "Supprimer dist" } },
+  ];
+  await settle();
+  const approval = chat.querySelector<HTMLElement>("ai-approval")!;
+  expect(within(approval).getByRole("button", { name: "Autoriser une fois" })).toBeTruthy();
+  expect(within(approval).getByRole("button", { name: "Refuser" })).toBeTruthy();
+});
+
+test("changing strings updates the parts already shown, and leaving a key out brings back that part's defaults", async () => {
+  const { chat, replies, idle } = await mount("<ai-chat></ai-chat>", (c) => {
+    c.strings = { message: { copy: "Copier" }, thinking: { thoughtFor: (duration) => `Réflexion : ${duration}` } };
+    c.model = async function* () {
+      yield { type: "thinking", text: "Hmm." };
+      yield "Done.";
+    };
+  });
+  await send(chat, "Hi");
+  await idle();
+  const user = chat.querySelector<HTMLElement>("ai-message[from='user']")!;
+  const thinking = replies()[0].querySelector("ai-thinking")!;
+  expect(thinking.textContent).toContain("Réflexion : ");
+
+  chat.strings = { message: { copy: "Copy this" } };
+  await settle();
+  expect(within(user).getByRole("button", { name: "Copy this" })).toBeTruthy();
+  expect(replies()[0].strings.copy).toBe("Copy this");
+  expect(thinking.textContent).toContain("Thought for");
+  expect(thinking.textContent).not.toContain("Réflexion");
+
+  // Words for parts the chat didn't make are left alone.
+  const own = document.body.appendChild(document.createElement("ai-message"));
+  own.strings = { copy: "Mine" };
+  chat.strings = {};
+  await settle();
+  expect(own.strings.copy).toBe("Mine");
+  expect(replies()[0].strings.copy).toBe("Copy");
+});

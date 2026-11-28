@@ -7,14 +7,14 @@ import "../ai-suggestions/ai-suggestions.ts";
 import "../ai-thinking/ai-thinking.ts";
 import "../ai-tool-call/ai-tool-call.ts";
 import "../ai-transcript/ai-transcript.ts";
-import type { AiApprovalElement, ApprovalDecisionDetail } from "../ai-approval/ai-approval.ts";
+import type { AiApprovalElement, ApprovalDecisionDetail, ApprovalStrings } from "../ai-approval/ai-approval.ts";
 import type { AiComposerElement, PromptSubmitDetail } from "../ai-composer/ai-composer.ts";
-import type { AiMessageElement, MessageAttachment, MessageFeedback } from "../ai-message/ai-message.ts";
-import type { AiQuestionElement, QuestionAnswer, QuestionOption } from "../ai-question/ai-question.ts";
-import type { Source } from "../ai-sources/ai-sources.ts";
+import type { AiMessageElement, MessageAttachment, MessageFeedback, MessageStrings } from "../ai-message/ai-message.ts";
+import type { AiQuestionElement, QuestionAnswer, QuestionOption, QuestionStrings } from "../ai-question/ai-question.ts";
+import type { Source, SourcesStrings } from "../ai-sources/ai-sources.ts";
 import type { Suggestion } from "../ai-suggestions/ai-suggestions.ts";
-import type { AiThinkingElement } from "../ai-thinking/ai-thinking.ts";
-import type { AiToolCallElement } from "../ai-tool-call/ai-tool-call.ts";
+import type { AiThinkingElement, ThinkingStrings } from "../ai-thinking/ai-thinking.ts";
+import type { AiToolCallElement, ToolCallStrings } from "../ai-tool-call/ai-tool-call.ts";
 import type { AiTranscriptElement } from "../ai-transcript/ai-transcript.ts";
 import { adoptStyles, BaseElement, define } from "../styles.ts";
 import styles from "./ai-chat.css?inline";
@@ -98,6 +98,18 @@ export type ChatStrings = {
   answerPlaceholder: string;
   /** The composer's placeholder while an approval waits for a decision. */
   approvalPlaceholder: string;
+  /**
+   * Words for the parts the chat makes, passed on to each one as its `strings`: the messages
+   * (Copy, Retry…), thinking, tool calls, sources, questions and approvals. Leave one out and
+   * that part keeps its own defaults. The composer and transcript have theirs through
+   * `chat.composer.strings` and `chat.transcript.strings`.
+   */
+  message?: Partial<MessageStrings>;
+  thinking?: Partial<ThinkingStrings>;
+  toolCall?: Partial<ToolCallStrings>;
+  sources?: Partial<SourcesStrings>;
+  question?: Partial<QuestionStrings>;
+  approval?: Partial<ApprovalStrings>;
 };
 
 export const defaultChatStrings: ChatStrings = {
@@ -117,6 +129,17 @@ export type ChatEvents = {
 };
 
 type Turn = { data: ChatMessage; element: AiMessageElement };
+
+/** The parts the chat makes, and which key of `strings` holds each one's words. */
+const partWords = {
+  "ai-message": "message",
+  "ai-thinking": "thinking",
+  "ai-tool-call": "toolCall",
+  "ai-sources": "sources",
+  "ai-question": "question",
+  "ai-approval": "approval",
+} as const;
+type Part = keyof typeof partWords;
 
 let count = 0;
 
@@ -219,9 +242,17 @@ export class AiChatElement extends BaseElement {
     return this.#strings;
   }
   set strings(value: Partial<ChatStrings>) {
+    const previous = this.#strings;
     this.#strings = { ...defaultChatStrings, ...value };
     const starters = this.querySelector(":scope ai-suggestions[data-part='starters']");
     starters?.setAttribute("label", this.#strings.starters);
+    // Parts already shown take their new words, but only where those changed.
+    for (const [tag, key] of Object.entries(partWords) as [Part, (typeof partWords)[Part]][]) {
+      if (previous[key] === this.#strings[key]) continue;
+      for (const { element } of this.#turns) {
+        for (const part of element.localName === tag ? [element] : element.querySelectorAll(tag)) this.#giveWords(part);
+      }
+    }
   }
 
   /** True while a reply comes in. */
@@ -410,7 +441,7 @@ export class AiChatElement extends BaseElement {
             case "thinking": {
               const { element } = reply();
               if (!thinking) {
-                thinking = document.createElement("ai-thinking");
+                thinking = this.#part("ai-thinking");
                 thinking.slot = "header";
                 thinking.timer = true;
                 thinkingStarted = Date.now();
@@ -423,7 +454,7 @@ export class AiChatElement extends BaseElement {
             case "tool": {
               endThinking();
               const { element, data } = reply();
-              const call = document.createElement("ai-tool-call");
+              const call = this.#part("ai-tool-call");
               call.slot = "header";
               call.name = chunk.name;
               if (chunk.label) call.label = chunk.label;
@@ -542,8 +573,21 @@ export class AiChatElement extends BaseElement {
 
   // ---- Showing messages ----------------------------------------------------------------------
 
+  /** Makes one of the chat's parts, with the words `strings` has for it. */
+  #part<T extends Part>(tag: T): HTMLElementTagNameMap[T] {
+    const element = document.createElement(tag);
+    if (this.#strings[partWords[tag]]) this.#giveWords(element);
+    return element;
+  }
+
+  /** Sets a part's `strings` from the chat's, or back to its own defaults when there are none. */
+  #giveWords(element: Element) {
+    const words = this.#strings[partWords[element.localName as Part]];
+    (element as Element & { strings: object }).strings = words ?? {};
+  }
+
   #messageElement(data: ChatMessage) {
-    const element = document.createElement("ai-message");
+    const element = this.#part("ai-message");
     element.from = data.role;
     if (data.role === "assistant") element.setAttribute("actions", this.actions);
     return element;
@@ -556,7 +600,7 @@ export class AiChatElement extends BaseElement {
     if (data.attachments?.length) element.attachments = data.attachments;
     if (data.feedback) element.feedback = data.feedback;
     if (data.thinking) {
-      const thinking = document.createElement("ai-thinking");
+      const thinking = this.#part("ai-thinking");
       thinking.slot = "header";
       thinking.status = "done";
       thinking.timer = true;
@@ -565,7 +609,7 @@ export class AiChatElement extends BaseElement {
       element.append(thinking);
     }
     for (const tool of data.tools ?? []) {
-      const call = document.createElement("ai-tool-call");
+      const call = this.#part("ai-tool-call");
       call.slot = "header";
       call.name = tool.name;
       if (tool.label) call.label = tool.label;
@@ -621,7 +665,7 @@ export class AiChatElement extends BaseElement {
   }
 
   #questionElement(chunk: ChatQuestion) {
-    const card = document.createElement("ai-question");
+    const card = this.#part("ai-question");
     card.slot = "footer";
     card.question = chunk.question;
     card.options = chunk.options;
@@ -641,7 +685,7 @@ export class AiChatElement extends BaseElement {
   }
 
   #approvalElement(chunk: ChatApproval) {
-    const card = document.createElement("ai-approval");
+    const card = this.#part("ai-approval");
     card.slot = "footer";
     card.name = chunk.name;
     if (chunk.label) card.label = chunk.label;
@@ -659,7 +703,7 @@ export class AiChatElement extends BaseElement {
   }
 
   #sourcesElement(sources: Source[]) {
-    const element = document.createElement("ai-sources");
+    const element = this.#part("ai-sources");
     element.slot = "footer";
     element.sources = sources;
     return element;

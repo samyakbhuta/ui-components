@@ -152,7 +152,30 @@ An `<ai-composer>` or `<ai-transcript>` written inside is used instead of a new 
 | `answerPlaceholder` | `Answer the question above, or type your answer` |
 | `approvalPlaceholder` | `Allow or deny above, or tell it what to do instead` |
 
-The parts have their own `strings`, through `chat.composer`, `chat.transcript`, and the messages.
+The parts the chat makes have words of their own. Give them in `strings` too, under the part's name, and the chat passes them on to every one it shows, including those already on the page:
+
+```ts
+chat.strings = {
+  stopped: "Arrêté",
+  message: { copy: "Copier", copied: "Copié", retry: "Réessayer", edit: "Modifier" },
+  thinking: { thinking: "Réflexion…", thoughtFor: (duration) => `Réflexion : ${duration}` },
+  toolCall: { running: (name) => `${name} en cours…`, done: (name) => `${name} : terminé` },
+  sources: { heading: "Sources" },
+  question: { send: "Envoyer", other: "Autre" },
+  approval: { allow: "Autoriser une fois", always: "Toujours autoriser", deny: "Refuser" },
+};
+```
+
+| Key | Words for |
+| --- | --- |
+| `message` | Every message: Copy, Retry, Edit and the rest. See [`<ai-message>`'s Translation](../ai-message/README.md#translation). |
+| `thinking` | The thinking line. See [`<ai-thinking>`'s](../ai-thinking/README.md#translation). |
+| `toolCall` | Tool calls. See [`<ai-tool-call>`'s](../ai-tool-call/README.md#translation). |
+| `sources` | Sources. See [`<ai-sources>`'s](../ai-sources/README.md#translation). |
+| `question` | Questions. See [`<ai-question>`'s](../ai-question/README.md#translation). |
+| `approval` | Approvals. See [`<ai-approval>`'s](../ai-approval/README.md#translation). |
+
+Leave a key out and that part keeps its own defaults. The composer and the transcript have theirs through `chat.composer.strings` and `chat.transcript.strings`.
 
 ## Safety
 
