@@ -83,6 +83,7 @@ function logEvents(root: HTMLElement) {
     "filereject",
     "voicestart",
     "voiceend",
+    "voiceerror",
     "chatselect",
     "chatnew",
     "chatrename",

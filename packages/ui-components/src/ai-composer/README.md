@@ -69,6 +69,17 @@ composer.references = ["README.md", "package.json"];
 
 Setting a list to `[]` takes its control away again. If the browser can't recognize speech, the voice button shows greyed out, with a tooltip that says why. Use `voice="hide"` to leave it out instead.
 
+### While voice input listens
+
+It's plain that the microphone is on, so nobody wonders whether they're being heard:
+
+- **The mic button turns red, with a pulsing ring, and shows a Stop square.** Pressing it again stops listening. Its tooltip says "Stop voice input". With reduced motion, the ring stays still.
+- **The box's border turns red, and the empty box says "Listening… speak now".** "Listening…" also shows under the box, in red, and screen readers hear it.
+- **Words show as they're heard.** They come in while someone is still speaking, and settle into the recognised phrase when they pause. Typing while listening is fine: the next words follow what's typed. Words still being heard when listening stops are kept.
+- **When listening stops because something went wrong, it says why** under the box, for a few seconds, and screen readers hear it. For example, "Microphone access is blocked. Allow it in your browser's site settings, then try again." or "Didn't hear anything." It also fires `voiceerror`.
+
+The composer has the `listening` attribute meanwhile, for your own styles.
+
 ## Attributes
 
 | Attribute | Default | What it does |
@@ -79,6 +90,7 @@ Setting a list to `[]` takes its control away again. If the browser can't recogn
 | `max-size` | no limit | The largest file, in bytes. |
 | `voice` | off | Turns on voice input. `voice="hide"` leaves the button out where speech isn't supported, instead of greying it out. |
 | `voice-lang` | the nearest `lang`, then the browser's language | The language people speak in, like `fr-FR`. |
+| `listening` | set by the element | Present while voice input listens. Style it, don't set it. |
 | `default-mode`, `default-model`, `default-thinking` | the first choice that isn't disabled | The choice each control starts on. |
 | `label` | `Prompt` | The prompt's accessible name. It also names the group around the composer, which tells two composers apart. |
 | `placeholder` | `Ask anything…` | The prompt's placeholder. |
@@ -139,6 +151,7 @@ All events bubble from `<ai-composer>`, and the values are in `event.detail`.
 | `fileschange` | `{ value: File[] }` | Files were attached or removed. |
 | `filereject` | `{ value: { file, reasons }[] }` | Files broke `accept`, `max-size` or `max-files`. The composer also says why, under the box. |
 | `voicestart`, `voiceend` | `null` | Voice input started or stopped listening. |
+| `voiceerror` | `{ error }` | Voice input stopped because something went wrong, just before `voiceend`. `error` is the speech engine's code, like `"not-allowed"` (the microphone is blocked), `"no-speech"`, `"audio-capture"` (no microphone) or `"network"`. The composer already says why under the box. |
 
 ```ts
 type PromptSubmitDetail = {
@@ -183,10 +196,12 @@ Set its custom properties on `ai-composer` itself, or once on an element around 
 | `--ai-composer-color` | `FieldText` |
 | `--ai-composer-border` | `1px solid` a mix of the two |
 | `--ai-composer-radius` | `1.25rem` |
-| `--ai-composer-accent` | `FieldText`: Send's and active voice's background |
+| `--ai-composer-accent` | `FieldText`: Send's background |
 | `--ai-composer-accent-text` | `Field` |
 | `--ai-composer-font` | `inherit` |
 | `--ai-composer-max-height` | `12rem`: how tall the prompt grows before it scrolls |
+| `--ai-composer-recording` | red, `#c62828` in light and `#ff7a70` in dark: the mic button, the box's border and "Listening…" while voice input listens |
+| `--ai-composer-recording-text` | the Stop icon on it, at 4.5:1 or more |
 
 ```css
 .branded {
@@ -225,6 +240,9 @@ composer.strings = {
 | `attach`, `attachments` | `Attach files`, `Attachments` |
 | `mode`, `model`, `thinking` | `Mode`, `Model`, `Thinking` |
 | `voice`, `voiceUnsupported`, `listening` | `Voice input`, `Voice input isn't supported in this browser`, `Listening…` |
+| `listeningPlaceholder` | `Listening… speak now`: the empty box while listening |
+| `stopVoice` | `Stop voice input`: the mic button's tooltip while listening |
+| `voiceError(error)` | what's shown when listening stops because something went wrong, by `error` code: `Microphone access is blocked. Allow it in your browser's site settings, then try again.`, `Didn't hear anything. Try again, a little closer to the microphone.`, `No microphone was found.`, `Voice input needs an internet connection.`, or `Voice input stopped.` for anything else |
 | `noMatches` | `No matches`: shown when `/` or `@` finds nothing |
 | `enterHint` | `Enter to send · Shift+Enter for a new line` |
 | `modEnterHint(modifier)` | `${modifier}+Enter to send · Enter for a new line` |
@@ -254,7 +272,7 @@ Input methods for Chinese, Japanese and Korean are left alone: Enter that confir
 - The composer is a `group` named by `label`, and the prompt has the same name.
 - Every button has a name from `strings`; the icons are hidden from screen readers.
 - Send stays in the tab order while there's nothing to send, marked `aria-disabled`, with a tooltip that says why.
-- Voice status ("Listening…") and rejected files are announced through a polite live region. The suggestions announce how many results there are.
+- Voice status ("Listening…", or why listening stopped) and rejected files are announced through a polite live region. While listening, the mic button is still named "Voice input" and reports `aria-pressed="true"`, so screen readers hear "Voice input, pressed"; pressing it again stops. The suggestions announce how many results there are.
 - Mode is a radio group; Model and Thinking are select menus. All of them work by keyboard.
 - When Stop or Send is pressed, focus goes back to the prompt.
 - The page can mark its conversation `aria-busy` while the AI responds; see [Recipes](#stream-a-reply-with-stop).
@@ -336,14 +354,22 @@ composer.commands = [
 ```ts
 composer.speechRecognizer = {
   supported: true,
-  start({ lang, onText, onEnd }) {
-    const session = startMyTranscription({ lang, onPhrase: onText, onClose: onEnd });
+  start({ lang, onText, onInterim, onError, onEnd }) {
+    const session = startMyTranscription({
+      lang,
+      onPartial: onInterim, // optional: the words so far, as they change
+      onPhrase: onText,
+      onFailure: (code) => onError?.(code), // optional
+      onClose: onEnd,
+    });
     return { stop: () => session.close() };
   },
 };
 ```
 
-Call `onText` with each finished phrase, and `onEnd` once listening stops for any reason.
+Call `onText` with each finished phrase, and `onEnd` once listening stops for any reason. Two are optional:
+- `onInterim` shows the words of the phrase being spoken as they change, and `""` clears them;
+- `onError`, called before `onEnd`, says why listening stopped. Web Speech API codes, like `"not-allowed"`, get their own messages through `strings.voiceError`; any other code gets "Voice input stopped." unless you translate it.
 
 ### Remember drafts and earlier prompts
 
