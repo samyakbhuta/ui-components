@@ -1,0 +1,194 @@
+/*
+ * <ai-questions> styles, in the `ai-questions` layer so unlayered page rules win. It's declared
+ * after `ai-question`, so its rules for the questions inside win over theirs.
+ */
+@layer ai-questions {
+  ai-questions {
+    --_ai-questions-border: var(--ai-questions-border, color-mix(in srgb, CanvasText 22%, Canvas));
+    --_ai-questions-muted: var(--ai-questions-muted, color-mix(in srgb, CanvasText 68%, Canvas));
+    --_ai-questions-accent: var(--ai-questions-accent, CanvasText);
+    --_ai-questions-radius: var(--ai-questions-radius, 0.75rem);
+    --_ai-questions-waiting: var(--ai-questions-waiting, light-dark(#2b5bc4, #8fb0ff));
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 36rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--_ai-questions-border);
+    border-radius: var(--_ai-questions-radius);
+    font-size: 0.9375rem;
+  }
+
+  /* While it waits: an accent border and a line saying so, for the whole set. */
+  ai-questions:not([answered]) {
+    border-color: var(--_ai-questions-waiting);
+    box-shadow: 0 0 0 1px var(--_ai-questions-waiting);
+  }
+
+  ai-questions [data-part="header"] {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 2rem;
+  }
+
+  ai-questions [data-part="status"] {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0;
+    color: var(--_ai-questions-waiting);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  ai-questions [data-part="status-dot"] {
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: currentColor;
+    animation: ai-questions-pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes ai-questions-pulse {
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  ai-questions [data-part="nav"] {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+    margin-left: auto;
+    color: var(--_ai-questions-muted);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  ai-questions [data-part="position"] {
+    min-width: 3.5em;
+    text-align: center;
+  }
+
+  ai-questions :is([data-part="previous"], [data-part="next"]) button {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: CanvasText;
+    cursor: pointer;
+  }
+
+  ai-questions :is([data-part="previous"], [data-part="next"]) button:hover:not(:disabled) {
+    background: color-mix(in srgb, CanvasText 8%, Canvas);
+  }
+
+  ai-questions :is([data-part="previous"], [data-part="next"]) button:focus-visible {
+    outline: 2px solid var(--_ai-questions-accent);
+    outline-offset: 1px;
+  }
+
+  ai-questions :is([data-part="previous"], [data-part="next"]) button:disabled {
+    cursor: default;
+    opacity: 0.35;
+  }
+
+  /* The questions inside are pages of this card, not cards of their own. */
+  ai-questions ai-question {
+    max-width: none;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  ai-questions ai-question:not([answered]) {
+    border: 0;
+    box-shadow: none;
+  }
+
+  ai-questions ai-question [data-part="status"] {
+    display: none;
+  }
+
+  ai-questions [data-part="questions"] {
+    margin-top: 0.375rem;
+  }
+
+  ai-questions [data-part="summary"] {
+    outline: none;
+  }
+
+  ai-questions [data-part="summary"]:focus-visible {
+    outline: 2px solid var(--_ai-questions-accent);
+    outline-offset: 4px;
+    border-radius: 0.25rem;
+  }
+
+  ai-questions [data-part="summary-heading"] {
+    margin: 0 0 0.5rem;
+    font-weight: 600;
+  }
+
+  ai-questions dl {
+    display: grid;
+    gap: 0.125rem;
+    margin: 0;
+  }
+
+  ai-questions dt {
+    color: var(--_ai-questions-muted);
+    font-size: 0.875rem;
+  }
+
+  ai-questions dt:not(:first-child) {
+    margin-top: 0.5rem;
+  }
+
+  ai-questions dd {
+    margin: 0;
+  }
+
+  ai-questions dd[data-skipped] {
+    color: var(--_ai-questions-muted);
+    font-style: italic;
+  }
+
+  ai-questions [data-part="announcement"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    ai-questions [data-part="status-dot"] {
+      animation: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    ai-questions:not([answered]) {
+      border-color: Highlight;
+    }
+
+    ai-questions [data-part="status"] {
+      color: CanvasText;
+    }
+  }
+
+  /* The element's own display would otherwise beat the hidden attribute. */
+  ai-questions[hidden],
+  ai-questions [hidden] {
+    display: none !important;
+  }
+}

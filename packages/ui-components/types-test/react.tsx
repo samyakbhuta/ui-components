@@ -59,6 +59,11 @@ export const valid = (
       reason
       onapprovaldecision={(event) => (event.detail.decision === "deny" ? event.detail.reason : null)}
     />
+    <ai-questions
+      label="About the gift"
+      questions={[{ question: "Who is it for?", options: ["A friend", "A parent"], other: true }]}
+      onquestionsanswer={(event) => event.detail.answers.length}
+    />
     <ai-plan
       heading="Clean up the build"
       summary="Two steps"
@@ -102,6 +107,8 @@ export const invalid = (
     <ai-question onquestionanswer={(event) => event.detail.text} />
     {/* @ts-expect-error a decision is allow, always or deny */}
     <ai-approval decision={{ decision: "maybe", reason: null }} />
+    {/* @ts-expect-error each question needs its options */}
+    <ai-questions questions={[{ question: "Who?" }]} />
     {/* @ts-expect-error a plan's decision is accept, reject or revise */}
     <ai-plan decision={{ decision: "allow", mode: null, feedback: null }} />
     {/* @ts-expect-error a model's chunks are text or known kinds */}

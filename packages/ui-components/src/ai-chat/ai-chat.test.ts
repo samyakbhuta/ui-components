@@ -421,3 +421,48 @@ test("Accept and use a mode switches the composer, and a saved open plan asks th
   expect(seen).toHaveLength(1);
   expect(seen[0].messages.at(-1)!.plan!.decision).toEqual({ decision: "accept", mode: "auto", feedback: null });
 });
+
+test("several questions wait together; typing answers the one showing, and every answer comes back at once", async () => {
+  const got: (ChatAnswer | undefined)[] = [];
+  const { chat, waiting, idle, replies } = await mount("<ai-chat></ai-chat>", (c) => {
+    c.model = async function* () {
+      got.push(
+        yield {
+          type: "questions",
+          questions: [
+            { question: "Who is it for?", options: ["A friend", "A parent"] },
+            { question: "Budget?", options: ["Under £20", "Over £20"] },
+          ],
+        },
+      );
+      yield "Here are some ideas.";
+    };
+  });
+  await send(chat, "Help me pick a gift");
+  await waiting();
+  const set = chat.querySelector("ai-questions")!;
+  expect(chat.composer.getAttribute("placeholder")).toBe("Answer the question above, or type your answer");
+  chat.composer.value = "A parent";
+  chat.composer.submit();
+  await settle();
+  expect(set.index).toBe(1);
+  chat.composer.value = "Over £20";
+  chat.composer.submit();
+  await idle();
+  expect(got).toEqual([
+    {
+      answers: [
+        { value: "A parent", labels: ["A parent"], other: null },
+        { value: "Over £20", labels: ["Over £20"], other: null },
+      ],
+    },
+  ]);
+  expect(replies().at(-1)!.text).toBe("Here are some ideas.");
+  expect(chat.messages.find((message) => message.questions)!.questions!.answers).toHaveLength(2);
+
+  // Saved, it shows the summary again.
+  const saved = chat.messages;
+  chat.messages = saved;
+  await settle();
+  expect(chat.querySelector("ai-questions")!.hasAttribute("answered")).toBe(true);
+});

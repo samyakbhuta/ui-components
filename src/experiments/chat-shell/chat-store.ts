@@ -33,6 +33,8 @@ export type StoredMessage = {
   question?: StoredQuestion;
   /** An approval the reply asked for, with the decision once made. */
   approval?: StoredApproval;
+  /** Several questions the reply asked at once, with the answers once sent. */
+  questionSet?: StoredQuestionSet;
   /** A plan the reply proposed, with the decision once made. */
   plan?: StoredPlan;
   /** Which scripted conversation of the pretend model the reply belongs to, so Retry continues it. */
@@ -50,6 +52,13 @@ export type StoredApproval = {
   decision?: { decision: "allow" | "always" | "deny"; reason: string | null };
 };
 
+/** An `<ai-questions>` set: its questions, and every answer once sent. */
+export type StoredQuestionSet = {
+  label?: string;
+  questions: Omit<StoredQuestion, "answer" | "step">[];
+  answers?: NonNullable<StoredQuestion["answer"]>[];
+};
+
 /** An `<ai-plan>`: the plan it proposed, and the decision once made. */
 export type StoredPlan = {
   heading?: string;
@@ -64,6 +73,7 @@ export type StoredScript = {
   trip?: number;
   cleanup?: "ask" | "allowed" | "denied";
   party?: "ask" | "accepted" | "rejected" | "revised";
+  gift?: "ask" | "answered";
   /** What was typed: with Deny, what to do instead; with Revise, what to change. */
   reason?: string;
   /** The mode a plan was accepted with. */
@@ -204,6 +214,11 @@ export function chatToMarkdown(chat: StoredChat, { exportedAt = new Date(), loca
     if (message.error !== undefined) parts.push("", `> **Error:** ${message.error || "Something went wrong."}`);
     if (message.question) parts.push("", ...questionToMarkdown(message.question));
     if (message.approval) parts.push("", ...approvalToMarkdown(message.approval));
+    if (message.questionSet) {
+      message.questionSet.questions.forEach((question, index) =>
+        parts.push("", ...questionToMarkdown({ ...question, answer: message.questionSet!.answers?.[index] })),
+      );
+    }
     if (message.plan) parts.push("", ...planToMarkdown(message.plan));
     if (message.sources?.length) parts.push("", ...message.sources.map((source, index) => `[${index + 1}]: ${source.url} "${source.title.replace(/"/g, "'")}"`));
     versions?.forEach((text, index) => {

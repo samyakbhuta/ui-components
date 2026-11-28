@@ -14,6 +14,8 @@ export type TranscriptStrings = {
   approval: (label: string) => string;
   /** Read after the reply for each `<ai-plan>` in it still waiting for a decision. */
   plan: (heading: string) => string;
+  /** Read after the reply for each `<ai-questions>` set in it still waiting: its first question, and how many. */
+  questions: (first: string, count: number) => string;
 };
 
 export const defaultTranscriptStrings: TranscriptStrings = {
@@ -23,6 +25,7 @@ export const defaultTranscriptStrings: TranscriptStrings = {
   waiting: (question) => `${question} Waiting for your answer.`,
   approval: (label) => `${label} Waiting for your approval.`,
   plan: (heading) => `${heading} Waiting for your review.`,
+  questions: (first, count) => `${count} questions, starting with: ${first} Waiting for your answers.`,
 };
 
 /** How close to the bottom, in pixels, still counts as "at the bottom". */
@@ -187,8 +190,15 @@ export class AiTranscriptElement extends BaseElement {
     const text = (body ?? message).textContent?.trim() ?? "";
     // A question, an approval or a plan the reply asks for is read after it, so people know the
     // agent is waiting on them.
-    const waiting = [...message.querySelectorAll("ai-question:not([answered]), ai-approval:not([decided]), ai-plan:not([decided])")]
+    const waiting = [...message.querySelectorAll("ai-question:not([answered]), ai-approval:not([decided]), ai-plan:not([decided]), ai-questions:not([answered])")]
       .map((element) => {
+        // A set's questions are read as the set.
+        if (element.localName === "ai-question" && element.parentElement?.closest("ai-questions")) return "";
+        if (element.localName === "ai-questions") {
+          const questions = element.querySelectorAll("ai-question");
+          const first = questions[0]?.getAttribute("question")?.trim();
+          return first ? this.#strings.questions(first, questions.length) : "";
+        }
         if (element.localName === "ai-question") {
           const question = element.getAttribute("question")?.trim();
           return question ? this.#strings.waiting(question) : "";
