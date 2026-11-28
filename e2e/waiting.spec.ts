@@ -1,11 +1,18 @@
 import type { Page } from "@playwright/test";
-import { contrastRatio, expect, skipThinking, test, waitForReply } from "./fixtures";
+import { ask, contrastRatio, expect, skipThinking, test, waitForReply } from "./fixtures";
 
 // Short, so a reply with a card doesn't fit and there's somewhere to scroll.
 test.use({ viewport: { width: 1000, height: 560 } });
 
 const transcript = (page: Page) => page.locator("ai-transcript");
 const jump = (page: Page) => transcript(page).locator("[data-part='jump']");
+
+/** Asks for a card after two earlier replies, so scrolling to the top takes the card fully out of view. */
+async function askAfterOthers(page: Page, prompt: string) {
+  await ask(page, "Write a haiku about web components");
+  await ask(page, "Write another haiku about web components");
+  await ask(page, prompt);
+}
 
 /** Scrolls the conversation to the top, as a person would. */
 async function scrollUp(page: Page) {
@@ -20,8 +27,7 @@ test.describe("in the chat shell", () => {
   });
 
   test("scrolled up while a question waits, the jump button says so, and takes you to the first choice", async ({ page }) => {
-    await page.getByRole("button", { name: "Plan a weekend trip for me" }).click();
-    await waitForReply(page);
+    await askAfterOthers(page, "Plan a weekend trip for me");
     await expect(jump(page)).toBeHidden();
 
     await scrollUp(page);
@@ -46,8 +52,7 @@ test.describe("in the chat shell", () => {
   });
 
   test("an approval waiting below says so, and the pill is readable @theme", async ({ page }) => {
-    await page.getByRole("button", { name: "Clean up my project's build folder" }).click();
-    await waitForReply(page);
+    await askAfterOthers(page, "Clean up my project's build folder");
     await scrollUp(page);
     await expect(jump(page)).toHaveText("Waiting for your approval");
     await page.mouse.move(0, 0);
@@ -58,9 +63,28 @@ test.describe("in the chat shell", () => {
     await expect(page.locator("ai-approval").getByRole("button").first()).toBeFocused();
   });
 
+  test("while any of the card shows, the pill doesn't repeat it", async ({ page }) => {
+    await askAfterOthers(page, "Clean up my project's build folder");
+    // Scroll so only the top of the card shows, above the bottom edge.
+    await transcript(page).evaluate((element) => {
+      const card = element.querySelector("ai-approval")!;
+      element.scrollTop += card.getBoundingClientRect().top - element.getBoundingClientRect().bottom + 60;
+      element.dispatchEvent(new Event("scroll"));
+    });
+    await expect(page.locator("ai-approval")).toBeInViewport();
+    await expect(jump(page)).toHaveText("Jump to latest");
+    await expect(jump(page)).not.toHaveAttribute("data-waiting", "");
+
+    // Scrolled a little further up, so none of it shows, the pill says it waits.
+    await transcript(page).evaluate((element) => {
+      element.scrollTop -= 120;
+      element.dispatchEvent(new Event("scroll"));
+    });
+    await expect(jump(page)).toHaveText("Waiting for your approval");
+  });
+
   test("by keyboard, Enter on the pill moves focus into the card", async ({ page }) => {
-    await page.getByRole("button", { name: "Clean up my project's build folder" }).click();
-    await waitForReply(page);
+    await askAfterOthers(page, "Clean up my project's build folder");
     await scrollUp(page);
     await expect(jump(page)).toHaveText("Waiting for your approval");
     await jump(page).focus();
@@ -73,7 +97,11 @@ test("in <ai-chat>, a plan waiting below says so @theme", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/experiments/ai-composer.html");
   const chat = page.locator("#chat ai-chat");
-  await chat.getByRole("button", { name: "Plan a surprise birthday party" }).click();
+  // An earlier reply first, so the plan can be fully out of view.
+  await chat.getByRole("button", { name: "What are custom elements?" }).click();
+  await expect(chat.locator("ai-composer")).not.toHaveAttribute("busy", { timeout: 20_000 });
+  await chat.getByRole("textbox", { name: "Prompt" }).fill("Plan a surprise birthday party");
+  await page.keyboard.press("Enter");
   await expect(chat.locator("ai-plan")).toBeVisible({ timeout: 20_000 });
   await expect(chat).not.toHaveAttribute("busy", "", { timeout: 20_000 });
   // Shorter, so the plan doesn't fit once scrolled to the top.

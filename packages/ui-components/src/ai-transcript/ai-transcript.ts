@@ -211,11 +211,11 @@ export class AiTranscriptElement extends BaseElement {
     this.#updateJump();
   }
 
-  /** The waiting card, when its end, where its buttons are, is below what's in view. */
+  /** The waiting card, when all of it is below what's in view. Any of it showing already says it waits. */
   #waitingBelow(): HTMLElement | null {
     const card = this.waiting;
     if (!card || card.getClientRects().length === 0) return null;
-    return card.getBoundingClientRect().bottom > this.getBoundingClientRect().bottom + nearBottom ? card : null;
+    return card.getBoundingClientRect().top >= this.getBoundingClientRect().bottom ? card : null;
   }
 
   #updateJump() {
