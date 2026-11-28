@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI chat with a sidebar</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        max-width: 48rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+
+      body {
+        max-width: 64rem;
+      }
+      /* The list on the left, the chat on the right. */
+      .app {
+        display: grid;
+        grid-template-columns: 15rem minmax(0, 1fr);
+        gap: 1.5rem;
+        height: 85vh;
+      }
+      .app ai-chat-list {
+        overflow: auto;
+      }
+      .app ai-chat {
+        min-height: 0;
+      }
+      /* On a phone, the list goes above the chat. */
+      @media (max-width: 40rem) {
+        .app {
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-rows: auto minmax(0, 1fr);
+        }
+        .app ai-chat-list {
+          max-height: 30vh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <ai-chat-list actions="rename delete"></ai-chat-list>
+      <ai-chat></ai-chat>
+    </div>
+
+    <script type="module">
+      import "@samyakbhuta/ui-components";
+
+      const list = document.querySelector("ai-chat-list");
+      const chat = document.querySelector("ai-chat");
+
+      // Every saved chat: { id, title, updatedAt, messages }.
+      let chats = JSON.parse(localStorage.getItem("my-chats") ?? "[]");
+      // The id of the open chat, or null for a new one that isn't saved yet.
+      let openId = null;
+
+      // Saves the chats, and shows them in the list.
+      function save() {
+        localStorage.setItem("my-chats", JSON.stringify(chats));
+        list.chats = chats;
+        list.selected = openId;
+      }
+
+      // Opens a saved chat, or a new one with null.
+      function open(id) {
+        openId = id;
+        chat.messages = chats.find((saved) => saved.id === id)?.messages ?? [];
+        save();
+      }
+
+      // When the open chat changes, save it. A new chat is saved once it has a message.
+      chat.addEventListener("chatchange", (event) => {
+        const { messages } = event.detail;
+        if (messages.length === 0) return;
+        let saved = chats.find((saved) => saved.id === openId);
+        if (!saved) {
+          saved = { id: String(Date.now()), title: messages[0].text.slice(0, 40) };
+          chats.push(saved);
+          openId = saved.id;
+        }
+        saved.messages = messages;
+        saved.updatedAt = Date.now();
+        save();
+      });
+
+      list.addEventListener("chatnew", () => open(null));
+      list.addEventListener("chatselect", (event) => open(event.detail.id));
+      list.addEventListener("chatrename", (event) => {
+        chats.find((saved) => saved.id === event.detail.id).title = event.detail.title;
+        save();
+      });
+      list.addEventListener("chatdelete", (event) => {
+        chats = chats.filter((saved) => saved.id !== event.detail.id);
+        if (event.detail.id === openId) open(null);
+        else save();
+      });
+
+      save();
+
+      // A stand-in for your model: it streams your words back.
+      chat.model = async function* ({ prompt }) {
+        for (const word of `You said: ${prompt.text}`.split(" ")) {
+          await new Promise((resolve) => setTimeout(resolve, 80));
+          yield `${word} `;
+        }
+      };
+    </script>
+  </body>
+</html>

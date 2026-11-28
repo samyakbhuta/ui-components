@@ -1,3 +1,4 @@
+import { readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig } from "vite";
 
@@ -22,6 +23,12 @@ export default defineConfig({
         "chat-shell": page("experiments/chat-shell.html"),
         "ai-composer": page("experiments/ai-composer.html"),
         "search-field": page("experiments/search-field.html"),
+        // The recipes in docs/making-ai-chat-your-own.md, each a page of its own.
+        ...Object.fromEntries(
+          readdirSync(page("recipes/ai-chat"))
+            .filter((file) => file.endsWith(".html"))
+            .map((file) => [`recipe-${file.replace(/\.html$/, "")}`, page(`recipes/ai-chat/${file}`)]),
+        ),
       },
     },
   },

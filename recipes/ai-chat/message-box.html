@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI chat with files and models</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        max-width: 48rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <ai-chat style="height: 80vh">
+      <ai-composer attachments voice default-model="fast"></ai-composer>
+    </ai-chat>
+
+    <script type="module">
+      import "@samyakbhuta/ui-components";
+
+      const chat = document.querySelector("ai-chat");
+
+      // The models people can choose from, in a menu in the message box.
+      chat.composer.models = [
+        { value: "fast", label: "Fast", description: "Quick answers" },
+        { value: "careful", label: "Careful", description: "Slower, more thorough answers" },
+      ];
+
+      // A stand-in for your model: it says what it was sent.
+      chat.model = async function* ({ prompt }) {
+        const files = prompt.files.map((file) => file.name).join(", ") || "none";
+        const reply = `You said: ${prompt.text}\n\nModel: ${prompt.model}\n\nFiles: ${files}`;
+        for (const word of reply.split(" ")) {
+          await new Promise((resolve) => setTimeout(resolve, 80));
+          yield `${word} `;
+        }
+      };
+    </script>
+  </body>
+</html>

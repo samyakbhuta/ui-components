@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI chat that remembers</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        max-width: 48rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <ai-chat style="height: 75vh"></ai-chat>
+    <p><button type="button" id="start-over">Start over</button></p>
+
+    <script type="module">
+      import "@samyakbhuta/ui-components";
+
+      const chat = document.querySelector("ai-chat");
+
+      // Show the conversation saved last time, if there is one.
+      const saved = localStorage.getItem("my-chat");
+      if (saved) chat.messages = JSON.parse(saved);
+
+      // Save it whenever it changes: a reply finished, a question was answered, and so on.
+      chat.addEventListener("chatchange", (event) => {
+        localStorage.setItem("my-chat", JSON.stringify(event.detail.messages));
+      });
+
+      // clear() empties the chat, and chatchange saves the empty chat.
+      document.querySelector("#start-over").addEventListener("click", () => chat.clear());
+
+      // A stand-in for your model: it streams your words back.
+      chat.model = async function* ({ prompt }) {
+        for (const word of `You said: ${prompt.text}`.split(" ")) {
+          await new Promise((resolve) => setTimeout(resolve, 80));
+          yield `${word} `;
+        }
+      };
+    </script>
+  </body>
+</html>

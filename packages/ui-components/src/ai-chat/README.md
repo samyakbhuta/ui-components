@@ -27,6 +27,8 @@ chat.model = async function* ({ messages, signal }) {
 
 Give the chat a height, or put it in a grid or flex layout that gives it one. The conversation scrolls within it, and the composer stays at the bottom.
 
+New to it? [Making `<ai-chat>` your own](https://github.com/samyakbhuta/ui-components/blob/main/docs/making-ai-chat-your-own.md) walks through eight recipes, from a model picker to a sidebar of saved chats, each a page you can copy and see running.
+
 ## The model
 
 `model` gets `{ messages, prompt, signal }`:

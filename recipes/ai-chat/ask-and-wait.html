@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI chat that asks</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        max-width: 48rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <ai-chat style="height: 80vh"></ai-chat>
+
+    <script type="module">
+      import "@samyakbhuta/ui-components";
+
+      const chat = document.querySelector("ai-chat");
+
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      async function* say(text) {
+        for (const word of text.split(" ")) {
+          await wait(60);
+          yield `${word} `;
+        }
+      }
+
+      // A stand-in for your model. When it yields a question or an approval, the chat
+      // waits for the person, and their answer comes back as the value of that yield.
+      chat.model = async function* () {
+        const answer = yield {
+          type: "question",
+          question: "Which city should I plan a weekend in?",
+          options: ["Lisbon", "Rome", "Paris"],
+          other: true,
+        };
+        const city = answer.labels[0];
+        yield* say(`${city} it is. I've found a hotel there.`);
+
+        const decision = yield {
+          type: "approval",
+          name: "book_hotel",
+          label: "Book a hotel",
+          description: "This pays for two nights.",
+          input: { city, nights: 2 },
+          reason: true,
+        };
+        if (decision.decision === "deny") {
+          yield* say(`OK, I won't book it. ${decision.reason ?? ""}`);
+        } else {
+          yield* say(`Booked: two nights in ${city}.`);
+        }
+      };
+    </script>
+  </body>
+</html>

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI chat in your colours</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        max-width: 48rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+
+      /* Your brand: purple, with softer corners and more room. */
+      ai-composer {
+        --ai-composer-accent: light-dark(#6d28d9, #c4b5fd);
+        --ai-composer-accent-text: light-dark(white, #1e1b4b);
+        --ai-composer-radius: 0.75rem;
+      }
+      ai-message {
+        --ai-message-bubble: light-dark(#ede9fe, #2e1065);
+      }
+      ai-chat {
+        --ai-chat-gap: 1.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <ai-chat style="height: 80vh"></ai-chat>
+
+    <script type="module">
+      import "@samyakbhuta/ui-components";
+
+      const chat = document.querySelector("ai-chat");
+
+      // A stand-in for your model: it streams your words back.
+      chat.model = async function* ({ prompt }) {
+        for (const word of `You said: ${prompt.text}`.split(" ")) {
+          await new Promise((resolve) => setTimeout(resolve, 80));
+          yield `${word} `;
+        }
+      };
+    </script>
+  </body>
+</html>
