@@ -78,10 +78,12 @@ test.describe("in the chat shell", () => {
     const mine = page.locator("ai-message[from='user']").last();
     const sentQuote = mine.getByRole("button", { name: /^Quoted: Custom/ });
     await expect(sentQuote).toBeVisible();
-    // It sits above the bubble, in the message, not floating elsewhere.
+    // It sits in the bubble, above the words, not floating elsewhere.
     const quoteBox = (await sentQuote.boundingBox())!;
     const bubble = (await mine.locator(":scope > [data-part='body']").boundingBox())!;
-    expect(quoteBox.y + quoteBox.height).toBeLessThanOrEqual(bubble.y + 1);
+    const written = (await mine.locator(":scope > [data-part='body'] > p").first().boundingBox())!;
+    expect(quoteBox.y).toBeGreaterThanOrEqual(bubble.y);
+    expect(quoteBox.y + quoteBox.height).toBeLessThanOrEqual(written.y + 1);
     expect(await sentQuote.evaluate((element) => getComputedStyle(element).position)).toBe("static");
     await expect(page.locator("ai-message:not([from='user'])").last()).toContainText("You wrote, with your quotes in place:");
 
@@ -263,12 +265,18 @@ test("writing between quotes keeps them in order, in the box and in the sent mes
   await waitForReply(page);
   // Sent in the same order: the first quote above, then the words, the second quote, the words.
   const mine = page.locator("ai-message[from='user']").last();
-  await expect(mine.locator(":scope > [data-part='quotes']")).toHaveText("Quoted: Custom tags bloom");
-  await expect(mine.locator(":scope > [data-part='body'] > *")).toHaveText(["Why bloom?", "Quoted: Custom tags", "And tags?"]);
+  // All in the bubble, in the order written, every quote alike.
+  await expect(mine.locator(":scope > [data-part='body'] > *")).toHaveText([
+    "Quoted: Custom tags bloom",
+    "Why bloom?",
+    "Quoted: Custom tags",
+    "And tags?",
+  ]);
 
   // Kept after a reload.
   await page.reload();
   await expect(page.locator("ai-message[from='user']").last().locator(":scope > [data-part='body'] > *")).toHaveText([
+    "Quoted: Custom tags bloom",
     "Why bloom?",
     "Quoted: Custom tags",
     "And tags?",

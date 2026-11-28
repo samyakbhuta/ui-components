@@ -582,8 +582,9 @@ export class AiMessageElement extends BaseElement {
   }
 
   /** Whether a quote goes between the message's words, rather than above them. */
-  #inText(quote: MessageQuote) {
-    return (quote.at ?? 0) > 0;
+  #inText(_quote: MessageQuote) {
+    // Every quote goes in the message, in the order written, so they all look alike.
+    return true;
   }
 
   /** One quote: a button that fires `quoteopen` when it has an `id`, else a quote block. Text only. */
@@ -828,8 +829,8 @@ export class AiMessageElement extends BaseElement {
     if (between.length) {
       body.replaceChildren();
       let position = 0;
-      for (const { quote, index } of between.sort((a, b) => a.quote.at! - b.quote.at!)) {
-        const at = Math.min(Math.max(quote.at!, position), this.#source.length);
+      for (const { quote, index } of between.sort((a, b) => (a.quote.at ?? 0) - (b.quote.at ?? 0))) {
+        const at = Math.min(Math.max(quote.at ?? 0, position), this.#source.length);
         for (const block of render(this.#source.slice(position, at).trim())) body.append(block.node);
         body.append(this.#quoteElement(quote, index));
         position = at;

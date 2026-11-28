@@ -173,7 +173,7 @@ The reply shows the card, and the message box locks, saying "Sending is paused u
 
 ## Quoting
 
-Selecting words anywhere in a message, its cards included, shows a **Quote** button. Words from a card, like a plan's step or a failed command's output, are labelled with it. Pressing it adds them to the box as a card, and several can be added; then people type what they want to ask. The sent message shows the quotes above it, and pressing one scrolls back to the message it came from and marks it for a moment.
+Selecting words anywhere in a message, its cards included, shows a **Quote** button. Words from a card, like a plan's step or a failed command's output, are labelled with it. Pressing it adds them to the box as a card, and several can be added; then people type what they want to ask. The sent message shows the quotes in it, in the order written, between your words, and pressing one scrolls back to the message it came from and marks it for a moment.
 
 Your model gets the quotes on the last message:
 
