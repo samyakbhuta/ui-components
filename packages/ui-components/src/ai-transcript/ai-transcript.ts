@@ -18,7 +18,39 @@ export type TranscriptStrings = {
   questions: (first: string, count: number) => string;
   /** Read after the reply for each `<ai-notice>` in it that still applies: its heading, message and reset line. */
   notice: (heading: string, text: string, resets: string) => string;
+  /** The jump button while something below waits on the person: a question, an approval, a plan or a notice. */
+  jumpWaiting: (kind: WaitingKind) => string;
 };
+
+/** What the conversation can be waiting on the person for. */
+export type WaitingKind = "answer" | "approval" | "review" | "notice";
+
+/** Cards that wait on the person, as long as they're open. A set's own questions count as the set. */
+const waitingCards =
+  "ai-question:not([answered]):not(ai-questions ai-question), ai-questions:not([answered]), ai-approval:not([decided]), ai-plan:not([decided]), ai-notice:not([expired]):not([hidden]):not([tone='info'])";
+
+const kindOf = (card: Element): WaitingKind =>
+  card.localName === "ai-approval" ? "approval" : card.localName === "ai-plan" ? "review" : card.localName === "ai-notice" ? "notice" : "answer";
+
+/**
+ * What to focus in a card, so it can be answered at once: its first choice, else its first button
+ * or link (like Allow once), else a text box. Not a box that's only focusable to scroll, like a command.
+ */
+function firstControl(card: HTMLElement): HTMLElement | null {
+  const usable = (control: HTMLElement) =>
+    !(control as HTMLButtonElement).disabled && !control.closest("[inert], [hidden]") && control.getClientRects().length > 0;
+  for (const selector of [
+    "input[type='radio'], input[type='checkbox'], [role='radio'], [role='checkbox']",
+    "button, a[href]",
+    "input:not([type='hidden']), textarea, select",
+  ]) {
+    const controls = [...card.querySelectorAll<HTMLElement>(selector)].filter(usable);
+    // In a radio group only the checked choice, or else the first, takes focus.
+    const checked = controls.find((control) => (control as HTMLInputElement).checked || control.getAttribute("aria-checked") === "true");
+    if (controls.length) return checked && /radio/.test(selector) ? checked : controls[0];
+  }
+  return null;
+}
 
 export const defaultTranscriptStrings: TranscriptStrings = {
   label: "Conversation",
@@ -28,6 +60,8 @@ export const defaultTranscriptStrings: TranscriptStrings = {
   approval: (label) => `${label} Waiting for your approval.`,
   plan: (heading) => `${heading} Waiting for your review.`,
   questions: (first, count) => `${count} questions, starting with: ${first} Waiting for your answers.`,
+  jumpWaiting: (kind) =>
+    kind === "approval" ? "Waiting for your approval" : kind === "review" ? "Waiting for your review" : kind === "notice" ? "Sending is paused" : "Waiting for your answer",
   notice: (heading, text, resets) => [heading, text, resets].filter(Boolean).map((part) => (/[.!?]$/.test(part) ? part : `${part}.`)).join(" "),
 };
 
@@ -53,6 +87,8 @@ export class AiTranscriptElement extends BaseElement {
   #rendered = false;
   #resize = new ResizeObserver(() => this.#follow());
   #jump = document.createElement("button");
+  /** The waiting card the jump button names, if it does. */
+  #pointsTo: HTMLElement | null = null;
   #jumpBar = document.createElement("div");
   #announcement = document.createElement("div");
   #mutations = new MutationObserver((records) => this.#changed(records));
@@ -63,12 +99,21 @@ export class AiTranscriptElement extends BaseElement {
   set strings(value: Partial<TranscriptStrings>) {
     this.#strings = { ...defaultTranscriptStrings, ...value };
     this.#label();
-    this.#jump.textContent = this.#strings.jump;
+    this.#updateJump();
   }
 
   /** Whether it is following new content: true at the bottom, false once scrolled up. */
   get following(): boolean {
     return this.#stuck;
+  }
+
+  /**
+   * The newest card waiting on the person, like a question not yet answered, or null. While it's
+   * below what's in view, the jump button says so, and takes you to it.
+   */
+  get waiting(): HTMLElement | null {
+    const cards = [...this.querySelectorAll<HTMLElement>(waitingCards)];
+    return cards.at(-1) ?? null;
   }
 
   /** Scrolls to the newest message and follows new content again. */
@@ -90,14 +135,23 @@ export class AiTranscriptElement extends BaseElement {
       this.#jumpBar.dataset.part = "jump-bar";
       jump.type = "button";
       jump.dataset.part = "jump";
-      jump.textContent = this.#strings.jump;
       jump.hidden = true;
       jump.addEventListener("click", () => {
+        // The card the button named, even if focusing the button scrolled a little since.
+        const card = this.#pointsTo;
+        if (card?.isConnected && card.matches(waitingCards)) return this.#goTo(card);
         this.scrollToLatest({ smooth: true });
         // Keep keyboard focus in the conversation rather than on a button that's about to hide.
         this.focus({ preventScroll: true });
       });
+      const dot = document.createElement("span");
+      dot.dataset.part = "jump-dot";
+      dot.setAttribute("aria-hidden", "true");
+      const label = document.createElement("span");
+      label.dataset.part = "jump-label";
+      jump.append(dot, label);
       this.#jumpBar.append(jump);
+      this.#updateJump();
       this.#announcement.dataset.part = "announcement";
       this.#announcement.setAttribute("role", "status");
       this.append(this.#jumpBar, this.#announcement);
@@ -105,7 +159,13 @@ export class AiTranscriptElement extends BaseElement {
       this.addEventListener("messagecomplete", (event) => this.#announce(event.target as Message));
     }
     for (const child of this.#messages()) this.#resize.observe(child);
-    this.#mutations.observe(this, { childList: true, attributes: true, subtree: true, attributeFilter: ["streaming"] });
+    this.#mutations.observe(this, {
+      childList: true,
+      attributes: true,
+      subtree: true,
+      // Streaming, for aria-busy; the rest, for when a waiting card is answered or goes.
+      attributeFilter: ["streaming", "answered", "decided", "expired", "hidden"],
+    });
     this.#syncBusy();
     requestAnimationFrame(() => this.scrollToLatest());
   }
@@ -151,15 +211,54 @@ export class AiTranscriptElement extends BaseElement {
     this.#updateJump();
   }
 
+  /** The waiting card, when all of it is below what's in view. Any of it showing already says it waits. */
+  #waitingBelow(): HTMLElement | null {
+    const card = this.waiting;
+    if (!card || card.getClientRects().length === 0) return null;
+    return card.getBoundingClientRect().top >= this.getBoundingClientRect().bottom ? card : null;
+  }
+
   #updateJump() {
-    this.#jump.hidden = this.#stuck || this.#distance() <= nearBottom;
+    const card = this.#waitingBelow();
+    // Keep pointing at the card while the button has focus, so pressing it still goes there.
+    if (card || !this.#jump.matches(":focus") || !this.#pointsTo?.matches(waitingCards)) this.#pointsTo = card;
+    if (!card && this.#pointsTo) return;
+    const jump = this.#jump;
+    const hidden = !card && (this.#stuck || this.#distance() <= nearBottom);
+    // Only touch what changed: the observer watches `hidden`.
+    if (jump.hidden !== hidden) jump.hidden = hidden;
+    if (jump.hasAttribute("data-waiting") !== Boolean(card)) jump.toggleAttribute("data-waiting", Boolean(card));
+    const label = jump.querySelector("[data-part='jump-label']");
+    const words = card ? this.#strings.jumpWaiting(kindOf(card)) : this.#strings.jump;
+    if (label && label.textContent !== words) label.textContent = words;
+  }
+
+  /**
+   * Scrolls the whole message holding the waiting card into view, down to its time and buttons,
+   * and focuses the card's first control so it can be answered at once.
+   */
+  #goTo(card: HTMLElement) {
+    const message = this.#messages().find((child) => child.contains(card)) ?? card;
+    if (message === this.#messages().at(-1)) {
+      // The newest message: go to the bottom, and follow new content again.
+      this.scrollToLatest({ smooth: true });
+    } else {
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      message.scrollIntoView({ block: "end", behavior: reduce ? "auto" : "smooth" });
+    }
+    const control = firstControl(card);
+    if (control) control.focus({ preventScroll: true });
+    else this.focus({ preventScroll: true });
   }
 
   #changed(records: MutationRecord[]) {
+    // The jump button's own changes need nothing more.
+    records = records.filter((record) => !this.#jumpBar.contains(record.target));
+    if (!records.length) return;
     let busyChanged = false;
     for (const record of records) {
       if (record.type === "attributes") {
-        busyChanged = true;
+        if (record.attributeName === "streaming") busyChanged = true;
         continue;
       }
       if (record.target !== this) continue;

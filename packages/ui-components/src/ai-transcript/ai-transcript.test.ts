@@ -202,3 +202,36 @@ test("a reply with a notice, like a usage limit, is read out with it, and the no
   expect(announced()).toBe("You've reached your usage limit. Upgrade, or wait until it resets.");
   expect(notice.querySelector("[data-part='announcement']")!.textContent).toBe("");
 });
+
+test("`waiting` is the newest card still waiting on the person, and the jump button says what for", async () => {
+  const { transcript } = await mount(`<ai-transcript>
+    <ai-message><ai-question slot="footer" question="Which city?" answered></ai-question></ai-message>
+    <ai-message><ai-notice slot="footer" heading="A new model" tone="info"></ai-notice></ai-message>
+    <ai-message><ai-approval slot="footer" name="run_command"></ai-approval></ai-message>
+  </ai-transcript>`);
+  // An answered question and an info notice don't count.
+  expect(transcript.waiting?.localName).toBe("ai-approval");
+
+  transcript.querySelector("ai-approval")!.setAttribute("decided", "");
+  expect(transcript.waiting).toBeNull();
+
+  // A set's own questions count as the set.
+  transcript.insertAdjacentHTML("beforeend", `<ai-message><ai-questions slot="footer"></ai-questions></ai-message>`);
+  const set = transcript.querySelector("ai-questions")!;
+  set.append(Object.assign(document.createElement("ai-question"), { question: "Which day?" }));
+  expect(transcript.waiting).toBe(set);
+
+  // Pretend the set is below the view: the jump button points to it, in words that can be changed.
+  const jump = transcript.querySelector<HTMLButtonElement>("[data-part='jump']")!;
+  set.getBoundingClientRect = () => ({ top: 900, bottom: 1000, left: 0, right: 100, width: 100, height: 100, x: 0, y: 900, toJSON() {} });
+  set.getClientRects = () => [set.getBoundingClientRect()] as unknown as DOMRectList;
+  transcript.strings = { jumpWaiting: (kind) => `En attente (${kind})` };
+  expect(jump.hidden).toBe(false);
+  expect(jump.hasAttribute("data-waiting")).toBe(true);
+  expect(jump.textContent).toBe("En attente (answer)");
+
+  set.setAttribute("answered", "");
+  await settle();
+  expect(jump.hasAttribute("data-waiting")).toBe(false);
+  expect(jump.textContent).toBe("Jump to latest");
+});

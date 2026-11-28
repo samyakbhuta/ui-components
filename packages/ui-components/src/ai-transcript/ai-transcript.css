@@ -5,6 +5,8 @@
 @layer ai-transcript {
   ai-transcript {
     --_ai-transcript-gap: var(--ai-transcript-gap, 1.25rem);
+    /* The jump button while something below waits on you: 4.5:1 or more on Canvas, in light and dark. */
+    --_ai-transcript-waiting: var(--ai-transcript-waiting, light-dark(#2b5bc4, #8fb0ff));
     display: flex;
     flex-direction: column;
     gap: var(--_ai-transcript-gap);
@@ -50,6 +52,55 @@
     font: inherit;
     font-size: 0.8125rem;
     box-shadow: 0 4px 16px color-mix(in srgb, CanvasText 18%, transparent);
+  }
+
+  ai-transcript [data-part="jump"] {
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  ai-transcript [data-part="jump-dot"] {
+    display: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* Something below waits on you: the accent colour, and the pulsing dot the cards have. */
+  ai-transcript [data-part="jump"][data-waiting] {
+    border-color: var(--_ai-transcript-waiting);
+    color: var(--_ai-transcript-waiting);
+    font-weight: 600;
+  }
+
+  ai-transcript [data-part="jump"][data-waiting] [data-part="jump-dot"] {
+    display: block;
+    animation: ai-transcript-pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes ai-transcript-pulse {
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    ai-transcript [data-part="jump"][data-waiting] [data-part="jump-dot"] {
+      animation: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    ai-transcript [data-part="jump"][data-waiting] {
+      border-color: Highlight;
+      color: CanvasText;
+    }
+
+    ai-transcript [data-part="jump-dot"] {
+      background: Highlight;
+    }
   }
 
   ai-transcript [data-part="jump"]:hover {
