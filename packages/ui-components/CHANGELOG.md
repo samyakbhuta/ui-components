@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- New `<ai-plan>`: an agent proposes a plan before it starts. Open plan shows the plan in place, as Markdown, or links to your app's page with `href`. People Accept it, Reject it, or Revise it by saying what to change, and `accepts` adds "Accept and use …" buttons that accept and switch mode at once. It has the same waiting signs as `<ai-approval>`, fires `plandecision`, and `decision` restores a saved one.
+- `<ai-chat>`: a model can yield `{ type: "plan", … }` and wait for the review. Accepting with a mode switches the composer's Mode to it, typing in the box while the plan waits asks for changes, and a saved open plan asks the model again once decided. `<ai-transcript>` reads out a waiting plan, with the new `strings.plan`.
 - `<ai-chat>`'s `strings` also takes words for the parts it makes, so a chat can be translated in full: `message` (Copy, Retry, Edit and the rest), `thinking`, `toolCall`, `sources`, `question` and `approval`. Each is passed on as that part's `strings`, including to parts already on the page when `strings` changes. The buttons under each reply used to keep their English names.
 - Custom properties can be set on any element around a component, like `ai-chat` or `:root`, to style every one inside at once. Each component used to set its defaults on itself, so only rules on the component itself took effect. Its defaults now sit in private properties, like `--_ai-composer-accent`, which read the public ones first. Rules on the component itself work as before.
 

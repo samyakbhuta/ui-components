@@ -1,6 +1,6 @@
 # `<ai-transcript>`
 
-The scrolling conversation. It follows a reply as it streams while you're at the bottom, stays where you put it when you scroll up to read, and offers **Jump to latest**. Screen readers hear each finished reply once, not every word as it arrives. If the reply asks an [`<ai-question>`](../ai-question/README.md) or asks for approval with an [`<ai-approval>`](../ai-approval/README.md), they hear that too, and that it's waiting on them.
+The scrolling conversation. It follows a reply as it streams while you're at the bottom, stays where you put it when you scroll up to read, and offers **Jump to latest**. Screen readers hear each finished reply once, not every word as it arrives. If the reply asks an [`<ai-question>`](../ai-question/README.md) asks for approval with an [`<ai-approval>`](../ai-approval/README.md), or proposes an [`<ai-plan>`](../ai-plan/README.md), they hear that too, and that it's waiting on them.
 
 Its children are your messages, usually [`<ai-message>`](../ai-message/README.md) elements.
 
@@ -40,7 +40,7 @@ The element is the scroll container, so give it a height, or put it in a grid or
 | `announce="none"` | Stops reading finished replies out. |
 | `aria-label` | Names the conversation. It defaults to `strings.label`. |
 | `following` (read-only) | `true` while it follows new content. |
-| `strings` | Words to replace: `label` (`Conversation`), `jump` (`Jump to latest`), `reply(text)`, what's read out for a finished reply, `waiting(question)`, read after it for each [`<ai-question>`](../ai-question/README.md) in the reply still waiting for an answer (`${question} Waiting for your answer.`), and `approval(label)`, the same for each [`<ai-approval>`](../ai-approval/README.md) still waiting for a decision (`${label} Waiting for your approval.`). |
+| `strings` | Words to replace: `label` (`Conversation`), `jump` (`Jump to latest`), `reply(text)`, what's read out for a finished reply, `waiting(question)`, read after it for each [`<ai-question>`](../ai-question/README.md) in the reply still waiting for an answer (`${question} Waiting for your answer.`), `approval(label)`, the same for each [`<ai-approval>`](../ai-approval/README.md) still waiting for a decision (`${label} Waiting for your approval.`), and `plan(heading)`, the same for each [`<ai-plan>`](../ai-plan/README.md) (`${heading} Waiting for your review.`). |
 | `scrollToLatest({ smooth })` | Scrolls to the newest message and follows again. |
 
 ```ts

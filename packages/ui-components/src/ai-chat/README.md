@@ -4,7 +4,7 @@ A whole chat in one tag. Give it a `model`, a function that streams a reply, and
 - your messages, and the replies streaming in;
 - **Stop**, **Retry**, and errors;
 - thinking, tool calls, cited sources and follow-up questions;
-- questions and approvals that wait for the person.
+- questions, approvals and plans that wait for the person.
 
 It's built from the other components: [`<ai-transcript>`](../ai-transcript/README.md), [`<ai-composer>`](../ai-composer/README.md), [`<ai-message>`](../ai-message/README.md), and the parts a reply can hold.
 
@@ -48,6 +48,7 @@ It returns an async generator (or any async iterable) of chunks, or a promise of
 | `{ type: "suggestions", suggestions }` | Follow-up questions under the reply, which send when pressed. Only the newest reply keeps them. |
 | `{ type: "question", question, options, multiple?, other?, max?, skippable? }` | An [`<ai-question>`](../ai-question/README.md). The model waits, and the answer comes back as the value of the `yield`. |
 | `{ type: "approval", name, label?, description?, input?, always?, reason? }` | An [`<ai-approval>`](../ai-approval/README.md). The model waits, and the decision comes back as the value of the `yield`. |
+| `{ type: "plan", heading?, summary?, plan?, href?, accepts? }` | An [`<ai-plan>`](../ai-plan/README.md): a plan to review, with `plan` as Markdown. The model waits, and the decision comes back as the value of the `yield`. |
 
 ## Questions and approvals
 
@@ -72,14 +73,31 @@ chat.model = async function* () {
   - the message box says how to answer;
   - what's typed answers the question (a choice's name chooses it, anything else is "Other"), or denies the approval with what was typed as the reason.
 - **Always allow:** a tool chosen with Always allow isn't asked about again. Its card shows "Always allowed", and the model gets `{ decision: "always" }` straight away. `alwaysAllowed` holds those tools, to save and restore.
-- **After a reload:** a saved question or approval that wasn't answered asks the model again once it's answered. The answer is in the last message, as `question.answer` or `approval.decision`.
+- **After a reload:** a saved question, approval or plan that wasn't answered asks the model again once it's answered. The answer is in the last message, as `question.answer`, `approval.decision` or `plan.decision`.
+
+### Plans
+
+`yield` a plan before a bigger task, and the model waits for the review:
+
+```ts
+chat.model = async function* () {
+  let review = yield { type: "plan", heading: "Clean up the build", plan: "1. Look in `dist/`.\n2. Delete it.", accepts: [{ value: "auto", label: "auto mode" }] };
+  while (review.decision === "revise") review = yield { type: "plan", heading: "Clean up, gently", plan: revisedPlan(review.feedback) };
+  if (review.decision === "reject") return yield "OK, I'll leave it.";
+  yield "Starting."; // review.mode is "auto" with Accept and use auto mode
+};
+```
+
+- **The decision:** `{ decision, mode, feedback }`, with `decision` being `"accept"`, `"reject"` or `"revise"`.
+- **Accept and use …:** each of `accepts` adds a button. Choosing one also switches the composer's Mode to its `value`, when the composer offers that mode, and `mode` comes back with the decision.
+- **Typing while it waits:** what's typed asks for changes: `{ decision: "revise", feedback }`.
 
 ## Attributes
 
 | Attribute | Default | What it does |
 | --- | --- | --- |
 | `actions` | `copy retry` | The actions each reply offers, from `copy`, `retry`, `edit` and `feedback`, separated by spaces. Only the newest turn offers Retry. |
-| `waiting` | set by the element | Present while a question or an approval waits for the person. Style it, don't set it. |
+| `waiting` | set by the element | Present while a question, an approval or a plan waits for the person. Style it, don't set it. |
 
 ## Properties
 
@@ -92,7 +110,7 @@ chat.model = async function* () {
 | `actions` | `string` | The same as the attribute. |
 | `strings` | `Partial<ChatStrings>` | Words to replace; see below. |
 | `busy` | `boolean` (read-only) | `true` while a reply comes in. |
-| `waiting` | `boolean` (read-only) | `true` while a question or an approval waits. |
+| `waiting` | `boolean` (read-only) | `true` while a question, an approval or a plan waits. |
 | `composer`, `transcript` | (read-only) | The [`<ai-composer>`](../ai-composer/README.md) and [`<ai-transcript>`](../ai-transcript/README.md) inside, to set up. For example, `chat.composer.models = defaultModels`. |
 
 ## Methods
@@ -125,7 +143,7 @@ chat.messages = JSON.parse(localStorage.getItem("chat") ?? "[]");
 Each `ChatMessage` is `{ role, text }`, plus what the reply held:
 - `error`, `stopped` and `feedback`;
 - `thinking`, `tools` and `sources`;
-- a `question` with its `answer`, or an `approval` with its `decision`.
+- a `question` with its `answer`, an `approval` with its `decision`, or a `plan` with its `decision`.
 
 Attachments are kept as they were sent. `File` objects don't survive `JSON.stringify`, so store what you need, like each file's name, before saving.
 
@@ -151,6 +169,7 @@ An `<ai-composer>` or `<ai-transcript>` written inside is used instead of a new 
 | `followUps` | `Follow-up questions` |
 | `answerPlaceholder` | `Answer the question above, or type your answer` |
 | `approvalPlaceholder` | `Allow or deny above, or tell it what to do instead` |
+| `planPlaceholder` | `Accept or reject the plan above, or say what to change` |
 
 The parts the chat makes have words of their own. Give them in `strings` too, under the part's name, and the chat passes them on to every one it shows, including those already on the page:
 
@@ -163,6 +182,7 @@ chat.strings = {
   sources: { heading: "Sources" },
   question: { send: "Envoyer", other: "Autre" },
   approval: { allow: "Autoriser une fois", always: "Toujours autoriser", deny: "Refuser" },
+  plan: { accept: "Accepter", reject: "Refuser", revise: "Modifier…", acceptWith: (label) => `Accepter en ${label}` },
 };
 ```
 
@@ -174,6 +194,7 @@ chat.strings = {
 | `sources` | Sources. See [`<ai-sources>`'s](../ai-sources/README.md#translation). |
 | `question` | Questions. See [`<ai-question>`'s](../ai-question/README.md#translation). |
 | `approval` | Approvals. See [`<ai-approval>`'s](../ai-approval/README.md#translation). |
+| `plan` | Plans. See [`<ai-plan>`'s](../ai-plan/README.md#translation). |
 
 Leave a key out and that part keeps its own defaults. The composer and the transcript have theirs through `chat.composer.strings` and `chat.transcript.strings`.
 
@@ -185,10 +206,10 @@ Replies render with `<ai-message>`'s Markdown renderer, which never parses text 
 
 - **Screen readers:**
   - The transcript reads each finished reply out once, not every word as it streams in.
-  - It also reads out a question or an approval that's waiting, with "Waiting for your answer" or "Waiting for your approval".
+  - It also reads out a question, an approval or a plan that's waiting, with "Waiting for your answer", "Waiting for your approval" or "Waiting for your review".
 - **Focus:**
   - It stays in the message box while you chat.
-  - A question or an approval doesn't take it. People move to the card, or type their answer.
+  - A question, an approval or a plan doesn't take it. People move to the card, or type their answer.
 - Everything inside is a ui-sdk part, so keyboard use, ARIA and ui-sdk's agent bridge work as they do for each component.
 
 ## Styling
@@ -208,7 +229,7 @@ Style the parts inside through their own custom properties and parts.
 - streaming, a promise, Stop and the signal;
 - errors with `chaterror`, and Retry;
 - thinking, tools, sources and follow-ups;
-- questions and approvals, pressed and typed;
+- questions, approvals and plans, pressed and typed;
 - Always allow;
 - restoring a saved chat and answering its open question;
 - no model;

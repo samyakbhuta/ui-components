@@ -12,6 +12,8 @@ export type TranscriptStrings = {
   waiting: (question: string) => string;
   /** Read after the reply for each `<ai-approval>` in it still waiting for a decision. */
   approval: (label: string) => string;
+  /** Read after the reply for each `<ai-plan>` in it still waiting for a decision. */
+  plan: (heading: string) => string;
 };
 
 export const defaultTranscriptStrings: TranscriptStrings = {
@@ -20,6 +22,7 @@ export const defaultTranscriptStrings: TranscriptStrings = {
   reply: (text) => text,
   waiting: (question) => `${question} Waiting for your answer.`,
   approval: (label) => `${label} Waiting for your approval.`,
+  plan: (heading) => `${heading} Waiting for your review.`,
 };
 
 /** How close to the bottom, in pixels, still counts as "at the bottom". */
@@ -182,16 +185,17 @@ export class AiTranscriptElement extends BaseElement {
     this.#syncBusy();
     const body = message.querySelector("[data-part='body']");
     const text = (body ?? message).textContent?.trim() ?? "";
-    // A question or an approval the reply asks for is read after it, so people know the agent
-    // is waiting on them.
-    const waiting = [...message.querySelectorAll("ai-question:not([answered]), ai-approval:not([decided])")]
+    // A question, an approval or a plan the reply asks for is read after it, so people know the
+    // agent is waiting on them.
+    const waiting = [...message.querySelectorAll("ai-question:not([answered]), ai-approval:not([decided]), ai-plan:not([decided])")]
       .map((element) => {
         if (element.localName === "ai-question") {
           const question = element.getAttribute("question")?.trim();
           return question ? this.#strings.waiting(question) : "";
         }
         const heading = element.querySelector("[data-part='heading']")?.textContent?.trim();
-        return heading ? this.#strings.approval(heading) : "";
+        if (!heading) return "";
+        return element.localName === "ai-plan" ? this.#strings.plan(heading) : this.#strings.approval(heading);
       })
       .filter(Boolean);
     const words = [text && this.#strings.reply(text), ...waiting].filter(Boolean).join(" ");

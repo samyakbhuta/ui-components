@@ -348,3 +348,76 @@ test("changing strings updates the parts already shown, and leaving a key out br
   expect(own.strings.copy).toBe("Mine");
   expect(replies()[0].strings.copy).toBe("Copy");
 });
+
+test("a plan waits for the decision; accepting with a mode switches the composer's Mode; typing asks for changes", async () => {
+  const decisions: (ChatAnswer | undefined)[] = [];
+  const { chat, replies, waiting, idle } = await mount("<ai-chat></ai-chat>", (c) => {
+    c.composer.modes = [
+      { value: "plan", label: "Plan" },
+      { value: "auto", label: "Auto" },
+    ];
+    c.composer.mode = "plan";
+    c.model = async function* () {
+      let decision = yield { type: "plan", heading: "Clean up", summary: "Two steps.", plan: "1. Look.\n2. Delete.", accepts: [{ value: "auto", label: "auto mode" }] };
+      decisions.push(decision);
+      if (decision && "decision" in decision && decision.decision === "revise") {
+        decision = yield { type: "plan", heading: "Clean up, gently", plan: "1. Look.\n2. Keep the cache." };
+        decisions.push(decision);
+      }
+      yield "Done.";
+    };
+  });
+  await send(chat, "Clean up");
+  await waiting();
+  expect(chat.composer.getAttribute("placeholder")).toBe("Accept or reject the plan above, or say what to change");
+  const first = chat.querySelector("ai-plan")!;
+  expect(first.heading).toBe("Clean up");
+
+  // Typing in the box asks for changes, and the model proposes a new plan.
+  chat.composer.value = "Keep the cache";
+  chat.composer.submit();
+  await waitFor(() => expect(chat.querySelectorAll("ai-plan")).toHaveLength(2));
+  await waiting();
+  expect(first.decision).toEqual({ decision: "revise", mode: null, feedback: "Keep the cache" });
+  const second = chat.querySelectorAll("ai-plan")[1];
+  expect(second.heading).toBe("Clean up, gently");
+  expect(second.accepts).toEqual([]);
+
+  first.decide("accept"); // already decided: nothing happens
+  expect(decisions).toHaveLength(1);
+  const card = chat.querySelector<HTMLElement & { decide: (d: "accept", o?: { mode?: string }) => boolean }>("ai-plan:not([decided])")!;
+  card.decide("accept");
+  await idle();
+  expect(decisions).toEqual([
+    { decision: "revise", mode: null, feedback: "Keep the cache" },
+    { decision: "accept", mode: null, feedback: null },
+  ]);
+  expect(replies().at(-1)!.text).toBe("Done.");
+  expect(chat.messages.filter((message) => message.plan).map((message) => message.plan!.decision?.decision)).toEqual(["revise", "accept"]);
+  expect(chat.composer.mode).toBe("plan");
+});
+
+test("Accept and use a mode switches the composer, and a saved open plan asks the model again once decided", async () => {
+  const seen: ChatRequest[] = [];
+  const { chat, view, idle } = await mount("<ai-chat></ai-chat>", (c) => {
+    c.composer.modes = [
+      { value: "plan", label: "Plan" },
+      { value: "auto", label: "Auto" },
+    ];
+    c.composer.mode = "plan";
+    c.model = async function* (request) {
+      seen.push(request);
+      yield "Starting.";
+    };
+    c.messages = [
+      { role: "user", text: "Refactor" },
+      { role: "assistant", text: "Here's my plan.", plan: { type: "plan", heading: "Refactor", accepts: [{ value: "auto", label: "auto mode" }] } },
+    ];
+  });
+  await settle();
+  await userEvent.setup().click(view.getByRole("button", { name: "Accept and use auto mode" }));
+  await idle();
+  expect(chat.composer.mode).toBe("auto");
+  expect(seen).toHaveLength(1);
+  expect(seen[0].messages.at(-1)!.plan!.decision).toEqual({ decision: "accept", mode: "auto", feedback: null });
+});
