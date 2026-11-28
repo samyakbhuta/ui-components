@@ -57,7 +57,7 @@ export const valid = (
       input={{ command: "rm -rf dist" }}
       always
       reason
-      onapprovaldecision={(event) => (event.detail.decision === "deny" ? event.detail.reason : null)}
+      ondecisionchange={(event) => (event.detail.value?.decision === "deny" ? event.detail.value.reason : event.detail.source)}
     />
     <ai-questions
       label="About the gift"

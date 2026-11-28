@@ -1,3 +1,6 @@
+/** Each tag's attribute names, from a module's exports: element classes, or primitives' schemas on a server. */
+export function attributesOf(exports: Record<string, unknown>): Record<string, string[]>;
+
 /** Builds VS Code's HTML custom data and JetBrains' web-types for the elements. See editor-data.mjs. */
 export function buildEditorData(options: {
   /** The package folder. */

@@ -20,11 +20,14 @@ test.describe("on the docs page", () => {
     await page.keyboard.type("Only clear dist/cache");
     await page.keyboard.press("Enter");
 
-    await expect(page.locator("#approval .event-log")).toHaveText('approvaldecision {"decision":"deny","reason":"Only clear dist/cache"}');
+    const log = page.locator("#approval .event-log");
+    await expect(log).toHaveText(/^decisionchange /);
+    for (const piece of ['"reason":"enter-key"', '"source":"keyboard"', '"value":{"decision":"deny","reason":"Only clear dist/cache"}']) await expect(log).toContainText(piece);
     const decision = approval.locator("[data-part='decision']");
     await expect(decision).toHaveText("Denied. Instead, you suggested: “Only clear dist/cache”");
     await expect(decision).toBeFocused();
-    await expect(approval.getByRole("status")).toHaveText("Denied. Instead, you suggested: “Only clear dist/cache”");
+    // Read out through ui-sdk's shared live region.
+    await expect(page.locator("[aria-live]").filter({ hasText: "Denied. Instead, you suggested: “Only clear dist/cache”" })).toHaveCount(1);
     await expect(approval.getByRole("button")).toHaveCount(0);
 
     const reset = page.locator("#approval").getByRole("button", { name: "Reset demo" });
@@ -32,7 +35,7 @@ test.describe("on the docs page", () => {
     await expect(reset).toBeHidden();
     await expect(approval.getByRole("button", { name: "Allow once" })).toBeFocused();
     await approval.getByRole("button", { name: "Always allow" }).press("Enter");
-    await expect(page.locator("#approval .event-log")).toHaveText('approvaldecision {"decision":"always","reason":null}');
+    for (const piece of ['"reason":"press"', '"source":"keyboard"', '"value":{"decision":"always","reason":null}']) await expect(log).toContainText(piece);
   });
 
   test("the waiting line, the border, the buttons and both outcomes are readable @theme", async ({ page }) => {

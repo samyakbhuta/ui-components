@@ -1,10 +1,11 @@
 import { within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
-import { settle } from "@ui-sdk/core/testing";
+import { checkServer, mount as mountPrimitive, settle } from "@ui-sdk/core/testing";
 import { createAgent } from "@ui-sdk/web/agent";
 import { afterEach, expect, test, vi } from "vitest";
 import "./ai-approval.ts";
 import type { AiApprovalElement, ApprovalDecisionDetail } from "./ai-approval.ts";
+import { approval as approvalPrimitive } from "./approval.ts";
 
 afterEach(() => document.body.replaceChildren());
 
@@ -14,11 +15,13 @@ async function mount(markup: string, setup?: (approval: AiApprovalElement) => vo
   setup?.(approval);
   await settle();
   const decisions: ApprovalDecisionDetail[] = [];
-  approval.addEventListener("approvaldecision", (event) => decisions.push(event.detail));
+  approval.addEventListener("decisionchange", (event) => decisions.push(event.detail.value!));
   return { approval, decisions, view: within(approval) };
 }
 
 const line = (approval: AiApprovalElement) => approval.querySelector<HTMLElement>("[data-part='decision']")!;
+/** What ui-sdk's shared live region says, where `announce` writes for screen readers. */
+const announced = () => [...document.querySelectorAll("[aria-live]")].map((region) => region.textContent).join(" ");
 
 test("it's a group named by what it asks, says it's waiting, and shows what it will do as text", async () => {
   const { approval, view } = await mount(`<ai-approval name="run_command" label="Run a command" description="It can change files."></ai-approval>`, (a) => {
@@ -52,14 +55,14 @@ test("Allow once decides, then shows the decision, moves focus there and announc
   expect(line(approval).textContent).toBe("Allowed once");
   expect(line(approval).dataset.decision).toBe("allow");
   expect(document.activeElement).toBe(line(approval));
-  expect(view.getByRole("status").textContent).toBe("Allowed once");
-  expect(approval.decide("deny")).toBe(false);
+  await vi.waitFor(() => expect(announced()).toContain("Allowed once"));
+  expect(approval.api.decide("deny")).toBe(false);
 });
 
 test("Always allow is offered with `always`; decide('always') does nothing without it", async () => {
   const user = userEvent.setup();
   const plain = await mount(`<ai-approval name="search"></ai-approval>`);
-  expect(plain.approval.decide("always")).toBe(false);
+  expect(plain.approval.api.decide("always")).toBe(false);
   document.body.replaceChildren();
 
   const { approval, decisions, view } = await mount(`<ai-approval name="search" always></ai-approval>`);
@@ -81,6 +84,7 @@ test("with `reason`, what's typed goes with Deny, and Enter in the box denies", 
   expect(decisions).toEqual([{ decision: "deny", reason: "Only delete dist/cache" }]);
   expect(line(approval).textContent).toBe("Denied. Instead, you suggested: “Only delete dist/cache”");
   expect(line(approval).dataset.decision).toBe("deny");
+  expect(document.activeElement).toBe(line(approval));
   expect(box.closest<HTMLElement>("[data-part='reason']")!.hidden).toBe(true);
 });
 
@@ -98,11 +102,12 @@ test("a reason typed and then Allow once isn't sent; Deny without one is plain",
   expect(line(second.approval).textContent).toBe("Denied");
 });
 
-test("cancelling keeps it asking; a saved decision shows decided; null asks again", async () => {
-  const { approval, view } = await mount(`<ai-approval reason></ai-approval>`);
-  approval.addEventListener("approvaldecision", (event) => event.preventDefault(), { once: true });
-  expect(approval.decide("allow")).toBe(false);
+test("cancelling keeps it asking; a saved decision shows decided; null asks again, without a change event", async () => {
+  const { approval, view, decisions } = await mount(`<ai-approval reason></ai-approval>`);
+  approval.addEventListener("decisionchange", (event) => event.preventDefault(), { once: true });
+  expect(approval.api.decide("allow")).toBe(false);
   expect(approval.decision).toBeNull();
+  const reported = decisions.length;
 
   approval.decision = { decision: "deny", reason: "Use a dry run" };
   await settle();
@@ -114,15 +119,17 @@ test("cancelling keeps it asking; a saved decision shows decided; null asks agai
   await settle();
   expect(approval.hasAttribute("decided")).toBe(false);
   expect(view.getAllByRole("button")).toHaveLength(2);
+  // Showing a saved decision isn't a new one, so nothing is reported.
+  expect(decisions).toHaveLength(reported);
 });
 
 test("disabled locks the buttons", async () => {
   const pressed = vi.fn();
   const { approval, view } = await mount(`<ai-approval disabled></ai-approval>`);
-  approval.addEventListener("approvaldecision", pressed);
+  approval.addEventListener("decisionchange", pressed);
   const allow = view.getByRole("button", { name: "Allow once" });
   expect(allow.matches(":disabled") || allow.getAttribute("aria-disabled") === "true").toBe(true);
-  expect(approval.decide("allow")).toBe(false);
+  expect(approval.api.decide("allow")).toBe(false);
   expect(pressed).not.toHaveBeenCalled();
 });
 
@@ -200,4 +207,63 @@ test("an app can let agents decide alone, by emptying a confirm sentence", async
   const result = await createAgent({ allow: (step) => !step.confirm }).act({ steps: [{ ref: "Deny", action: "press" }] });
   expect(result.ok, result.error?.message).toBe(true);
   expect(decisions).toEqual([{ decision: "deny", reason: null }]);
+});
+
+test("a change says what asked for it and how, and an agent's deny is reported as the agent's", async () => {
+  const user = userEvent.setup();
+  const { approval, view } = await mount(`<ai-approval name="search" reason></ai-approval>`);
+  const details: { reason: string; source: string }[] = [];
+  approval.addEventListener("decisionchange", (event) => details.push({ reason: event.detail.reason, source: event.detail.source }));
+  // The button says how it was pressed, and the change passes it on.
+  let pressedWith = "";
+  approval.querySelector("[data-part='allow']")!.addEventListener("action", (event) => (pressedWith = (event as CustomEvent<{ source: string }>).detail.source));
+  await user.click(view.getByRole("button", { name: "Allow once" }));
+  expect(pressedWith).not.toBe("");
+  expect(details).toEqual([{ reason: "press", source: pressedWith }]);
+
+  approval.decision = null;
+  await settle();
+  // The person agrees, so the agent's Deny goes through.
+  const result = await createAgent({ allow: () => true }).act({
+    steps: [
+      { ref: "What should it do instead?", action: "setValue", args: ["Search the docs first"] },
+      { ref: "Deny", action: "press" },
+    ],
+  });
+  expect(result.ok, result.error?.message).toBe(true);
+  expect(details.at(-1)).toEqual({ reason: "press", source: "agent" });
+  expect(approval.decision).toEqual({ decision: "deny", reason: "Search the docs first" });
+});
+
+test("the agent sees the card by its heading, with its decision but no actions: it decides through the marked buttons", async () => {
+  await mount(`<ai-approval name="search" always></ai-approval>`);
+  const snapshot = createAgent().snapshot();
+  expect(snapshot.find((item) => item.label === "Allow search?")).toMatchObject({ component: "approval", actions: [], decision: null });
+  for (const button of ["Allow once", "Always allow", "Deny"]) {
+    expect(snapshot.find((item) => item.label === button)?.confirm, button).toBeTruthy();
+  }
+});
+
+test("the primitive renders on a server, and its parts come and go with the decision", async () => {
+  const markup = "<root><status></status><heading></heading><actions></actions><decision></decision></root>";
+  checkServer(approvalPrimitive, { name: "search" }, markup);
+  const view = mountPrimitive(approvalPrimitive, { name: "search" }, markup);
+  try {
+    const root = view.part("root")!;
+    expect(root.getAttribute("role")).toBe("group");
+    expect(root.getAttribute("aria-labelledby")).toBe(view.part("heading")!.id);
+    expect(root.getAttribute("aria-describedby")).toBe(view.part("status")!.id);
+    expect(view.part("decision")!.isConnected).toBe(false);
+
+    expect(view.api.decide("allow")).toBe(true);
+    await view.settle();
+    expect(view.changes.at(-1)).toMatchObject({ key: "decision", value: { decision: "allow", reason: null }, reason: "imperative" });
+    expect(view.part("actions")!.isConnected).toBe(false);
+    expect(view.part("status")!.isConnected).toBe(false);
+    expect(root.hasAttribute("decided")).toBe(true);
+    expect(root.dataset.decision).toBe("allow");
+    expect(view.announced).toContain("Allowed once");
+  } finally {
+    view.unmount();
+  }
 });

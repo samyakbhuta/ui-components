@@ -1,15 +1,10 @@
 // @vitest-environment node
 import { getLanguageService, newHTMLDataProvider, TextDocument } from "vscode-html-languageservice";
 import { expect, test } from "vitest";
-import { buildEditorData } from "../scripts/editor-data.mjs";
+import { attributesOf, buildEditorData } from "../scripts/editor-data.mjs";
 import * as elements from "./index.ts";
 
-const tagOf = (name: string) => name.replace(/Element$/, "").replace(/[A-Z]/g, (letter, index) => `${index ? "-" : ""}${letter.toLowerCase()}`);
-const attributes = Object.fromEntries(
-  Object.entries(elements)
-    .filter(([name]) => /^Ai\w+Element$/.test(name))
-    .map(([name, element]) => [tagOf(name), (element as { observedAttributes?: string[] }).observedAttributes ?? []]),
-);
+const attributes = attributesOf(elements);
 const { vscode, webTypes } = buildEditorData({ root: new URL("..", import.meta.url).pathname, attributes, version: "0.0.0" });
 
 // VS Code's own HTML language service, given the data the way the html.customData setting does.

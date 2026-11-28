@@ -96,6 +96,26 @@ function valuesOf(type, unions) {
 }
 
 const camel = (name) => name.replace(/-(\w)/g, (_, letter) => letter.toUpperCase());
+const kebab = (name) => name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+
+/**
+ * Each tag's attribute names, from a module's exports: an element class's `observedAttributes`,
+ * or, for one made from a ui-sdk primitive with `createParts`, which has no class on a server,
+ * the primitive's options schema (exported by the tag's name, like `approval` for `ai-approval`).
+ */
+export function attributesOf(exports) {
+  return Object.fromEntries(
+    Object.entries(exports)
+      .filter(([name]) => /^Ai\w+Element$/.test(name))
+      .map(([name, element]) => {
+        const tag = name.replace(/Element$/, "").replace(/[A-Z]/g, (letter, index) => `${index ? "-" : ""}${letter.toLowerCase()}`);
+        if (element?.observedAttributes) return [tag, element.observedAttributes];
+        const schema = exports[camel(tag.slice(3))]?.options ?? {};
+        const read = Object.entries(schema).filter(([, kind]) => ["string", "number", "boolean", "list"].includes(kind) || typeof kind === "function");
+        return [tag, read.map(([option]) => kebab(option))];
+      }),
+  );
+}
 
 /**
  * Builds both files. `attributes` maps each tag to its `observedAttributes`; `root` is the

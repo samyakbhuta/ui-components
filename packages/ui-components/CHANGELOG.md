@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `<ai-approval>` is now built as a ui-sdk primitive, `approval`, exported beside the element and rendered with ui-sdk's `createParts`. Breaking changes:
+  - `approvaldecision` is now `decisionchange`, with `{ value, reason, source }` in `detail`: `value` is the `{ decision, reason }` it used to carry, `reason` says what asked (`"press"`, `"enter-key"` or `"imperative"`), and `source` says how (`"mouse"`, `"keyboard"`, `"agent"` and so on). Like ui-sdk's change events, it doesn't bubble: listen on the element, or with `{ capture: true }` around it.
+  - `decide()` is `api.decide()`, and there's a new `api.deny(reason?)` for app code. AI agents see the card as one `approval` component, named by its heading, with its decision, and decide through its buttons, each of which asks the person first.
+  - New `defaultDecision`. Screen readers hear the decision through ui-sdk's shared live region, so the `announcement` part is gone. The parts also carry ui-sdk's `data-slot`.
 - AI agents no longer decide approvals or plans, or delete chats, on their own. Through ui-sdk's agent bridge, these are refused unless the app's `allow` asks the person and they agree (`data-agent-confirm`):
   - Allow once, Always allow and Deny on an `<ai-approval>`;
   - Accept, each Accept and use, Reject and the Revise box's Send changes on an `<ai-plan>`;

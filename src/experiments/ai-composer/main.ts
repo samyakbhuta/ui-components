@@ -98,7 +98,7 @@ function logEvents(root: HTMLElement) {
     "questionanswer",
     "questionskip",
     "questionsanswer",
-    "approvaldecision",
+    "decisionchange",
     "plandecision",
     "noticeaction",
     "noticeexpire",
@@ -110,6 +110,7 @@ function logEvents(root: HTMLElement) {
     "chaterror",
   ];
   for (const type of types) {
+    // Capture, since ui-sdk change events like `decisionchange` don't bubble.
     root.addEventListener(type, (event) => {
       const detail = (event as CustomEvent).detail;
       // A whole conversation is too long to show; its size says enough.
@@ -118,7 +119,7 @@ function logEvents(root: HTMLElement) {
         value instanceof File ? `File(${value.name})` : value instanceof HTMLElement ? `<${value.localName}>` : key === "value" && Array.isArray(value) && value[0]?.file ? value.map((entry: { file: File; reasons: string[] }) => `${entry.file.name}: ${entry.reasons}`) : value,
       );
       log.textContent = `${type} ${shown ?? ""}`;
-    });
+    }, true);
   }
 }
 
@@ -130,7 +131,8 @@ function resetDemo(root: HTMLElement, settled: string, events: string[], reset: 
   const button = root.querySelector<HTMLButtonElement>(".reset-demo")!;
   const sync = () => (button.hidden = !root.querySelector(settled));
   // The events come before the element shows it's settled, so check once it has.
-  for (const type of events) root.addEventListener(type, () => queueMicrotask(sync));
+  // Capture, since ui-sdk change events like `decisionchange` don't bubble.
+  for (const type of events) root.addEventListener(type, () => queueMicrotask(sync), true);
   button.addEventListener("click", () => {
     const next = reset();
     sync();
@@ -687,8 +689,9 @@ questions.addEventListener("questionsanswer", (event) => console.log(event.detai
 <ai-approval class="email-approval" name="send_email"></ai-approval>
 <button type="button" class="reset-demo">Reset demo</button>`,
     script: `approval.input = "rm -rf dist"
-approval.addEventListener("approvaldecision", (event) => {
-  if (event.detail.decision === "deny") tellAgent(event.detail.reason)
+approval.addEventListener("decisionchange", (event) => {
+  const { decision, reason } = event.detail.value
+  if (decision === "deny") tellAgent(reason)
   else runTool()
 })
 approval.decision = savedDecision // shows a saved decision, like when a chat opens again`,
@@ -698,7 +701,7 @@ approval.decision = savedDecision // shows a saved decision, like when a chat op
         to: "team@example.com",
         subject: "Release notes",
       };
-      resetDemo(root, "ai-approval[decided]", ["approvaldecision"], () => {
+      resetDemo(root, "ai-approval[decided]", ["decisionchange"], () => {
         for (const approval of root.querySelectorAll("ai-approval")) approval.decision = null;
         return root.querySelector<HTMLElement>("ai-approval [data-part='allow'] button");
       });
