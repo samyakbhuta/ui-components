@@ -23,11 +23,14 @@ test.describe("on the docs page", () => {
     await expect(question.getByRole("radio", { name: "Other" })).toBeChecked();
     await question.getByRole("textbox", { name: "Your own answer" }).press("Enter");
 
-    await expect(page.locator("#question .event-log")).toHaveText('questionanswer {"value":"Porto","labels":["Porto"],"other":"Porto"}');
+    const log = page.locator("#question .event-log");
+    await expect(log).toHaveText(/^answerchange /);
+    for (const piece of ['"reason":"enter-key"', '"source":"keyboard"', '"value":{"value":"Porto","labels":["Porto"],"other":"Porto"}']) await expect(log).toContainText(piece);
     await expect(question.locator("[data-part='answer']")).toHaveText("Answered: Porto");
     await expect(question.locator("[data-part='answer']")).toBeFocused();
     await expect(send).toBeHidden();
-    await expect(question.getByRole("status")).toHaveText("Answered: Porto");
+    // Read out through ui-sdk's shared live region.
+    await expect(page.locator("[aria-live]").filter({ hasText: "Answered: Porto" })).toHaveCount(1);
 
     // Reset demo shows once something is answered, and puts focus back on the first choice.
     const reset = page.locator("#question").getByRole("button", { name: "Reset demo" });
@@ -48,7 +51,9 @@ test.describe("on the docs page", () => {
     await expect(question.getByRole("checkbox", { name: "Beaches" })).toBeEnabled();
     await question.getByRole("checkbox", { name: "Beaches" }).press("Space");
     await question.getByRole("button", { name: "Send" }).click();
-    await expect(page.locator("#question .event-log")).toHaveText('questionanswer {"value":["Museums","Beaches"],"labels":["Museums","Beaches"],"other":null}');
+    const log = page.locator("#question .event-log");
+    await expect(log).toHaveText(/^answerchange /);
+    for (const piece of ['"reason":"press"', '"source":"mouse"', '"value":{"value":["Museums","Beaches"],"labels":["Museums","Beaches"],"other":null}']) await expect(log).toContainText(piece);
   });
 
   test("its text, controls and borders are readable @theme", async ({ page }) => {

@@ -46,8 +46,9 @@ test("it's a group, says it's waiting, and shows one question at a time with whe
 test("the arrows move freely; answers are kept, and Send on the last sends them all together", async () => {
   const user = userEvent.setup();
   const { set, sent, view, visible } = await mount();
-  const answered = vi.fn();
-  document.body.addEventListener("questionanswer", answered);
+  // Each question's own answer is cancelled inside the set, so nothing around it acts on it.
+  const kept: boolean[] = [];
+  document.body.addEventListener("answerchange", (event) => queueMicrotask(() => kept.push(!event.defaultPrevented)), true);
 
   await user.click(within(visible()).getByRole("radio", { name: "A parent" }));
   await user.click(within(visible()).getByRole("button", { name: "Continue" }));
@@ -74,8 +75,8 @@ test("the arrows move freely; answers are kept, and Send on the last sends them 
       ],
     },
   ]);
-  // The questions' own events stay inside the set.
-  expect(answered).not.toHaveBeenCalled();
+  expect(kept.length).toBeGreaterThan(0);
+  expect(kept.every((stayed) => !stayed)).toBe(true);
   expect(set.hasAttribute("answered")).toBe(true);
   expect(set.answers).toEqual(sent[0].answers);
 });
@@ -153,7 +154,7 @@ test("cancelling keeps it asking; disabled locks it; questions written inside wo
   written.addEventListener("questionsanswer", (event) => event.preventDefault(), { once: true });
   const question = written.querySelector("ai-question")!;
   question.value = "Yes";
-  question.submit();
+  question.api.submit();
   expect(written.answers).toBeNull();
   written.disabled = true;
   await settle();

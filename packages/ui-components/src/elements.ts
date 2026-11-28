@@ -167,6 +167,10 @@ export interface AiQuestionProps {
   value?: string | string[] | null;
   otherText?: string;
   answer?: QuestionAnswer | null;
+  /** The answer it starts with, read once. `answer` shows a saved one at any time. */
+  defaultAnswer?: QuestionAnswer | null;
+  /** ui-sdk's own: logs the primitive's state and changes to the console. */
+  debug?: boolean;
 }
 
 export interface AiApprovalProps {

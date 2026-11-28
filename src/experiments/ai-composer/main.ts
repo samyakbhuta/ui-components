@@ -95,8 +95,7 @@ function logEvents(root: HTMLElement) {
     "messagefeedback",
     "messageversion",
     "attachmentopen",
-    "questionanswer",
-    "questionskip",
+    "answerchange",
     "questionsanswer",
     "decisionchange",
     "openchange",
@@ -643,7 +642,10 @@ reply.append(sources)`,
 </ai-question>
 <button type="button" class="reset-demo">Reset demo</button>`,
     script: `question.options = ["Paris", "Rome", { value: "Lisbon", description: "The cheapest flights this month" }]
-question.addEventListener("questionanswer", (event) => send(event.detail.labels.join(", ")))
+question.addEventListener("answerchange", (event) => {
+  const answer = event.detail.value // { value, labels, other }, or { skipped: true }
+  send("skipped" in answer ? "Skipped" : answer.labels.join(", "))
+})
 question.answer = savedAnswer // shows a saved answer, like when a chat opens again`,
     setup: (root) => {
       root.querySelector<HTMLElementTagNameMap["ai-question"]>(".city-question")!.options = [
@@ -651,8 +653,8 @@ question.answer = savedAnswer // shows a saved answer, like when a chat opens ag
         "Rome",
         { value: "Lisbon", description: "The cheapest flights this month" },
       ];
-      resetDemo(root, "ai-question[answered]", ["questionanswer", "questionskip"], () => {
-        for (const question of root.querySelectorAll("ai-question")) question.reset();
+      resetDemo(root, "ai-question[answered]", ["answerchange"], () => {
+        for (const question of root.querySelectorAll("ai-question")) question.api.reset();
         return root.querySelector<HTMLElement>("ai-question ui-radio");
       });
     },

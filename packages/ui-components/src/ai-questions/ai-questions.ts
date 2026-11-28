@@ -1,6 +1,6 @@
 import "@ui-sdk/web/button";
 import "../ai-question/ai-question.ts";
-import type { AiQuestionElement, QuestionAnswer, QuestionAnswerDetail, QuestionOption } from "../ai-question/ai-question.ts";
+import type { AiQuestionElement, QuestionAnswer, QuestionEvents, QuestionOption } from "../ai-question/ai-question.ts";
 import { adoptStyles, BaseElement, define } from "../styles.ts";
 import styles from "./ai-questions.css?inline";
 
@@ -176,7 +176,7 @@ export class AiQuestionsElement extends BaseElement {
     // Pick up answers changed since Continue, like a choice changed with the arrow keys.
     this.#silent = true;
     try {
-      for (const question of this.#questions()) question.submit();
+      for (const question of this.#questions()) question.api.submit();
     } finally {
       this.#silent = false;
     }
@@ -226,15 +226,14 @@ export class AiQuestionsElement extends BaseElement {
   }
 
   /** Records a question's answer instead of letting it send, then moves on. */
-  #record(event: Event) {
+  #record(event: QuestionEvents["answerchange"]) {
     const question = event.target as AiQuestionElement;
     const index = this.#questions().indexOf(question);
-    if (index < 0) return;
-    // The set sends them all together, so neither the question nor anything around it acts on this.
+    if (index < 0 || !event.detail.value) return;
+    // The set sends them all together, so the question stays unanswered: cancelling keeps it open.
     event.preventDefault();
-    event.stopPropagation();
     if (this.#answers || this.disabled) return;
-    this.#drafts[index] = event.type === "questionskip" ? { skipped: true } : (event as CustomEvent<QuestionAnswerDetail>).detail;
+    this.#drafts[index] = event.detail.value;
     if (this.#silent) return;
     clearTimeout(this.#advance);
     if (index === this.#questions().length - 1) this.submit();
@@ -256,7 +255,7 @@ export class AiQuestionsElement extends BaseElement {
       const value = question.value;
       // Other needs typing, so it doesn't move on.
       if (typeof value !== "string" || !question.options.some((option) => (typeof option === "string" ? option : option.value) === value)) return;
-      question.submit();
+      question.api.submit();
     }, advanceDelay);
   }
 
@@ -321,8 +320,8 @@ export class AiQuestionsElement extends BaseElement {
     const holder = document.createElement("div");
     holder.dataset.part = "questions";
     holder.append(...written);
-    holder.addEventListener("questionanswer", (event) => this.#record(event));
-    holder.addEventListener("questionskip", (event) => this.#record(event));
+    // A question's answerchange doesn't bubble, so the holder hears it on the way down.
+    holder.addEventListener("answerchange", (event) => this.#record(event as QuestionEvents["answerchange"]), true);
     // A single choice picked with a pointer moves on: compare the answer before and after the click.
     let before: unknown = null;
     holder.addEventListener("pointerdown", (event) => {

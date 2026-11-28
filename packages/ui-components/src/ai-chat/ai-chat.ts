@@ -502,7 +502,7 @@ export class AiChatElement extends BaseElement {
         const answer = question ? typedAnswer(this.#questionOf(question), prompt.text) : null;
         if (question && answer && !("skipped" in answer)) {
           question.value = answer.value;
-          question.submit();
+          question.api.submit();
         }
       } else if (card.localName === "ai-plan") {
         const decision: PlanDecisionDetail = { decision: "revise", mode: null, feedback: prompt.text };
@@ -892,9 +892,8 @@ export class AiChatElement extends BaseElement {
         void this.#run({ text: user?.text ?? "", files: [], references: [] });
       });
     };
-    const event = { "ai-question": "questionanswer", "ai-approval": "decisionchange", "ai-plan": "decisionchange", "ai-questions": "questionsanswer" }[card.localName]!;
+    const event = { "ai-question": "answerchange", "ai-approval": "decisionchange", "ai-plan": "decisionchange", "ai-questions": "questionsanswer" }[card.localName]!;
     card.addEventListener(event, resume, { once: true });
-    if (card.localName === "ai-question") card.addEventListener("questionskip", resume, { once: true });
   }
 
   #questionElement(chunk: ChatQuestion) {
@@ -906,14 +905,12 @@ export class AiChatElement extends BaseElement {
     card.other = chunk.other ?? false;
     card.max = chunk.max ?? null;
     card.skippable = chunk.skippable ?? false;
-    const settle = (event: Event) => {
-      if (card !== this.#waitingOn) return;
-      const answer: QuestionAnswer = event.type === "questionskip" ? { skipped: true } : (event as CustomEvent).detail;
+    card.addEventListener("answerchange", (event) => {
+      const answer: QuestionAnswer | null = event.detail.value;
+      if (card !== this.#waitingOn || !answer) return;
       // The event comes before the card shows its answer; continue once it has.
       queueMicrotask(() => this.#settle(answer));
-    };
-    card.addEventListener("questionanswer", settle);
-    card.addEventListener("questionskip", settle);
+    });
     return card;
   }
 

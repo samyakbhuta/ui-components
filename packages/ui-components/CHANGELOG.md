@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `<ai-question>` is now built as a ui-sdk primitive, `question`, exported beside the element and rendered with ui-sdk's `createParts`. Breaking changes:
+  - `questionanswer` and `questionskip` are now one event, `answerchange`, with `{ value, reason, source }` in `detail`: `value` is the answer `{ value, labels, other }`, or `{ skipped: true }`, and `reason` is `"press"`, `"enter-key"`, `"skip-press"` or `"imperative"`. It doesn't bubble: listen on the element, or with `{ capture: true }` around it. `<ai-questions>` catches its questions' answers that way.
+  - `submit()`, `skip()` and `reset()` are `api.submit()`, `api.skip()` and `api.reset()`. New `defaultAnswer`.
+  - The `question` primitive stays out of an AI agent's view, since its radio or checkbox group already carries the question's name.
+  - Screen readers hear the answer through ui-sdk's shared live region, so the `announcement` part is gone.
 - `<ai-notice>` is now built as a ui-sdk primitive, `notice`, exported beside the element and rendered with ui-sdk's `createParts`. Breaking changes:
   - Dismiss now closes it through a new `open` state: `noticedismiss` is replaced by `openchange` (`{ value: false, reason: "close-press" }`), and there's `default-open`.
   - `noticeaction` carries `{ value, reason, source }`, and `noticeexpire` `{ value: null, reason: "timeout" }`. Like ui-sdk's events, they don't bubble; `<ai-chat>` passes `noticeaction` on, so listening on the chat works as before.

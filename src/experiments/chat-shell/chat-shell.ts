@@ -10,6 +10,7 @@ import "@samyakbhuta/ui-components/ai-suggestions";
 import "@samyakbhuta/ui-components/ai-question";
 import "@samyakbhuta/ui-components/ai-approval";
 import "@samyakbhuta/ui-components/ai-plan";
+import type { QuestionElementEventMap } from "@samyakbhuta/ui-components/ai-question";
 import type { ApprovalElementEventMap } from "@samyakbhuta/ui-components/ai-approval";
 import type { PlanElementEventMap } from "@samyakbhuta/ui-components/ai-plan";
 import "@samyakbhuta/ui-components/ai-notice";
@@ -1052,7 +1053,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
         const answer = typedAnswer(question, detail.text);
         if (!("skipped" in answer)) {
           question.value = answer.value;
-          question.submit();
+          question.api.submit();
         }
       }
       return;
@@ -1135,18 +1136,22 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     setTimeout(() => quoted.removeAttribute("data-highlighted"), 2000);
   });
 
-  transcript.addEventListener("questionanswer", (event) => {
-    if (composer.busy) return event.preventDefault();
-    const step = Number((event.target as HTMLElement).dataset.step);
-    // The event comes before the question shows as answered; send once it has.
-    queueMicrotask(() => (step ? answerWith(event.detail.labels.join(", "), step) : save()));
-  });
-
-  transcript.addEventListener("questionskip", (event) => {
-    if (composer.busy) return event.preventDefault();
-    const step = Number((event.target as HTMLElement).dataset.step);
-    queueMicrotask(() => (step ? answerWith("Surprise me", step) : save()));
-  });
+  // An answer continues the same turn. It doesn't bubble, so the transcript hears it on the way
+  // down, before a set of questions around it does: those are the set's to send.
+  transcript.addEventListener(
+    "answerchange",
+    (changed) => {
+      if (!(changed.target instanceof HTMLElement) || changed.target.localName !== "ai-question" || changed.target.closest("ai-questions")) return;
+      const event = changed as QuestionElementEventMap["answerchange"];
+      const answer = event.detail.value;
+      if (!answer) return;
+      if (composer.busy) return event.preventDefault();
+      const step = Number((event.target as HTMLElement).dataset.step);
+      // The event comes before the question shows as answered; send once it has.
+      queueMicrotask(() => (step ? answerWith("skipped" in answer ? "Surprise me" : answer.labels.join(", "), step) : save()));
+    },
+    { capture: true },
+  );
 
   // A decision continues the same turn: the agent runs the command, or says it won't.
   // ui-sdk change events don't bubble, so the transcript hears them on the way down.
