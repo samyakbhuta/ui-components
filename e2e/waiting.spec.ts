@@ -36,8 +36,11 @@ test.describe("in the chat shell", () => {
 
     await jump(page).click();
     await expect(page.locator("ai-question").getByRole("radio").first()).toBeFocused();
-    await expect(page.locator("ai-question")).toBeInViewport();
-    await expect(jump(page)).not.toHaveAttribute("data-waiting", "");
+    // The whole reply shows, down to its time and buttons, and the pill goes.
+    const reply = page.locator("ai-message:not([from='user'])").last();
+    await expect(reply.locator(":scope > [data-part='actions']")).toBeInViewport();
+    await expect(reply.locator(":scope > [data-part='meta']")).toBeInViewport();
+    await expect(jump(page)).toBeHidden();
 
     // Answered, the button goes back to Jump to latest.
     await page.keyboard.press("Space");
@@ -116,5 +119,6 @@ test("in <ai-chat>, a plan waiting below says so @theme", async ({ page }) => {
   await expect(pill.locator("[data-part='jump-dot']")).toHaveCSS("animation-name", "none");
   await pill.click();
   await expect(chat.locator("ai-plan").getByRole("button").first()).toBeFocused();
-  await expect(chat.locator("ai-plan")).toBeInViewport();
+  await expect(chat.locator("ai-message").last().locator(":scope > [data-part='actions']")).toBeInViewport();
+  await expect(pill).toBeHidden();
 });

@@ -233,10 +233,19 @@ export class AiTranscriptElement extends BaseElement {
     if (label && label.textContent !== words) label.textContent = words;
   }
 
-  /** Scrolls the waiting card into view, and focuses its first control so it can be answered at once. */
+  /**
+   * Scrolls the whole message holding the waiting card into view, down to its time and buttons,
+   * and focuses the card's first control so it can be answered at once.
+   */
   #goTo(card: HTMLElement) {
-    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    card.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+    const message = this.#messages().find((child) => child.contains(card)) ?? card;
+    if (message === this.#messages().at(-1)) {
+      // The newest message: go to the bottom, and follow new content again.
+      this.scrollToLatest({ smooth: true });
+    } else {
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      message.scrollIntoView({ block: "end", behavior: reduce ? "auto" : "smooth" });
+    }
     const control = firstControl(card);
     if (control) control.focus({ preventScroll: true });
     else this.focus({ preventScroll: true });
