@@ -184,12 +184,12 @@ test("header and footer children sit around the text, even when added later", as
       <small slot="footer">Sonnet 5.5</small>
     </ai-message>`);
   const parts = () => [...message.children].map((child) => child.getAttribute("slot") ?? child.getAttribute("data-part"));
-  expect(parts()).toEqual(["header", "attachments", "body", "error", "footer", "meta", "actions", "announcement"]);
+  expect(parts()).toEqual(["header", "quotes", "attachments", "body", "error", "footer", "meta", "actions", "announcement"]);
   expect(message.text).toBe("Answer");
 
   message.append(Object.assign(document.createElement("span"), { slot: "header", textContent: "Searching" }));
   await settle();
-  expect(parts()).toEqual(["header", "header", "attachments", "body", "error", "footer", "meta", "actions", "announcement"]);
+  expect(parts()).toEqual(["header", "header", "quotes", "attachments", "body", "error", "footer", "meta", "actions", "announcement"]);
 });
 
 test("agents can copy, retry or edit a message", async () => {
@@ -510,5 +510,30 @@ test("a time in the future, or not a time at all, is handled", async () => {
   expect(message.querySelector<HTMLElement>("[data-part='meta']")!.hidden).toBe(true);
   message.time = Date.now() + 60_000;
   expect(message.querySelector("time")!.textContent).toBe("just now");
+  message.remove();
+});
+
+test("quotes show above the message as text; one with an id is a button that fires quoteopen", async () => {
+  const { message } = await mount(`<ai-message from="user">Like what?</ai-message>`, (m) => {
+    m.quotes = [
+      { text: "<img src=x onerror=alert(1)> your own tags", from: "assistant", id: "1" },
+      { text: "Pasted from elsewhere" },
+    ];
+  });
+  const opened = vi.fn();
+  message.addEventListener("quoteopen", (event) => opened(event.detail));
+  const list = message.querySelector<HTMLElement>("[data-part='quotes']")!;
+  expect(list.hidden).toBe(false);
+  expect(list.querySelector("img")).toBeNull();
+  const button = within(message).getByRole("button", { name: "Quoted: <img src=x onerror=alert(1)> your own tags" });
+  expect(button.title).toBe("Show where this was said");
+  expect(list.querySelector("blockquote")!.textContent).toBe("Quoted: Pasted from elsewhere");
+  button.click();
+  expect(opened).toHaveBeenCalledWith({ quote: { text: "<img src=x onerror=alert(1)> your own tags", from: "assistant", id: "1" }, index: 0 });
+
+  message.strings = { quoted: "Cité :", goToQuote: "Voir" };
+  expect(within(message).getByRole("button", { name: "Cité : <img src=x onerror=alert(1)> your own tags" }).title).toBe("Voir");
+  message.quotes = [];
+  expect(list.hidden).toBe(true);
   message.remove();
 });

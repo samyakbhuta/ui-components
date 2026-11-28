@@ -100,6 +100,7 @@ The composer has the `listening` attribute meanwhile, for your own styles.
 | `max-length` | no limit | The most characters the prompt holds. A counter appears from 80% of the limit, and screen readers hear when it's reached. |
 | `history` | off | ArrowUp in an empty box (or at its very start) brings back earlier prompts; ArrowDown goes forward, back to what you were typing. Sent prompts are added to `history`. |
 | `persist` | off | Saves the draft, the choices and the history in `localStorage` under this name, like `persist="chat"`, so a reload doesn't lose them. Sending clears the saved draft. |
+| `quote-style` | `card` | How `addQuote()` adds words quoted from the conversation: `card`, a card above the text, sent in `quotes`; or `markdown`, `> ` lines in the text. See [Quotes](#quotes). |
 | `paste-as-file` | off | With `attachments`, a paste of at least this many characters becomes a text file attachment instead of filling the box. Without a number, 2,000. |
 | `busy` | off | The AI is responding. Send becomes **Stop**, which fires `promptstop`, and nothing can be sent. People can keep typing. |
 | `disabled` | off | Locks every control. |
@@ -122,6 +123,8 @@ Every attribute can change at any time, and what people have typed, attached and
 | `history` | `string[]` | Sent prompts, oldest first, up to 100. Set it to seed or clear the history. Setting `true` or `false` turns the `history` attribute on or off instead, which is what frameworks do for `<ai-composer history>`. |
 | `attachments`, `busy`, `disabled` | `boolean` | The same as the attributes. |
 | `voice` | `boolean \| "hide"` | The same as the attribute. `false` turns it off. |
+| `quoteStyle` | `"card" \| "markdown"` | The same as `quote-style`. |
+| `quotes` | `ComposerQuote[]` | The quote cards above the text, as `{ text, from?, id? }`. Set it to restore them, or `[]` to clear them. |
 | `pasteAsFile` | `boolean \| number` | The same as `paste-as-file`: `true` for the default of 2,000 characters, or a number. `false` turns it off. |
 
 `ComposerOption` is `{ value, label, description?, disabled? }`. A `description` shows under the label in the Model and Thinking menus, and as a tooltip on a mode. A `disabled` option shows but can't be chosen.
@@ -133,10 +136,11 @@ Properties and attributes set before the element is on the page, or straight aft
 | Method | What it does |
 | --- | --- |
 | `submit()` | Sends what's in the box, like pressing Send. Returns `false` when nothing was sent: the box was empty, the composer was busy or disabled, or a listener cancelled the event. |
-| `clear()` | Empties the prompt and removes the attachments. |
+| `clear()` | Empties the prompt and removes the attachments and quotes. |
 | `focus()` | Moves focus to the prompt. |
 | `insert(text)` | Types `text` at the caret, replacing any selection. Use it to add a reference chosen elsewhere in your app. |
 | `addFiles(files)` | Attaches files through the same checks as a drop. Returns `false` when attachments are off. |
+| `addQuote(quote)` | Quotes words from the conversation into the prompt, as a card or `> ` lines (see `quote-style`), and moves focus to the box. Takes a string or `{ text, from?, id? }`. Returns `false` while disabled, or for empty text. |
 
 ## Events
 
@@ -151,6 +155,7 @@ All events bubble from `<ai-composer>`, and the values are in `event.detail`.
 | `fileschange` | `{ value: File[] }` | Files were attached or removed. |
 | `filereject` | `{ value: { file, reasons }[] }` | Files broke `accept`, `max-size` or `max-files`. The composer also says why, under the box. |
 | `voicestart`, `voiceend` | `null` | Voice input started or stopped listening. |
+| `quoteschange` | `{ value: ComposerQuote[] }` | A quote card was added or removed, or the cards were cleared. |
 | `voiceerror` | `{ error }` | Voice input stopped because something went wrong, just before `voiceend`. `error` is the speech engine's code, like `"not-allowed"` (the microphone is blocked), `"no-speech"`, `"audio-capture"` (no microphone) or `"network"`. The composer already says why under the box. |
 
 ```ts
@@ -162,8 +167,22 @@ type PromptSubmitDetail = {
   files: File[];
   command?: string; // the /command at the start, when it's one of `commands`
   references: { value: string; label: string }[]; // the @references still in the text
+  quotes?: { text: string; from?: "user" | "assistant"; id?: string }[]; // the quote cards; always set, [] when none
 };
 ```
+
+## Quotes
+
+People can quote words from the conversation and ask about them. [`<ai-transcript quotable>`](../ai-transcript/README.md) offers a Quote button over words selected in a message, and calls `addQuote()` on the composer named by its `for`. You can also call it yourself:
+
+```ts
+composer.addQuote({ text: "Custom elements are your own HTML tags.", from: "assistant" });
+```
+
+- **`quote-style="card"`** (the default): each quote is a card above the text, a few lines long, with × to remove it. Several can be added. They're sent in `promptsubmit`'s `quotes`, apart from the text, so your app decides how the model sees them, and a quote alone can be sent.
+- **`quote-style="markdown"`**: the quote goes into the text at the caret as `> ` lines, on a line of its own, and is sent as part of `text`. People can edit it like any other text.
+
+Either way, focus moves to the box, ready to ask, and screen readers hear "Quote added".
 
 ## Slots
 
@@ -211,7 +230,7 @@ Set its custom properties on `ai-composer` itself, or once on an element around 
 }
 ```
 
-For anything else, target the parts by `data-part`: `card`, `attachments`, `attachment`, `prompt` (the `ui-textarea`), `bar`, `start`, `end`, `attach`, `mode`, `model`, `thinking`, `voice`, `send`, `send-button`, `popup`, `option-description`, `footer`, `status` and `hint`. ui-sdk's own `data-slot` and state attributes, like `[data-checked]` and `[data-highlighted]`, work too. The send button gets `data-busy` while it's Stop, and the card gets `data-dragging` while files are dragged over it.
+For anything else, target the parts by `data-part`: `card`, `attachments`, `attachment`, `quotes`, `quote`, `quote-text`, `quote-remove`, `prompt` (the `ui-textarea`), `bar`, `start`, `end`, `attach`, `mode`, `model`, `thinking`, `voice`, `send`, `send-button`, `popup`, `option-description`, `footer`, `status` and `hint`. ui-sdk's own `data-slot` and state attributes, like `[data-checked]` and `[data-highlighted]`, work too. The send button gets `data-busy` while it's Stop, and the card gets `data-dragging` while files are dragged over it.
 
 The composer is a size container: below `34rem` wide it hides the hint and the "Model" prefix. It lays out right to left under `dir="rtl"`.
 
@@ -250,6 +269,9 @@ composer.strings = {
 | `pastedAsFile`, `pastedFileName` | `Long paste added as an attachment`, `Pasted text.txt` |
 | `counter(length, max)` | `3,500 / 4,000` |
 | `limitReached` | `Character limit reached` |
+| `quotes` | `Quoted`: the name of the list of quote cards |
+| `removeQuote(text)` | `Remove quote: …`: a quote card's × button |
+| `quoteAdded` | `Quote added`: announced when a quote is added |
 
 The labels of the modes, models and thinking levels come from your own lists.
 
@@ -273,6 +295,7 @@ Input methods for Chinese, Japanese and Korean are left alone: Enter that confir
 - Every button has a name from `strings`; the icons are hidden from screen readers.
 - Send stays in the tab order while there's nothing to send, marked `aria-disabled`, with a tooltip that says why.
 - Voice status ("Listening…", or why listening stopped) and rejected files are announced through a polite live region. While listening, the mic button is still named "Voice input" and reports `aria-pressed="true"`, so screen readers hear "Voice input, pressed"; pressing it again stops. The suggestions announce how many results there are.
+- Quote cards are a list named "Quoted". Each × is named "Remove quote:" and the start of the quote; removing one moves focus back to the box. "Quote added" is announced.
 - Mode is a radio group; Model and Thinking are select menus. All of them work by keyboard.
 - When Stop or Send is pressed, focus goes back to the prompt.
 - The page can mark its conversation `aria-busy` while the AI responds; see [Recipes](#stream-a-reply-with-stop).

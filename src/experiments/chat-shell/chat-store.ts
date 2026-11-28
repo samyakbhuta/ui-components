@@ -19,6 +19,8 @@ export type StoredMessage = {
   meta?: string;
   /** When it was sent, or the reply started, as an ISO time. */
   createdAt?: string;
+  /** Words a message of yours quoted, with the index of the message they came from as `id`. */
+  quotes?: { text: string; from?: "user" | "assistant"; id?: string }[];
   /** The model that wrote a reply, as its label. */
   model?: string;
   prompt?: StoredPrompt;
@@ -231,6 +233,7 @@ export function chatToMarkdown(chat: StoredChat, { exportedAt = new Date(), loca
     if (message.tools?.length) {
       parts.push("", ...message.tools.map((tool) => (tool.error !== undefined ? `- \`${tool.name}\` failed: ${tool.error || "no reason given"}` : `- ${tool.summary || `Ran \`${tool.name}\``}`)));
     }
+    for (const quote of message.quotes ?? []) parts.push("", quote.text.split("\n").map((line) => `> ${line}`.trimEnd()).join("\n"));
     parts.push("", message.text.trim() || "*(no text)*");
     if (message.error !== undefined) parts.push("", `> **Error:** ${message.error || "Something went wrong."}`);
     if (message.question) parts.push("", ...questionToMarkdown(message.question));

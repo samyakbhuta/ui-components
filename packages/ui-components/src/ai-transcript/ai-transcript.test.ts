@@ -6,6 +6,7 @@ import "../ai-notice/ai-notice.ts";
 import "../ai-plan/ai-plan.ts";
 import "../ai-questions/ai-questions.ts";
 import "../ai-question/ai-question.ts";
+import "../ai-composer/ai-composer.ts";
 import "./ai-transcript.ts";
 import type { AiTranscriptElement } from "./ai-transcript.ts";
 
@@ -234,4 +235,58 @@ test("`waiting` is the newest card still waiting on the person, and the jump but
   await settle();
   expect(jump.hasAttribute("data-waiting")).toBe(false);
   expect(jump.textContent).toBe("Jump to latest");
+});
+
+test("with `quotable`, selecting words in a message offers Quote, which fires messagequote and quotes into the composer named by `for`", async () => {
+  const { transcript } = await mount(`<ai-transcript quotable for="box">
+    <ai-message from="user">What are custom elements?</ai-message>
+    <ai-message>Custom elements are **your own** HTML tags.</ai-message>
+  </ai-transcript>`);
+  document.body.insertAdjacentHTML("beforeend", `<ai-composer id="box"></ai-composer>`);
+  await settle();
+  const composer = document.querySelector("ai-composer")!;
+  const quote = transcript.querySelector<HTMLButtonElement>("[data-part='quote-button']")!;
+  const quoted: { text: string; from: string }[] = [];
+  transcript.addEventListener("messagequote", (event) => quoted.push({ text: event.detail.text, from: event.detail.from }));
+
+  const select = async (node: Node, start: number, endNode: Node, end: number) => {
+    const range = document.createRange();
+    range.setStart(node, start);
+    range.setEnd(endNode, end);
+    document.getSelection()!.removeAllRanges();
+    document.getSelection()!.addRange(range);
+    document.dispatchEvent(new Event("selectionchange"));
+    await frame();
+  };
+  expect(quote.hidden).toBe(true);
+  const reply = transcript.querySelectorAll("ai-message")[1].querySelector("[data-part='body'] p")!;
+  await select(reply.firstChild!, 0, reply.lastChild!, reply.lastChild!.textContent!.length);
+  expect(quote.hidden).toBe(false);
+  expect(quote.textContent).toBe("Quote");
+
+  quote.click();
+  expect(quoted).toEqual([{ text: "Custom elements are your own HTML tags.", from: "assistant" }]);
+  expect(composer.quotes).toEqual([{ text: "Custom elements are your own HTML tags.", from: "assistant" }]);
+  expect(quote.hidden).toBe(true);
+  expect(document.getSelection()!.isCollapsed).toBe(true);
+
+  // Cancelling the event leaves the composer to the app.
+  transcript.addEventListener("messagequote", (event) => event.preventDefault(), { once: true });
+  const asked = transcript.querySelector("ai-message[from='user'] [data-part='body'] p")!;
+  await select(asked.firstChild!, 0, asked.firstChild!, 4);
+  quote.click();
+  expect(quoted.at(-1)).toEqual({ text: "What", from: "user" });
+  expect(composer.quotes).toHaveLength(1);
+
+  // Words across two messages, or outside a message's text, aren't offered.
+  await select(asked.firstChild!, 0, reply.firstChild!, 3);
+  expect(quote.hidden).toBe(true);
+
+  // Without `quotable`, nothing is offered.
+  transcript.quotable = false;
+  await select(reply.firstChild!, 0, reply.firstChild!, 6);
+  expect(quote.hidden).toBe(true);
+  transcript.strings = { quote: "Citer" };
+  expect(quote.textContent).toBe("Citer");
+  composer.remove();
 });

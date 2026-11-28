@@ -27,6 +27,12 @@ export type MessageAttachmentOpenDetail = { attachment: MessageAttachment; index
 /** What `messageversion` carries in `event.detail`: the version asked for, counting from 1. */
 export type MessageVersionDetail = { version: number; versions: number };
 
+/** Words this message quotes from earlier in the conversation. With an `id`, the quote is a button that fires `quoteopen`. */
+export type MessageQuote = { text: string; from?: "user" | "assistant"; id?: string };
+
+/** What `quoteopen` carries in `event.detail`: the quote pressed, and where it is in `quotes`. */
+export type MessageQuoteOpenDetail = { quote: MessageQuote; index: number };
+
 /** A file shown with the message. A `File` works as it is, like the ones `<ai-composer>` sends. */
 export type MessageAttachment = File | { name: string; type?: string; size?: number; url?: string };
 
@@ -57,6 +63,10 @@ export type MessageStrings = {
   nextImage: string;
   imagePosition: (index: number, count: number) => string;
   closeViewer: string;
+  /** Said before each quote, for screen readers. */
+  quoted: string;
+  /** A quote's tooltip, when it can take you to where it was said. */
+  goToQuote: string;
   /** How long ago it was sent, like "5 minutes ago". `lang` is the element's language. */
   time: (at: Date, now: Date, lang: string) => string;
   /** The full date and time, shown on hover over the time. */
@@ -107,6 +117,8 @@ export const defaultMessageStrings: MessageStrings = {
   nextImage: "Next image",
   imagePosition: (index, count) => `${index} of ${count}`,
   closeViewer: "Close",
+  quoted: "Quoted:",
+  goToQuote: "Show where this was said",
   time: timeAgo,
   fullTime: (at, lang) => new Intl.DateTimeFormat(lang, { dateStyle: "full", timeStyle: "short" }).format(at),
 };
@@ -232,6 +244,7 @@ export class AiMessageElement extends BaseElement {
   #feedback = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
   #observer = new MutationObserver((records) => this.#adopt(records));
   #attachments: MessageAttachment[] = [];
+  #quotes: MessageQuote[] = [];
   #objectUrls: string[] = [];
   /** The images the viewer steps through: where each is in `attachments`, its name and address. */
   #images: { index: number; name: string; url: string; button: HTMLButtonElement }[] = [];
@@ -343,6 +356,15 @@ export class AiMessageElement extends BaseElement {
     else this.removeAttribute("model");
   }
 
+  /** Words quoted from earlier in the conversation, shown above the message. */
+  get quotes(): MessageQuote[] {
+    return this.#quotes;
+  }
+  set quotes(value: MessageQuote[]) {
+    this.#quotes = (value ?? []).filter((quote) => quote?.text).map((quote) => ({ ...quote }));
+    if (this.#rendered) this.#renderQuotes();
+  }
+
   /** Files shown with the message, like the ones sent with a prompt. Images show as thumbnails. */
   get attachments(): MessageAttachment[] {
     return this.#attachments;
@@ -415,6 +437,8 @@ export class AiMessageElement extends BaseElement {
       if (written.trim()) this.#source = dedent(written);
     }
     this.replaceChildren();
+    const quotes = document.createElement("div");
+    quotes.dataset.part = "quotes";
     const attachments = document.createElement("ul");
     attachments.dataset.part = "attachments";
     const body = document.createElement("div");
@@ -431,6 +455,7 @@ export class AiMessageElement extends BaseElement {
     announcement.setAttribute("role", "status");
     this.append(
       ...slotted.filter((child) => child.slot === "header"),
+      quotes,
       attachments,
       body,
       error,
@@ -457,7 +482,7 @@ export class AiMessageElement extends BaseElement {
     for (const record of records) {
       for (const node of record.addedNodes) {
         if (!(node instanceof HTMLElement) || node.parentElement !== this) continue;
-        const body = this.querySelector(":scope > [data-part='attachments']");
+        const body = this.querySelector(":scope > [data-part='quotes']");
         const actions = this.querySelector(":scope > [data-part='meta']");
         if (!body || !actions) continue;
         const before = (other: Node) => Boolean(node.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING);
@@ -493,6 +518,7 @@ export class AiMessageElement extends BaseElement {
   }
 
   #renderAll() {
+    this.#renderQuotes();
     this.#renderAttachments();
     this.#renderBody(true);
     this.#renderError();
@@ -534,6 +560,39 @@ export class AiMessageElement extends BaseElement {
       timed.delete(this.#clock);
       scheduleTick();
     }
+  }
+
+  /** Each quote, as text: a button when it can take you to where it was said, else a quote block. */
+  #renderQuotes() {
+    const list = this.querySelector<HTMLElement>(":scope > [data-part='quotes']");
+    if (!list) return;
+    const s = this.#strings;
+    list.hidden = this.#quotes.length === 0;
+    list.replaceChildren(
+      ...this.#quotes.map((quote, index) => {
+        const linked = quote.id !== undefined && quote.id !== "";
+        const item = document.createElement(linked ? "button" : "blockquote");
+        item.dataset.part = "quote";
+        if (quote.from) item.dataset.from = quote.from;
+        const label = document.createElement("span");
+        label.dataset.part = "visually-hidden";
+        label.textContent = `${s.quoted} `;
+        const text = document.createElement("span");
+        text.dataset.part = "quote-text";
+        text.textContent = quote.text;
+        item.append(label, text);
+        if (item instanceof HTMLButtonElement) {
+          item.type = "button";
+          item.setAttribute("aria-label", `${s.quoted} ${quote.text}`);
+          item.title = s.goToQuote;
+          item.addEventListener("click", () => {
+            const detail: MessageQuoteOpenDetail = { quote: this.#quotes[index], index };
+            this.dispatchEvent(new CustomEvent("quoteopen", { detail, bubbles: true, composed: true, cancelable: true }));
+          });
+        }
+        return item;
+      }),
+    );
   }
 
   #errorText() {
@@ -917,6 +976,7 @@ export type MessageEvents = {
   messagefeedback: CustomEvent<MessageFeedbackDetail>;
   messageversion: CustomEvent<MessageVersionDetail>;
   attachmentopen: CustomEvent<MessageAttachmentOpenDetail>;
+  quoteopen: CustomEvent<MessageQuoteOpenDetail>;
 };
 
 adoptStyles(styles);

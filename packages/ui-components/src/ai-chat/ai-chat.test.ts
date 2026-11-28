@@ -598,3 +598,51 @@ test("each message gets its time, and replies the model's name, which are saved 
   expect(replies()[0].model).toBe("Sonnet 5.5");
   expect(replies().at(-1)!.querySelector<HTMLElement>("[data-part='meta']")!.hidden).toBe(true);
 });
+
+test("selected words can be quoted into the box, are sent with the prompt, and the quote takes you back", async () => {
+  const seen: ChatRequest[] = [];
+  const { chat, idle } = await mount("<ai-chat></ai-chat>", (c) => {
+    c.model = async function* (request) {
+      seen.push(request);
+      yield "Custom elements are your own HTML tags.";
+    };
+  });
+  await send(chat, "What are custom elements?");
+  await idle();
+  expect(chat.transcript.quotable).toBe(true);
+
+  // Quote the reply, as the Quote button does.
+  const reply = chat.querySelectorAll("ai-message")[1] as HTMLElementTagNameMap["ai-message"];
+  const quoted = new CustomEvent("messagequote", {
+    detail: { text: "your own HTML tags", message: reply, from: "assistant" as const },
+    bubbles: true,
+    cancelable: true,
+  });
+  chat.transcript.dispatchEvent(quoted);
+  expect(quoted.defaultPrevented).toBe(true);
+  expect(chat.composer.quotes).toEqual([{ text: "your own HTML tags", from: "assistant", id: "1" }]);
+
+  await send(chat, "Like what?");
+  await idle();
+  const asked = seen.at(-1)!.messages.at(-1)!;
+  expect(asked.text).toBe("Like what?");
+  expect(asked.quotes).toEqual([{ text: "your own HTML tags", from: "assistant", id: "1" }]);
+  expect(chat.composer.quotes).toEqual([]);
+
+  // The sent message shows the quote, and pressing it goes back to the reply it came from.
+  const mine = chat.querySelectorAll<HTMLElementTagNameMap["ai-message"]>("ai-message[from='user']")[1];
+  const quote = within(mine).getByRole("button", { name: "Quoted: your own HTML tags" });
+  reply.scrollIntoView = vi.fn();
+  quote.click();
+  expect(reply.scrollIntoView).toHaveBeenCalled();
+  expect(document.activeElement).toBe(reply);
+  expect(reply.hasAttribute("data-highlighted")).toBe(true);
+
+  // Saved and set again, the quote is still there; Edit brings it back into the box.
+  chat.messages = chat.messages;
+  const again = chat.querySelectorAll<HTMLElementTagNameMap["ai-message"]>("ai-message[from='user']")[1];
+  expect(again.quotes).toEqual([{ text: "your own HTML tags", from: "assistant", id: "1" }]);
+  again.dispatchEvent(new CustomEvent("messageaction", { detail: { action: "edit", text: "Like what?" }, bubbles: true }));
+  expect(chat.composer.value).toBe("Like what?");
+  expect(chat.composer.quotes).toEqual([{ text: "your own HTML tags", from: "assistant", id: "1" }]);
+});

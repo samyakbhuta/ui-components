@@ -117,6 +117,8 @@ export type ChatMessage = {
   createdAt?: string;
   /** The model that wrote a reply, as its label: the composer's chosen model, or a `model` chunk. */
   model?: string;
+  /** Words a message of yours quoted from earlier in the chat. `id` is the quoted message's index in `messages`. */
+  quotes?: { text: string; from?: "user" | "assistant"; id?: string }[];
   attachments?: MessageAttachment[];
   /** Why the reply failed. */
   error?: string;
@@ -403,8 +405,23 @@ export class AiChatElement extends BaseElement {
       if (event.detail.action === "retry") this.#retryFrom(message);
       else if (event.detail.action === "edit") {
         this.composer.value = event.detail.text;
+        // Its quotes come back too.
+        const turn = this.#turns.find(({ element }) => element === message);
+        if (turn?.data.quotes?.length) this.composer.quotes = turn.data.quotes;
         this.composer.focus();
       }
+    });
+    // Selected words in a message can be quoted into the box, and a quote takes you back to them.
+    transcript.quotable = true;
+    transcript.addEventListener("messagequote", (event) => {
+      event.preventDefault();
+      const index = this.#turns.findIndex(({ element }) => element === event.detail.message);
+      this.composer.addQuote({ text: event.detail.text, from: event.detail.from, ...(index >= 0 ? { id: String(index) } : {}) });
+    });
+    transcript.addEventListener("quoteopen", (event) => {
+      const turn = this.#turns[Number(event.detail.quote.id)];
+      if (!turn || !turn.element.isConnected) return;
+      this.#highlight(turn.element);
     });
     transcript.addEventListener("messagefeedback", (event) => {
       const turn = this.#turns.find(({ element }) => element === event.target);
@@ -417,6 +434,18 @@ export class AiChatElement extends BaseElement {
     this.#pending = [];
     if (saved.length) this.messages = saved;
   }
+
+  /** Scrolls to a message and marks it for a moment, moving focus there so screen readers read it. */
+  #highlight(message: AiMessageElement) {
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    message.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+    if (!message.hasAttribute("tabindex")) message.tabIndex = -1;
+    message.focus({ preventScroll: true });
+    message.setAttribute("data-highlighted", "");
+    clearTimeout(this.#highlightTimer);
+    this.#highlightTimer = setTimeout(() => message.removeAttribute("data-highlighted"), 2000);
+  }
+  #highlightTimer?: ReturnType<typeof setTimeout>;
 
   /** Sends a prompt, as typing it and pressing Send does. */
   send(text: string) {
@@ -475,6 +504,7 @@ export class AiChatElement extends BaseElement {
       return;
     }
     const message: ChatMessage = { role: "user", text: prompt.text, createdAt: new Date().toISOString() };
+    if (prompt.quotes?.length) message.quotes = prompt.quotes.map((quote) => ({ ...quote }));
     if (prompt.files.length) message.attachments = [...prompt.files];
     this.#turns.push(this.#show(message));
     void this.#run(prompt);
@@ -763,6 +793,7 @@ export class AiChatElement extends BaseElement {
   #show(data: ChatMessage): Turn {
     const element = this.#messageElement(data);
     element.text = data.text;
+    if (data.quotes?.length) element.quotes = data.quotes;
     if (data.attachments?.length) element.attachments = data.attachments;
     if (data.feedback) element.feedback = data.feedback;
     if (data.thinking) {

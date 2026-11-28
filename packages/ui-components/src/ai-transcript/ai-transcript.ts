@@ -6,6 +6,8 @@ export type TranscriptStrings = {
   /** The conversation's accessible name, unless the page sets `aria-label`. */
   label: string;
   jump: string;
+  /** The button over selected words in a message, with `quotable`. */
+  quote: string;
   /** What screen readers hear when a reply finishes. Return "" to say nothing. */
   reply: (text: string) => string;
   /** Read after the reply for each `<ai-question>` in it still waiting for an answer. */
@@ -24,6 +26,13 @@ export type TranscriptStrings = {
 
 /** What the conversation can be waiting on the person for. */
 export type WaitingKind = "answer" | "approval" | "review" | "notice";
+
+/** What `messagequote` carries in `event.detail`: the words selected, and the message they're in. */
+export type MessageQuoteDetail = { text: string; message: HTMLElement; from: "user" | "assistant" };
+
+export type TranscriptEvents = {
+  messagequote: CustomEvent<MessageQuoteDetail>;
+};
 
 /** Cards that wait on the person, as long as they're open. A set's own questions count as the set. */
 const waitingCards =
@@ -55,6 +64,7 @@ function firstControl(card: HTMLElement): HTMLElement | null {
 export const defaultTranscriptStrings: TranscriptStrings = {
   label: "Conversation",
   jump: "Jump to latest",
+  quote: "Quote",
   reply: (text) => text,
   waiting: (question) => `${question} Waiting for your answer.`,
   approval: (label) => `${label} Waiting for your approval.`,
@@ -79,7 +89,7 @@ type Message = HTMLElement & { from?: string; streaming?: boolean };
  */
 export class AiTranscriptElement extends BaseElement {
   /** Read when a reply finishes, so there's nothing to do when it changes. Listed for editors and frameworks. */
-  static observedAttributes = ["announce"];
+  static observedAttributes = ["announce", "quotable", "for"];
 
   #strings: TranscriptStrings = defaultTranscriptStrings;
   #stuck = true;
@@ -87,6 +97,8 @@ export class AiTranscriptElement extends BaseElement {
   #rendered = false;
   #resize = new ResizeObserver(() => this.#follow());
   #jump = document.createElement("button");
+  #quote = document.createElement("button");
+  #quoteFrame = 0;
   /** The waiting card the jump button names, if it does. */
   #pointsTo: HTMLElement | null = null;
   #jumpBar = document.createElement("div");
@@ -100,6 +112,15 @@ export class AiTranscriptElement extends BaseElement {
     this.#strings = { ...defaultTranscriptStrings, ...value };
     this.#label();
     this.#updateJump();
+    this.#quote.textContent = this.#strings.quote;
+  }
+
+  /** Whether selecting words in a message offers a Quote button. The same as the `quotable` attribute. */
+  get quotable(): boolean {
+    return this.hasAttribute("quotable");
+  }
+  set quotable(value: boolean) {
+    this.toggleAttribute("quotable", value !== false);
   }
 
   /** Whether it is following new content: true at the bottom, false once scrolled up. */
@@ -150,12 +171,24 @@ export class AiTranscriptElement extends BaseElement {
       const label = document.createElement("span");
       label.dataset.part = "jump-label";
       jump.append(dot, label);
-      this.#jumpBar.append(jump);
+      const quote = this.#quote;
+      quote.type = "button";
+      quote.dataset.part = "quote-button";
+      quote.hidden = true;
+      // Pressing it mustn't clear the selection it quotes.
+      quote.addEventListener("pointerdown", (event) => event.preventDefault());
+      quote.addEventListener("mousedown", (event) => event.preventDefault());
+      quote.addEventListener("click", () => this.#quoteSelection());
+      this.#jumpBar.append(jump, quote);
       this.#updateJump();
       this.#announcement.dataset.part = "announcement";
       this.#announcement.setAttribute("role", "status");
       this.append(this.#jumpBar, this.#announcement);
-      this.addEventListener("scroll", () => this.#scrolled(), { passive: true });
+      this.addEventListener("scroll", () => {
+        this.#scrolled();
+        if (!this.#quote.hidden) this.#placeQuote();
+      }, { passive: true });
+
       this.addEventListener("messagecomplete", (event) => this.#announce(event.target as Message));
     }
     for (const child of this.#messages()) this.#resize.observe(child);
@@ -167,12 +200,87 @@ export class AiTranscriptElement extends BaseElement {
       attributeFilter: ["streaming", "answered", "decided", "expired", "hidden"],
     });
     this.#syncBusy();
+    this.#quote.textContent = this.#strings.quote;
+    document.addEventListener("selectionchange", this.#onSelection);
+    document.addEventListener("keydown", this.#onKey);
     requestAnimationFrame(() => this.scrollToLatest());
   }
 
   disconnectedCallback() {
     this.#resize.disconnect();
     this.#mutations.disconnect();
+    document.removeEventListener("selectionchange", this.#onSelection);
+    document.removeEventListener("keydown", this.#onKey);
+    cancelAnimationFrame(this.#quoteFrame);
+  }
+
+  /** The selected words, and the message they're in, when they're all in one message's text here. */
+  #selected(): { text: string; message: Message; range: Range } | null {
+    const selection = document.getSelection();
+    if (!this.quotable || !selection || selection.isCollapsed || selection.rangeCount === 0) return null;
+    const range = selection.getRangeAt(0);
+    const within = (node: Node) => (node instanceof Element ? node : node.parentElement)?.closest("[data-part='body']");
+    const body = within(range.startContainer);
+    if (!body || body !== within(range.endContainer)) return null;
+    const message = body.parentElement;
+    if (!message || message.localName !== "ai-message" || message.parentElement !== this) return null;
+    const text = selection.toString().trim();
+    return text ? { text, message: message as Message, range } : null;
+  }
+
+  /** Escape hides Quote, wherever focus is: after selecting with a mouse, it's usually on the page. */
+  #onKey = (event: KeyboardEvent) => {
+    if (event.key === "Escape" && !this.#quote.hidden) this.#quote.hidden = true;
+  };
+
+  #onSelection = () => {
+    cancelAnimationFrame(this.#quoteFrame);
+    this.#quoteFrame = requestAnimationFrame(() => {
+      const selected = this.#selected();
+      this.#quote.hidden = !selected;
+      if (selected) this.#placeQuote();
+    });
+  };
+
+  /** Floats the Quote button just above the selection, or below it when there's no room above. */
+  #placeQuote() {
+    const selected = this.#selected();
+    if (!selected) return void (this.#quote.hidden = true);
+    const range = selected.range;
+    // Some environments, like jsdom, can't measure a range; leave it where it is there.
+    if (typeof range.getClientRects !== "function") return;
+    const rects = [...range.getClientRects()];
+    const first = rects[0] ?? range.getBoundingClientRect();
+    const view = this.getBoundingClientRect();
+    const button = this.#quote.getBoundingClientRect();
+    const gap = 6;
+    let top = first.top - button.height - gap;
+    if (top < view.top) top = (rects.at(-1) ?? first).bottom + gap;
+    // Out of view altogether: hide it until the words come back.
+    if (top < view.top - button.height || top > view.bottom) return void (this.#quote.style.visibility = "hidden");
+    this.#quote.style.visibility = "";
+    const left = Math.min(Math.max(first.left, view.left + gap), view.right - button.width - gap);
+    this.#quote.style.top = `${Math.round(top)}px`;
+    this.#quote.style.left = `${Math.round(left)}px`;
+  }
+
+  /** Fires `messagequote` with the selected words; unless cancelled, quotes them into the composer named by `for`. */
+  #quoteSelection() {
+    const selected = this.#selected();
+    this.#quote.hidden = true;
+    if (!selected) return;
+    const detail: MessageQuoteDetail = {
+      text: selected.text,
+      message: selected.message,
+      from: selected.message.getAttribute("from") === "user" ? "user" : "assistant",
+    };
+    const go = this.dispatchEvent(new CustomEvent("messagequote", { detail, bubbles: true, composed: true, cancelable: true }));
+    document.getSelection()?.removeAllRanges();
+    const id = this.getAttribute("for");
+    const composer = id ? (this.getRootNode() as Document | ShadowRoot).getElementById?.(id) : null;
+    if (go && composer && typeof (composer as HTMLElement & { addQuote?: unknown }).addQuote === "function") {
+      (composer as HTMLElement & { addQuote(quote: { text: string; from: string }): boolean }).addQuote({ text: detail.text, from: detail.from });
+    }
   }
 
   #label() {
@@ -330,4 +438,5 @@ declare global {
   interface HTMLElementTagNameMap {
     "ai-transcript": AiTranscriptElement;
   }
+  interface HTMLElementEventMap extends TranscriptEvents {}
 }
