@@ -10,7 +10,7 @@ test("every guide and every component's README becomes a page", () => {
   const sources = pages.map((page) => page.source);
   expect(sources).toContain("docs/using-the-components.md");
   expect(sources).toContain("docs/making-ai-chat-your-own.md");
-  expect(pages.filter((page) => page.group === "Components")).toHaveLength(11);
+  expect(pages.filter((page) => page.group === "Components")).toHaveLength(12);
   for (const page of pages) expect(page.html, page.page).toContain(`<title>`);
 });
 

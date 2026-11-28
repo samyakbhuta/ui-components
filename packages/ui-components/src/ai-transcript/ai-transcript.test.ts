@@ -2,6 +2,7 @@ import { settle } from "@ui-sdk/core/testing";
 import { expect, test } from "vitest";
 import "../ai-message/ai-message.ts";
 import "../ai-approval/ai-approval.ts";
+import "../ai-plan/ai-plan.ts";
 import "../ai-question/ai-question.ts";
 import "./ai-transcript.ts";
 import type { AiTranscriptElement } from "./ai-transcript.ts";
@@ -105,6 +106,22 @@ test("a reply that asks for approval is read out with it", async () => {
   reply.done();
   await frame();
   expect(announced()).toBe("I'll clear the build folder. Run a command Waiting for your approval.");
+});
+
+test("a reply that proposes a plan is read out with it", async () => {
+  const { transcript, announced } = await mount();
+  const reply = document.createElement("ai-message");
+  reply.streaming = true;
+  transcript.append(reply);
+  reply.text = "Here's my plan.";
+  const plan = document.createElement("ai-plan");
+  plan.slot = "footer";
+  plan.heading = "Clean up the build";
+  reply.append(plan);
+  await settle();
+  reply.done();
+  await frame();
+  expect(announced()).toBe("Here's my plan. Clean up the build Waiting for your review.");
 });
 
 test('announce="none" keeps replies quiet', async () => {

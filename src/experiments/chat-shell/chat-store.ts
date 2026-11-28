@@ -33,6 +33,8 @@ export type StoredMessage = {
   question?: StoredQuestion;
   /** An approval the reply asked for, with the decision once made. */
   approval?: StoredApproval;
+  /** A plan the reply proposed, with the decision once made. */
+  plan?: StoredPlan;
   /** Which scripted conversation of the pretend model the reply belongs to, so Retry continues it. */
   script?: StoredScript;
 };
@@ -48,8 +50,25 @@ export type StoredApproval = {
   decision?: { decision: "allow" | "always" | "deny"; reason: string | null };
 };
 
-/** A step of one of the pretend model's scripted conversations: the trip planner, or the cleanup. */
-export type StoredScript = { trip?: number; cleanup?: "ask" | "allowed" | "denied"; reason?: string };
+/** An `<ai-plan>`: the plan it proposed, and the decision once made. */
+export type StoredPlan = {
+  heading?: string;
+  summary?: string;
+  plan: string;
+  accepts?: { value: string; label: string }[];
+  decision?: { decision: "accept" | "reject" | "revise"; mode: string | null; feedback: string | null };
+};
+
+/** A step of one of the pretend model's scripted conversations: the trip planner, the cleanup, or the party. */
+export type StoredScript = {
+  trip?: number;
+  cleanup?: "ask" | "allowed" | "denied";
+  party?: "ask" | "accepted" | "rejected" | "revised";
+  /** What was typed: with Deny, what to do instead; with Revise, what to change. */
+  reason?: string;
+  /** The mode a plan was accepted with. */
+  mode?: string;
+};
 
 /** An `<ai-question>`: its question, its choices, and the answer, or `{ skipped: true }`. */
 export type StoredQuestion = {
@@ -185,6 +204,7 @@ export function chatToMarkdown(chat: StoredChat, { exportedAt = new Date(), loca
     if (message.error !== undefined) parts.push("", `> **Error:** ${message.error || "Something went wrong."}`);
     if (message.question) parts.push("", ...questionToMarkdown(message.question));
     if (message.approval) parts.push("", ...approvalToMarkdown(message.approval));
+    if (message.plan) parts.push("", ...planToMarkdown(message.plan));
     if (message.sources?.length) parts.push("", ...message.sources.map((source, index) => `[${index + 1}]: ${source.url} "${source.title.replace(/"/g, "'")}"`));
     versions?.forEach((text, index) => {
       if (index + 1 !== version) parts.push("", `*Version ${index + 1} of ${versions.length}:*`, "", text.trim() || "*(no text)*");
@@ -226,6 +246,28 @@ function approvalToMarkdown(approval: StoredApproval) {
   return [
     `**${(approval.label || `Allow ${approval.name}?`).replace(/\n/g, " ")}** · \`${approval.name}\``,
     ...(input ? ["", fence, input, fence] : []),
+    "",
+    outcome,
+  ];
+}
+
+/** A plan: its heading, the plan as it was, quoted, then the decision. */
+function planToMarkdown(plan: StoredPlan) {
+  const decision = plan.decision;
+  const mode = decision?.mode ? (plan.accepts?.find((option) => option.value === decision.mode)?.label ?? decision.mode) : null;
+  const outcome = !decision
+    ? "*Not decided.*"
+    : decision.decision === "accept"
+      ? mode
+        ? `*Accepted, using ${mode}.*`
+        : "*Accepted.*"
+      : decision.decision === "reject"
+        ? "*Rejected.*"
+        : `*Asked for changes: “${decision.feedback ?? ""}”*`;
+  return [
+    `**${(plan.heading || "Proposed plan").replace(/\n/g, " ")}**${plan.summary ? ` · ${plan.summary.replace(/\n/g, " ")}` : ""}`,
+    "",
+    ...plan.plan.split("\n").map((line) => (line ? `> ${line}` : ">")),
     "",
     outcome,
   ];

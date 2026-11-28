@@ -1,0 +1,292 @@
+/*
+ * <ai-plan> styles, in the `ai-plan` layer so unlayered page rules win.
+ */
+@layer ai-plan {
+  ai-plan {
+    --_ai-plan-border: var(--ai-plan-border, color-mix(in srgb, CanvasText 22%, Canvas));
+    --_ai-plan-muted: var(--ai-plan-muted, color-mix(in srgb, CanvasText 68%, Canvas));
+    --_ai-plan-background: var(--ai-plan-background, color-mix(in srgb, CanvasText 5%, Canvas));
+    --_ai-plan-accent: var(--ai-plan-accent, CanvasText);
+    --_ai-plan-accent-text: var(--ai-plan-accent-text, Canvas);
+    --_ai-plan-link: var(--ai-plan-link, light-dark(#2b5bc4, #8fb0ff));
+    --_ai-plan-radius: var(--ai-plan-radius, 0.75rem);
+    --_ai-plan-max-height: var(--ai-plan-max-height, 24rem);
+    --_ai-plan-waiting: var(--ai-plan-waiting, light-dark(#2b5bc4, #8fb0ff));
+    --_ai-plan-accepted: var(--ai-plan-accepted, light-dark(#1f7a35, #7fd08f));
+    --_ai-plan-rejected: var(--ai-plan-rejected, light-dark(#b3261e, #ff8a80));
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 36rem;
+    container-type: inline-size;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--_ai-plan-border);
+    border-radius: var(--_ai-plan-radius);
+    font-size: 0.9375rem;
+  }
+
+  /* While it waits for a decision: an accent border and a line saying so. */
+  ai-plan:not([decided]) {
+    border-color: var(--_ai-plan-waiting);
+    box-shadow: 0 0 0 1px var(--_ai-plan-waiting);
+  }
+
+  ai-plan [data-part="status"] {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0 0 0.375rem;
+    color: var(--_ai-plan-waiting);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  ai-plan [data-part="status-dot"] {
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: currentColor;
+    animation: ai-plan-pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes ai-plan-pulse {
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  ai-plan [data-part="header"] {
+    display: flex;
+    gap: 0.25rem 1rem;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  ai-plan [data-part="titles"] {
+    min-width: 0;
+  }
+
+  ai-plan [data-part="heading"] {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  ai-plan [data-part="summary"] {
+    margin: 0.125rem 0 0;
+    color: var(--_ai-plan-muted);
+  }
+
+  ai-plan :is([data-part="toggle"], [data-part="link"]) {
+    flex: none;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--_ai-plan-link);
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+  }
+
+  ai-plan :is([data-part="toggle"], [data-part="link"]):focus-visible {
+    outline: 2px solid var(--_ai-plan-accent);
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+  }
+
+  /* The plan itself, once opened: Markdown, scrolling within the card when long. */
+  ai-plan [data-part="plan"] {
+    margin-top: 0.75rem;
+    max-height: var(--_ai-plan-max-height);
+    overflow: auto;
+    padding: 0.25rem 0.875rem;
+    border: 1px solid var(--_ai-plan-border);
+    border-radius: 0.5rem;
+    background: var(--_ai-plan-background);
+    line-height: 1.55;
+  }
+
+  ai-plan [data-part="plan"]:focus-visible {
+    outline: 2px solid var(--_ai-plan-accent);
+    outline-offset: 2px;
+  }
+
+  ai-plan [data-part="plan"] :is(h1, h2, h3, h4, h5, h6) {
+    margin: 0.75rem 0 0.25rem;
+    font-size: 1em;
+  }
+
+  ai-plan [data-part="plan"] :is(p, ul, ol, pre, blockquote) {
+    margin: 0.5rem 0;
+  }
+
+  ai-plan [data-part="plan"] :is(ul, ol) {
+    padding-left: 1.25rem;
+  }
+
+  ai-plan [data-part="plan"] code {
+    font-family: ui-monospace, monospace;
+    font-size: 0.875em;
+  }
+
+  ai-plan [data-part="plan"] pre {
+    overflow: auto;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--_ai-plan-border);
+    border-radius: 0.375rem;
+    background: Canvas;
+  }
+
+  ai-plan [data-part="plan"] a {
+    color: var(--_ai-plan-link);
+  }
+
+  ai-plan :is([data-part="actions"], [data-part="revise-actions"]) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: space-between;
+    margin-top: 0.875rem;
+  }
+
+  ai-plan [data-part="revise-actions"] {
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+  }
+
+  ai-plan :is([data-part="secondary"], [data-part="primary"]) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  ai-plan :is([data-part="actions"], [data-part="revise-actions"]) button {
+    min-height: 2.25rem;
+    padding: 0.4rem 1rem;
+    border: 1px solid var(--_ai-plan-border);
+    border-radius: 1.25rem;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+
+  /* The main action: Accept, or the first "Accept and use …" when there is one. */
+  ai-plan:not([data-accept-with]) [data-part="accept"] button,
+  ai-plan [data-part="accept"] + [data-part="accept-with"] button,
+  ai-plan [data-part="send"] button {
+    border-color: var(--_ai-plan-accent);
+    background: var(--_ai-plan-accent);
+    color: var(--_ai-plan-accent-text);
+  }
+
+  ai-plan :is([data-part="actions"], [data-part="revise-actions"]) button:focus-visible {
+    outline: 2px solid var(--_ai-plan-accent);
+    outline-offset: 2px;
+  }
+
+  ai-plan :is([data-part="actions"], [data-part="revise-actions"]) button:disabled {
+    cursor: default;
+    opacity: 0.45;
+  }
+
+  ai-plan [data-part="revise"] {
+    margin-top: 0.75rem;
+  }
+
+  ai-plan [data-part="feedback"] {
+    display: block;
+  }
+
+  ai-plan [data-part="feedback"] input {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0.4rem 0.625rem;
+    border: 1px solid var(--_ai-plan-border);
+    border-radius: 0.5rem;
+    background: Canvas;
+    color: CanvasText;
+    font: inherit;
+    font-size: 0.875rem;
+  }
+
+  ai-plan [data-part="feedback"] input:focus-visible {
+    outline: 2px solid var(--_ai-plan-accent);
+    outline-offset: 1px;
+  }
+
+  ai-plan [data-part="decision"] {
+    display: flex;
+    gap: 0.375rem;
+    /* The dot sits beside the first line, also when the decision wraps. */
+    align-items: flex-start;
+    margin: 0.75rem 0 0;
+    color: var(--_ai-plan-muted);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  ai-plan [data-part="decision"]::before {
+    content: "";
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    /* Half a line down, less half the dot: centred on the first line. */
+    margin-top: calc(0.5lh - 0.25rem);
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  ai-plan [data-part="decision"][data-decision="accept"] {
+    color: var(--_ai-plan-accepted);
+  }
+
+  ai-plan [data-part="decision"][data-decision="reject"] {
+    color: var(--_ai-plan-rejected);
+  }
+
+  ai-plan [data-part="decision"]:focus-visible {
+    outline: 2px solid var(--_ai-plan-accent);
+    outline-offset: 2px;
+  }
+
+  ai-plan [data-part="announcement"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* On a narrow card, the buttons stack: the main ones first. */
+  @container (max-width: 24rem) {
+    ai-plan [data-part="actions"] {
+      flex-direction: column-reverse;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    ai-plan [data-part="status-dot"] {
+      animation: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    ai-plan:not([decided]) {
+      border-color: Highlight;
+    }
+
+    ai-plan :is([data-part="status"], [data-part="decision"]) {
+      color: CanvasText;
+    }
+  }
+
+  /* The element's own display would otherwise beat the hidden attribute. */
+  ai-plan[hidden],
+  ai-plan [hidden] {
+    display: none !important;
+  }
+}

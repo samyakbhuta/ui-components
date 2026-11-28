@@ -27,7 +27,7 @@ test("the front page says what the package is, and leads to the chat demo and th
 test("each component links to its live example on the docs page", async ({ page }) => {
   await page.goto("/");
   const links = page.locator(".home-components").getByRole("link", { name: /^<ai-[\w-]+>$/ });
-  await expect(links).toHaveCount(11);
+  await expect(links).toHaveCount(12);
   for (const href of await links.evaluateAll((all) => all.map((link) => link.getAttribute("href")!))) {
     const id = href.split("#")[1];
     await page.goto(href);
@@ -89,7 +89,7 @@ test("each component card also links to its API reference", async ({ page }) => 
     "href",
     "/guides/components/ai-approval.html",
   );
-  await expect(page.getByRole("link", { name: /API$/ })).toHaveCount(11);
+  await expect(page.getByRole("link", { name: /API$/ })).toHaveCount(12);
 });
 
 test("the VS Code setting for editor support copies", async ({ page, context }) => {

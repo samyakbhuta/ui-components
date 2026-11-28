@@ -13,6 +13,7 @@ const tags = [
   "ai-suggestions",
   "ai-question",
   "ai-approval",
+  "ai-plan",
   "ai-chat",
   "ai-chat-list",
 ] as const;

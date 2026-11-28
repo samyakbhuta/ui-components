@@ -1,6 +1,7 @@
 import "../ai-approval/ai-approval.ts";
 import "../ai-composer/ai-composer.ts";
 import "../ai-message/ai-message.ts";
+import "../ai-plan/ai-plan.ts";
 import "../ai-question/ai-question.ts";
 import "../ai-sources/ai-sources.ts";
 import "../ai-suggestions/ai-suggestions.ts";
@@ -10,6 +11,7 @@ import "../ai-transcript/ai-transcript.ts";
 import type { AiApprovalElement, ApprovalDecisionDetail, ApprovalStrings } from "../ai-approval/ai-approval.ts";
 import type { AiComposerElement, PromptSubmitDetail } from "../ai-composer/ai-composer.ts";
 import type { AiMessageElement, MessageAttachment, MessageFeedback, MessageStrings } from "../ai-message/ai-message.ts";
+import type { AiPlanElement, PlanAcceptOption, PlanDecisionDetail, PlanStrings } from "../ai-plan/ai-plan.ts";
 import type { AiQuestionElement, QuestionAnswer, QuestionOption, QuestionStrings } from "../ai-question/ai-question.ts";
 import type { Source, SourcesStrings } from "../ai-sources/ai-sources.ts";
 import type { Suggestion } from "../ai-suggestions/ai-suggestions.ts";
@@ -41,6 +43,20 @@ export type ChatApproval = {
   reason?: boolean;
 };
 
+/** A plan to review before the work starts. `yield` it, and the decision comes back as the value of the `yield`. */
+export type ChatPlan = {
+  type: "plan";
+  /** The plan's title. Defaults to "Proposed plan". */
+  heading?: string;
+  summary?: string;
+  /** The full plan, as Markdown, shown when the person opens it. */
+  plan?: string;
+  /** A link to your app's own page for the plan, instead of opening it in the card. */
+  href?: string;
+  /** More ways to accept, each switching the composer's Mode: `{ value: "auto", label: "auto mode" }`. */
+  accepts?: PlanAcceptOption[];
+};
+
 /** One piece of a reply, as the model yields it. A string is text to add. */
 export type ChatChunk =
   | string
@@ -51,10 +67,11 @@ export type ChatChunk =
   | { type: "sources"; sources: Source[] }
   | { type: "suggestions"; suggestions: Suggestion[] }
   | ChatQuestion
-  | ChatApproval;
+  | ChatApproval
+  | ChatPlan;
 
-/** What comes back from a question or an approval, as the value of its `yield`. */
-export type ChatAnswer = QuestionAnswer | ApprovalDecisionDetail;
+/** What comes back from a question, an approval or a plan, as the value of its `yield`. */
+export type ChatAnswer = QuestionAnswer | ApprovalDecisionDetail | PlanDecisionDetail;
 
 /** A tool the reply ran. */
 export type ChatToolCall = { id: string; name: string; label?: string; summary?: string; input?: unknown; output?: unknown; error?: string };
@@ -74,6 +91,7 @@ export type ChatMessage = {
   sources?: Source[];
   question?: ChatQuestion & { answer?: QuestionAnswer };
   approval?: ChatApproval & { decision?: ApprovalDecisionDetail };
+  plan?: ChatPlan & { decision?: PlanDecisionDetail };
 };
 
 /** What `model` gets. `messages` ends with the newest message; `signal` aborts when Stop is pressed. */
@@ -98,6 +116,8 @@ export type ChatStrings = {
   answerPlaceholder: string;
   /** The composer's placeholder while an approval waits for a decision. */
   approvalPlaceholder: string;
+  /** The composer's placeholder while a plan waits for a decision. */
+  planPlaceholder: string;
   /**
    * Words for the parts the chat makes, passed on to each one as its `strings`: the messages
    * (Copy, Retry…), thinking, tool calls, sources, questions and approvals. Leave one out and
@@ -110,6 +130,7 @@ export type ChatStrings = {
   sources?: Partial<SourcesStrings>;
   question?: Partial<QuestionStrings>;
   approval?: Partial<ApprovalStrings>;
+  plan?: Partial<PlanStrings>;
 };
 
 export const defaultChatStrings: ChatStrings = {
@@ -120,6 +141,7 @@ export const defaultChatStrings: ChatStrings = {
   followUps: "Follow-up questions",
   answerPlaceholder: "Answer the question above, or type your answer",
   approvalPlaceholder: "Allow or deny above, or tell it what to do instead",
+  planPlaceholder: "Accept or reject the plan above, or say what to change",
 };
 
 /** The events this element fires, by name. */
@@ -130,6 +152,9 @@ export type ChatEvents = {
 
 type Turn = { data: ChatMessage; element: AiMessageElement };
 
+/** A card the model waits on. */
+type Card = AiQuestionElement | AiApprovalElement | AiPlanElement;
+
 /** The parts the chat makes, and which key of `strings` holds each one's words. */
 const partWords = {
   "ai-message": "message",
@@ -138,6 +163,7 @@ const partWords = {
   "ai-sources": "sources",
   "ai-question": "question",
   "ai-approval": "approval",
+  "ai-plan": "plan",
 } as const;
 type Part = keyof typeof partWords;
 
@@ -150,6 +176,7 @@ const copy = (message: ChatMessage): ChatMessage => ({
   sources: message.sources ? [...message.sources] : undefined,
   question: message.question ? { ...message.question } : undefined,
   approval: message.approval ? { ...message.approval } : undefined,
+  plan: message.plan ? { ...message.plan } : undefined,
 });
 
 /** An answer typed in the composer: the choice it names, or else an answer of one's own. */
@@ -184,7 +211,7 @@ export class AiChatElement extends BaseElement {
   #controller: AbortController | null = null;
   /** Settles the question or approval the model is waiting on, from a press or typing. */
   #answer: ((value: ChatAnswer) => void) | null = null;
-  #waitingOn: AiQuestionElement | AiApprovalElement | null = null;
+  #waitingOn: Card | null = null;
   #placeholder: string | null = null;
   #rendered = false;
   #id = `ai-chat-${++count}`;
@@ -353,6 +380,10 @@ export class AiChatElement extends BaseElement {
         const answer = typedAnswer(this.#questionOf(question), prompt.text);
         question.answer = answer;
         this.#settle(answer);
+      } else if (card.localName === "ai-plan") {
+        const decision: PlanDecisionDetail = { decision: "revise", mode: null, feedback: prompt.text };
+        (card as AiPlanElement).decision = decision;
+        this.#settle(decision);
       } else {
         const decision: ApprovalDecisionDetail = { decision: "deny", reason: prompt.text };
         (card as AiApprovalElement).decision = decision;
@@ -508,6 +539,21 @@ export class AiChatElement extends BaseElement {
               else current.data.approval = { ...(asked as ChatApproval), decision: answer as ApprovalDecisionDetail };
               break;
             }
+            case "plan": {
+              // Like a question: the card ends the reply so far, and the model waits for the decision.
+              const current = reply();
+              const asked: ChatPlan = { ...chunk };
+              current.data.plan = asked;
+              const card = this.#planElement(chunk);
+              current.element.append(card);
+              finish();
+              turn = null;
+              thinking = null;
+              this.#changed();
+              answer = await this.#wait(card, controller.signal);
+              current.data.plan = { ...asked, decision: answer as PlanDecisionDetail };
+              break;
+            }
           }
         }
       }
@@ -542,7 +588,7 @@ export class AiChatElement extends BaseElement {
   }
 
   /** Waits for the person to answer a question or decide an approval. Always allowed tools don't wait. */
-  #wait(card: AiQuestionElement | AiApprovalElement, signal: AbortSignal): Promise<ChatAnswer> {
+  #wait(card: Card, signal: AbortSignal): Promise<ChatAnswer> {
     if (card.localName === "ai-approval" && this.#allowed.has((card as AiApprovalElement).name)) {
       const decision: ApprovalDecisionDetail = { decision: "always", reason: null };
       (card as AiApprovalElement).decision = decision;
@@ -632,6 +678,12 @@ export class AiChatElement extends BaseElement {
       else this.#resumeOn(card);
       element.append(card);
     }
+    if (data.plan) {
+      const card = this.#planElement(data.plan);
+      if (data.plan.decision) card.decision = data.plan.decision;
+      else this.#resumeOn(card);
+      element.append(card);
+    }
     if (data.stopped) element.append(this.#stoppedNote());
     if (data.error !== undefined) element.error = data.error;
     this.transcript.append(element);
@@ -642,7 +694,7 @@ export class AiChatElement extends BaseElement {
    * A saved question or approval that was never answered: answering it now asks the model again,
    * with the answer in the last message.
    */
-  #resumeOn(card: AiQuestionElement | AiApprovalElement) {
+  #resumeOn(card: Card) {
     const resume = () => {
       if (this.#controller) return;
       queueMicrotask(() => {
@@ -656,11 +708,15 @@ export class AiChatElement extends BaseElement {
           turn.data.approval = { ...turn.data.approval, decision };
           if (decision?.decision === "always") this.#allowed.add(turn.data.approval.name);
         }
+        if (card.localName === "ai-plan" && turn.data.plan) {
+          turn.data.plan = { ...turn.data.plan, decision: (card as AiPlanElement).decision ?? undefined };
+        }
         const user = [...this.#turns].reverse().find(({ data }) => data.role === "user")?.data;
         void this.#run({ text: user?.text ?? "", files: [], references: [] });
       });
     };
-    card.addEventListener(card.localName === "ai-question" ? "questionanswer" : "approvaldecision", resume, { once: true });
+    const event = { "ai-question": "questionanswer", "ai-approval": "approvaldecision", "ai-plan": "plandecision" }[card.localName]!;
+    card.addEventListener(event, resume, { once: true });
     if (card.localName === "ai-question") card.addEventListener("questionskip", resume, { once: true });
   }
 
@@ -697,6 +753,25 @@ export class AiChatElement extends BaseElement {
       if (card !== this.#waitingOn) return;
       const decision = event.detail;
       if (decision.decision === "always") this.#allowed.add(chunk.name);
+      queueMicrotask(() => this.#settle(decision));
+    });
+    return card;
+  }
+
+  #planElement(chunk: ChatPlan) {
+    const card = this.#part("ai-plan");
+    card.slot = "footer";
+    if (chunk.heading) card.heading = chunk.heading;
+    if (chunk.summary) card.summary = chunk.summary;
+    if (chunk.href) card.href = chunk.href;
+    card.plan = chunk.plan ?? "";
+    card.accepts = chunk.accepts ?? [];
+    card.addEventListener("plandecision", (event) => {
+      // Accepting with a mode switches the composer to it, when it offers that mode.
+      const { mode } = event.detail;
+      if (mode && this.composer.modes.some((option) => option.value === mode)) this.composer.mode = mode;
+      if (card !== this.#waitingOn) return;
+      const decision = event.detail;
       queueMicrotask(() => this.#settle(decision));
     });
     return card;
@@ -748,10 +823,12 @@ export class AiChatElement extends BaseElement {
     const card = this.#waitingOn;
     if (card) {
       if (this.#placeholder === null) this.#placeholder = composer.getAttribute("placeholder") ?? "";
-      composer.setAttribute(
-        "placeholder",
-        card.localName === "ai-question" ? this.#strings.answerPlaceholder : this.#strings.approvalPlaceholder,
-      );
+      const placeholders: Record<string, string> = {
+        "ai-question": this.#strings.answerPlaceholder,
+        "ai-approval": this.#strings.approvalPlaceholder,
+        "ai-plan": this.#strings.planPlaceholder,
+      };
+      composer.setAttribute("placeholder", placeholders[card.localName]);
     } else if (this.#placeholder !== null) {
       if (this.#placeholder) composer.setAttribute("placeholder", this.#placeholder);
       else composer.removeAttribute("placeholder");

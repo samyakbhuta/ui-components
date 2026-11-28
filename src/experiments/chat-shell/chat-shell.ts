@@ -9,6 +9,7 @@ import "@samyakbhuta/ui-components/ai-sources";
 import "@samyakbhuta/ui-components/ai-suggestions";
 import "@samyakbhuta/ui-components/ai-question";
 import "@samyakbhuta/ui-components/ai-approval";
+import "@samyakbhuta/ui-components/ai-plan";
 import type { Source } from "@samyakbhuta/ui-components/ai-sources";
 import "@samyakbhuta/ui-components/ai-transcript";
 import {
@@ -30,6 +31,7 @@ import {
   type StoredChat,
   type StoredMessage,
   type StoredApproval,
+  type StoredPlan,
   type StoredPrompt,
   type StoredQuestion,
   type StoredScript,
@@ -76,7 +78,43 @@ export const suggestions = [
   "What are web components? Cite your sources",
   "Plan a weekend trip for me",
   "Clean up my project's build folder",
+  "Plan a surprise birthday party",
 ];
+
+/** Asking for a party makes the pretend agent propose a plan first, with <ai-plan>. */
+const throwingParty = (text: string) => /\bparty\b/i.test(text);
+
+/** The plan the pretend agent proposes for the party. */
+export const partyPlan: StoredPlan = {
+  heading: "Surprise party for Sam's 40th",
+  summary: "Five steps, about three weeks. Nothing is booked yet.",
+  plan: [
+    "## Steps",
+    "",
+    "1. Pick a date: the Saturday after Sam's birthday.",
+    "2. Make a guest list, and send invites by message.",
+    "3. Book the back room at a local restaurant.",
+    "4. Order a cake and some decorations.",
+    "5. Keep it secret: a cover story for the evening.",
+    "",
+    "## Not doing",
+    "",
+    "- Spending more than the budget you set.",
+    "- Telling Sam.",
+  ].join("\n"),
+  accepts: [{ value: "auto", label: "auto mode" }],
+};
+
+/** What the pretend agent says at each step of the party plan. */
+export function partyReply(step: NonNullable<StoredScript["party"]>, mode?: string, feedback?: string) {
+  if (step === "ask") return "Lovely idea! Here's how I'd plan it. Open the plan to read the steps.";
+  if (step === "accepted")
+    return mode === "auto"
+      ? "Starting in **Auto** mode, so I'll go through all five steps and only check back if something needs you. First up: the guest list."
+      : "Starting with the guest list. I'll check with you after each step.";
+  if (step === "rejected") return "OK, no party plans for now.";
+  return `Got it: *${(feedback ?? "").replace(/[*_\\`]/g, "\\$&")}*. A real assistant would rework the plan around that and show it to you again.`;
+}
 
 /** Asking to clean up makes the pretend agent ask before it deletes anything, with <ai-approval>. */
 const cleaning = (text: string) => /\bclean\s*up\b|\bbuild folder\b/i.test(text);
@@ -125,6 +163,7 @@ export const tripQuestions: Record<number, StoredQuestion> = {
 const waitingPlaceholder = {
   question: "Answer the question above, or type your answer",
   approval: "Allow or deny above, or tell it what to do instead",
+  plan: "Accept or reject the plan above, or say what to change",
 };
 
 /** What a chat's last reply is waiting on: an answer, an approval, or nothing. */
@@ -133,6 +172,7 @@ const waitsOn = (messages: StoredMessage[]) => {
   if (last?.from !== "assistant") return null;
   if (last.question && !last.question.answer) return "Needs your answer";
   if (last.approval && !last.approval.decision) return "Needs your approval";
+  if (last.plan && !last.plan.decision) return "Needs your review";
   return null;
 };
 
@@ -396,8 +436,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
 
   /** The newest reply's question or approval, while it waits on the person. */
   const openRequest = () =>
-    messages().at(-1)?.querySelector<HTMLElementTagNameMap["ai-question"] | HTMLElementTagNameMap["ai-approval"]>(
-      "ai-question:not([answered]), ai-approval:not([decided])",
+    messages().at(-1)?.querySelector<HTMLElementTagNameMap["ai-question"] | HTMLElementTagNameMap["ai-approval"] | HTMLElementTagNameMap["ai-plan"]>(
+      "ai-question:not([answered]), ai-approval:not([decided]), ai-plan:not([decided])",
     ) ?? null;
 
   function showTitle() {
@@ -406,7 +446,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     // While the agent waits on an answer, say so in the box, and in the tab's title when it's in the background.
     const request = openRequest();
     const waiting = request !== null;
-    if (request) composer.setAttribute("placeholder", waitingPlaceholder[request.localName === "ai-approval" ? "approval" : "question"]);
+    if (request) composer.setAttribute("placeholder", waitingPlaceholder[request.localName === "ai-approval" ? "approval" : request.localName === "ai-plan" ? "plan" : "question"]);
     else composer.removeAttribute("placeholder");
     document.title = `${waiting && document.hidden ? "Waiting for you · " : ""}${title} · AI chat`;
     exportButton.disabled = current.messages.length === 0;
@@ -454,6 +494,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
           version: texts && texts.length > 1 ? message.version : undefined,
           question: questionOf(message),
           approval: approvalOf(message),
+          plan: planOf(message),
           script: scripts.get(message),
         };
       });
@@ -513,6 +554,29 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     asking.reason = stored.reason ?? false;
     if (stored.decision) asking.decision = stored.decision;
     return asking;
+  }
+
+  function planOf(message: AiMessageElement): StoredPlan | undefined {
+    const proposed = message.querySelector("ai-plan");
+    if (!proposed) return undefined;
+    return {
+      heading: proposed.heading || undefined,
+      summary: proposed.summary || undefined,
+      plan: proposed.plan,
+      accepts: proposed.accepts.length ? proposed.accepts : undefined,
+      decision: proposed.decision ?? undefined,
+    };
+  }
+
+  function planFor(stored: StoredPlan) {
+    const proposed = document.createElement("ai-plan");
+    proposed.slot = "footer";
+    if (stored.heading) proposed.heading = stored.heading;
+    if (stored.summary) proposed.summary = stored.summary;
+    proposed.plan = stored.plan;
+    proposed.accepts = stored.accepts ?? [];
+    if (stored.decision) proposed.decision = stored.decision;
+    return proposed;
   }
 
   /** Saves the open chat once it has a message, and gives it a link. */
@@ -625,6 +689,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     if (stored.sources?.length) message.append(sourcesFor(stored.sources));
     if (stored.question) message.append(questionFor(stored.question));
     if (stored.approval) message.append(approvalFor(stored.approval));
+    if (stored.plan) message.append(planFor(stored.plan));
     if (stored.script) scripts.set(message, stored.script);
     if (stored.meta) message.append(meta(stored.meta));
     showWork(message, message.version === message.versions);
@@ -747,7 +812,9 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
         ? tripReply(script.trip, detail.text, firstAnswer() ?? "Lisbon")
         : script?.cleanup
           ? cleanupReply(preapproved ? "allowed" : script.cleanup, script.reason)
-          : pretendReply(detail);
+          : script?.party
+            ? partyReply(script.party, script.mode, script.reason)
+            : pretendReply(detail);
       const end = failing(detail.text) ? Math.floor(text.length / 3) : text.length;
       for (let index = 0; index < end; index += 6) {
         await wait(12, signal);
@@ -760,11 +827,15 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
           ? questionFor(tripQuestions[script.trip])
           : script?.cleanup === "ask" && !preapproved
             ? approvalFor(cleanupApproval)
-            : undefined;
+            : script?.party === "ask"
+              ? planFor(partyPlan)
+              : undefined;
         if (asking) {
           // A question or an approval takes the place of follow-ups until it's settled.
           for (const old of transcript.querySelectorAll("ai-suggestions.follow-ups")) old.remove();
           message.append(asking);
+          // An agent proposes a plan in Plan mode; accepting can switch it to another.
+          if (asking.localName === "ai-plan") composer.mode = "plan";
         } else offerFollowUps(message, followUps(detail));
       }
     } catch {
@@ -806,6 +877,11 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       (request as HTMLElementTagNameMap["ai-approval"]).decision = { decision: "deny", reason: detail.text };
       return send(detail, { cleanup: "denied", reason: detail.text });
     }
+    // With a plan open, what's typed asks for changes.
+    if (request?.localName === "ai-plan") {
+      (request as HTMLElementTagNameMap["ai-plan"]).decision = { decision: "revise", mode: null, feedback: detail.text };
+      return send(detail, { party: "revised", reason: detail.text });
+    }
     // With a question open, what's typed answers it, as if chosen or typed into Other.
     if (request) {
       const asking = request as HTMLElementTagNameMap["ai-question"];
@@ -813,7 +889,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       const step = Number(asking.dataset.step);
       return send(detail, step ? { trip: step + 1 } : undefined);
     }
-    send(detail, planning(detail.text) ? { trip: 1 } : cleaning(detail.text) ? { cleanup: "ask" } : undefined);
+    send(detail, planning(detail.text) ? { trip: 1 } : cleaning(detail.text) ? { cleanup: "ask" } : throwingParty(detail.text) ? { party: "ask" } : undefined);
   });
 
   document.addEventListener("visibilitychange", showTitle, { signal: page.signal });
@@ -869,6 +945,25 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     queueMicrotask(() => {
       if (!detail) return save();
       startReply(detail, undefined, decision === "deny" ? { cleanup: "denied", reason: reason ?? undefined } : { cleanup: "allowed" });
+    });
+  });
+
+  // A plan's decision continues the same turn. Accepting with a mode switches the composer to it.
+  transcript.addEventListener("plandecision", (event) => {
+    if (composer.busy) return event.preventDefault();
+    const message = (event.target as HTMLElement).closest("ai-message") as AiMessageElement | null;
+    const detail = message ? asked.get(message) : undefined;
+    const { decision, mode, feedback } = event.detail;
+    if (mode) composer.mode = mode;
+    queueMicrotask(() => {
+      if (!detail) return save();
+      const script: StoredScript =
+        decision === "accept"
+          ? { party: "accepted", mode: mode ?? undefined }
+          : decision === "reject"
+            ? { party: "rejected" }
+            : { party: "revised", reason: feedback ?? undefined };
+      startReply(detail, undefined, script);
     });
   });
 
