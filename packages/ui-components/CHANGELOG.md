@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- `<ai-questions>` is now built as a ui-sdk primitive, `questions`, exported beside the element and rendered with ui-sdk's `createParts`, and shows its questions in ui-sdk's Carousel, so people can swipe between them too. Breaking changes:
+  - `questionsanswer` is now `answerschange`, with `{ value, reason, source }` in `detail`: `value` is the list of answers that `answers` used to carry, and `reason` is `"press"` or `"imperative"`. It doesn't bubble: listen on the element, or with `{ capture: true }` around it.
+  - `submit()` is `api.submit()`, and there's `api.goTo()`. New `defaultAnswers`.
+  - The set is the carousel's region, named by `label`, rather than a group. The carousel keeps the questions out of view `inert`, in place of `hidden`, and its Previous and Next replace the set's own arrows, under the same names.
+  - The `questions` primitive stays out of an AI agent's view: agents use the carousel, its arrows and each question's choices.
+  - Screen readers hear "Sent 3 answers" through ui-sdk's shared live region, so the `announcement` part is gone.
 - `<ai-question>` is now built as a ui-sdk primitive, `question`, exported beside the element and rendered with ui-sdk's `createParts`. Breaking changes:
   - `questionanswer` and `questionskip` are now one event, `answerchange`, with `{ value, reason, source }` in `detail`: `value` is the answer `{ value, labels, other }`, or `{ skipped: true }`, and `reason` is `"press"`, `"enter-key"`, `"skip-press"` or `"imperative"`. It doesn't bubble: listen on the element, or with `{ capture: true }` around it. `<ai-questions>` catches its questions' answers that way.
   - `submit()`, `skip()` and `reset()` are `api.submit()`, `api.skip()` and `api.reset()`. New `defaultAnswer`.

@@ -96,7 +96,7 @@ function logEvents(root: HTMLElement) {
     "messageversion",
     "attachmentopen",
     "answerchange",
-    "questionsanswer",
+    "answerschange",
     "decisionchange",
     "openchange",
     "noticeaction",
@@ -671,11 +671,11 @@ question.answer = savedAnswer // shows a saved answer, like when a chat opens ag
   { question: "What do they enjoy?", options: ["Books", "Cooking", "Games", "Gardening"], multiple: true, max: 2 },
   { question: "What's your budget?", options: ["Under £20", "£20 to £50", "Over £50"], skippable: true },
 ]
-questions.addEventListener("questionsanswer", (event) => console.log(event.detail.answers))`,
+questions.addEventListener("answerschange", (event) => console.log(event.detail.value))`,
     setup: (root) => {
       const set = root.querySelector<HTMLElementTagNameMap["ai-questions"]>(".gift-questions")!;
       set.questions = giftQuestions;
-      resetDemo(root, "ai-questions[answered]", ["questionsanswer"], () => {
+      resetDemo(root, "ai-questions[answered]", ["answerschange"], () => {
         set.questions = giftQuestions;
         return set.querySelector<HTMLElement>("[role='radio']");
       });

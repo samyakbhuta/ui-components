@@ -651,7 +651,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   function questionSetOf(message: AiMessageElement): StoredQuestionSet | undefined {
     const set = message.querySelector("ai-questions");
     if (!set) return undefined;
-    return { label: set.label || undefined, questions: set.questions, answers: set.answers ?? undefined };
+    return { label: set.label || undefined, questions: set.questions ?? [], answers: set.answers ?? undefined };
   }
 
   function questionSetFor(stored: StoredQuestionSet) {
@@ -1180,12 +1180,18 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   }
 
   // The answers to a set of questions continue the same turn.
-  transcript.addEventListener("questionsanswer", (event) => {
-    if (composer.busy) return event.preventDefault();
-    const message = (event.target as HTMLElement).closest("ai-message") as AiMessageElement | null;
-    const detail = message ? asked.get(message) : undefined;
-    queueMicrotask(() => (detail ? startReply(detail, undefined, { gift: "answered" }) : save()));
-  });
+  // A set's answers don't bubble, so the transcript hears them on the way down.
+  transcript.addEventListener(
+    "answerschange",
+    (event) => {
+      if (!(event.target instanceof HTMLElement) || event.target.localName !== "ai-questions") return;
+      if (composer.busy) return event.preventDefault();
+      const message = event.target.closest("ai-message") as AiMessageElement | null;
+      const detail = message ? asked.get(message) : undefined;
+      queueMicrotask(() => (detail ? startReply(detail, undefined, { gift: "answered" }) : save()));
+    },
+    { capture: true },
+  );
 
   // A plan's decision continues the same turn. Accepting with a mode switches the composer to it.
   // Like the approval's, it doesn't bubble, so the transcript hears it on the way down.

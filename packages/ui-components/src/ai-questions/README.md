@@ -1,6 +1,8 @@
 # `<ai-questions>`
 
-Several questions the model asks at once, shown one at a time. A header says where people are, like "1 of 3", with arrows to move back and forth. Each question is an [`<ai-question>`](../ai-question/README.md), with everything it can do: one choice or several, Other with a text box, and Skip.
+Several questions the model asks at once, shown one at a time in ui-sdk's Carousel. A header says where people are, like "1 of 3", with arrows to move back and forth, and people can swipe between questions too. Each question is an [`<ai-question>`](../ai-question/README.md), with everything it can do: one choice or several, Other with a text box, and Skip.
+
+It's ui-sdk's `questions` primitive (`questions.ts`), rendered as custom elements with `createParts`, so it follows ui-sdk's rules for state, change events, focus and agents.
 
 People answer in any order. **Send** on the last question sends every answer together, and the card then sums them up: each question with its answer.
 
@@ -19,8 +21,8 @@ set.questions = [
   { question: "What do they enjoy?", options: ["Books", "Cooking", "Games"], multiple: true, max: 2 },
   { question: "What's your budget?", options: ["Under £20", "£20 to £50", "Over £50"], skippable: true },
 ];
-set.addEventListener("questionsanswer", (event) => {
-  const { answers } = event.detail; // one per question: { value, labels, other }, or { skipped: true }
+set.addEventListener("answerschange", (event) => {
+  const answers = event.detail.value!; // one per question: { value, labels, other }, or { skipped: true }
   tellModel(answers.map((answer) => ("skipped" in answer ? "Skipped" : answer.labels.join(", "))));
 });
 ```
@@ -36,12 +38,12 @@ Questions written inside work too:
 
 ## Moving between questions
 
-- **The arrows** go to the previous and next question. People can go back and change an answer at any time before sending.
+- **The arrows**, the carousel's Previous and Next, go to the previous and next question, and a swipe does the same on a touch screen. People can go back and change an answer at any time before sending.
 - **Continue**, each question's own button before the last, keeps its answer and moves on. Skip does too, when a question allows it.
-- **A single choice picked by tap or click moves on by itself** after a moment, so a quick answer takes one tap. Choices picked with the arrow keys don't, so keyboard users stay in control. Other, checkboxes and the last question wait for Continue or Send.
+- **A single choice picked by tap or click moves on by itself** after a moment, so a quick answer takes one tap. Choices picked with the keyboard don't, nor clicks with no pointer behind them, like a screen reader's, so keyboard and screen reader users stay in control. Other, checkboxes and the last question wait for Continue or Send.
 - **Send** on the last question sends every answer. If one is still unanswered, it goes there instead and says so.
 
-The questions' own `answerchange` events stay inside the set: it catches them on the way down and cancels them. Listen for `questionsanswer`.
+The questions' own `answerchange` events stay inside the set: they don't bubble, so it catches them on the way down and cancels them. Listen for `answerschange`, on the set itself or with `{ capture: true }` around it, since it doesn't bubble either.
 
 In [`<ai-chat>`](../ai-chat/README.md), a model yields `{ type: "questions", questions: [...] }` and gets `{ answers }` back. Typing in the message box answers the question showing.
 
@@ -49,7 +51,7 @@ In [`<ai-chat>`](../ai-chat/README.md), a model yields `{ type: "questions", que
 
 Until it's sent:
 - **On screen:** a "Waiting for your answers" line at the top, with a pulsing dot, and an accent border around the whole set. The dot stays still with reduced motion.
-- **To screen readers:** the set is a group, named by `label` ("Questions" by default) and described by that line. Inside an [`<ai-transcript>`](../ai-transcript/README.md), a finished reply is read out with "3 questions, starting with: Who is it for? Waiting for your answers."
+- **To screen readers:** the carousel is a region with the role description "carousel", named by `label` ("Questions" by default) and described by that line. Inside an [`<ai-transcript>`](../ai-transcript/README.md), a finished reply is read out with "3 questions, starting with: Who is it for? Waiting for your answers."
 
 ## Attributes
 
@@ -66,20 +68,22 @@ Until it's sent:
 | `label`, `disabled` | | The same as the attributes. |
 | `questions` | `{ question, options, multiple?, other?, max?, skippable? }[]` | The questions, as data, the same as each `<ai-question>`'s attributes. Setting it replaces any questions written inside. |
 | `index` | `number` | Which question shows, from 0. |
-| `answers` | `QuestionAnswer[] \| null` | The answers once sent, one per question, or `null`. Set it to show saved answers, like when a chat opens again; `null` asks again. |
+| `answers` | `QuestionAnswer[] \| null` | The answers once sent, one per question, or `null`. Set it to show saved answers, like when a chat opens again; `null` asks again. Setting it doesn't fire `answerschange`. |
+| `defaultAnswers` | `QuestionAnswer[] \| null` | The answers it starts with, read once. |
 | `strings` | `Partial<QuestionsStrings>` | Words to replace; see below. |
 
 ## Methods
 
 | Method | What it does |
 | --- | --- |
-| `submit()` | Sends every answer, as Send does. Returns `false` when nothing was sent: it's already sent, disabled, a question is still unanswered (it goes there, and says so), or a listener cancelled the event. |
+| `api.submit()` | Sends every answer, as Send does. Returns `false` when nothing was sent: it's already sent, disabled, a question is still unanswered (it goes there, and says so), or a listener cancelled the event. |
+| `api.goTo(index)` | Shows a question, from 0, as setting `index` does. |
 
 ## Events
 
 | Event | `detail` | When |
 | --- | --- | --- |
-| `questionsanswer` | `{ answers }` | Send was pressed with every question answered or skipped. `answers` has one per question, in order: `{ value, labels, other }`, or `{ skipped: true }`. It bubbles and is cancelable: `preventDefault()` keeps it asking. |
+| `answerschange` | `{ value, reason, source }` | Send was pressed with every question answered or skipped. `value` has one answer per question, in order: `{ value, labels, other }`, or `{ skipped: true }`. `reason` is `"press"` for the last question's Send, or `"imperative"` for `api.submit()`; `source` says how, like `"keyboard"` or `"agent"`. It's cancelable: `preventDefault()` keeps it asking. Like ui-sdk's change events, it doesn't bubble. |
 
 ## Translation
 
@@ -104,11 +108,11 @@ The questions, the choices and what people type are set as text, never parsed as
 
 ## Accessibility
 
-- The set is a group named by `label`, and described by the waiting line until it's sent.
-- Only the question showing can be reached: the others are hidden and `inert`, for keyboards, screen readers and agents alike.
-- The arrows are named "Previous question" and "Next question", and are disabled at either end. Focus moves into the question they show.
+- The carousel is a region named by `label`, and described by the waiting line until it's sent.
+- Only the question showing can be reached: the carousel makes the others `inert`, for keyboards, screen readers and agents alike.
+- The arrows are named "Previous question" and "Next question", and are disabled at either end. Continue, and Send with a question unanswered, move focus into the question they go to.
 - Moving on by itself only follows a tap or a click, never the arrow keys.
-- Once sent, focus moves to the summary, and a status region says how many answers were sent.
+- Once sent, focus moves to the summary, and ui-sdk's shared live region says how many answers were sent.
 
 ## Styling
 
@@ -125,20 +129,22 @@ Set its custom properties on `ai-questions` itself, or once on an element around
 
 The questions inside keep their own properties, like `--ai-question-accent`.
 
-**Parts:** `[data-part="header"]`, `status`, `status-dot`, `status-text`, `nav`, `previous`, `position`, `next`, `questions`, `summary`, `summary-heading` and `announcement`. `ai-questions[answered]` styles a sent set.
+**Parts:** `[data-part="set"]` (the questions, while they wait), `carousel`, `header`, `status`, `status-dot`, `status-text`, `nav`, `previous`, `position`, `next`, `viewport`, `questions` (the carousel's content, one `ui-carousel-item` per question), `summary` and `summary-heading`. `ai-questions[answered]` styles a sent set.
 
 ## Tests
 
 `ai-questions.test.ts` covers:
-- the group, the waiting line and one question at a time;
-- moving with the arrows and Continue, keeping answers, and sending them all at once;
-- the summary, and restoring saved answers;
+- the carousel's name, the waiting line and where you are;
+- moving with Continue, keeping answers, and sending them all at once, with what the change reports;
+- the summary and focus on it, and restoring saved answers quietly, even before the questions exist;
 - moving on by itself after a click, but not after the arrow keys or on the last question;
 - Send with a question unanswered;
 - questions written inside, cancelling and disabled;
-- translation and agent use.
+- translation and agent use;
+- the primitive on a server, and its parts.
 
-The browser tests in `e2e/questions.spec.ts` cover:
+jsdom can't measure, so the carousel shows one page there. The browser tests in `e2e/questions.spec.ts` cover its paging:
+- the arrows and a swipe, and the questions out of view being `inert`;
 - keyboard use;
 - contrast in light and dark;
 - the gift questions in the chat shell, including a reload;

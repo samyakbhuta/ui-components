@@ -62,7 +62,7 @@
     display: flex;
     gap: 0.25rem;
     align-items: center;
-    margin-left: auto;
+    margin-inline-start: auto;
     color: var(--_ai-questions-muted);
     font-size: 0.875rem;
     font-variant-numeric: tabular-nums;
@@ -86,7 +86,7 @@
     cursor: pointer;
   }
 
-  ai-questions :is([data-part="previous"], [data-part="next"]) button:hover:not(:disabled) {
+  ai-questions :is([data-part="previous"], [data-part="next"]) button:hover:not([data-disabled]) {
     background: color-mix(in srgb, CanvasText 8%, Canvas);
   }
 
@@ -95,7 +95,8 @@
     outline-offset: 1px;
   }
 
-  ai-questions :is([data-part="previous"], [data-part="next"]) button:disabled {
+  /* The carousel's arrows stay focusable at either end, marked rather than disabled. */
+  ai-questions :is([data-part="previous"], [data-part="next"]) button[data-disabled] {
     cursor: default;
     opacity: 0.35;
   }
@@ -118,8 +119,26 @@
     display: none;
   }
 
-  ai-questions [data-part="questions"] {
-    margin-top: 0.375rem;
+  /* The carousel's window onto the questions. It reaches a little past the card's padding, and
+     each slide pads itself back by as much, so focus rings at the edges aren't cut off. */
+  ai-questions [data-part="viewport"] {
+    margin: 0.125rem -0.25rem 0;
+    scrollbar-width: none;
+    /* The row of questions scrolls, so it mustn't widen the set: without this, a set in a grid or
+       flex column grows to fit all of them side by side. */
+    contain: inline-size;
+  }
+
+  ai-questions [data-part="questions"] > ui-carousel-item {
+    box-sizing: border-box;
+    flex: 0 0 100%;
+    min-width: 0;
+    padding: 0.25rem;
+  }
+
+  /* An arrow pointing the way the questions go, in either reading direction. */
+  ai-questions:dir(rtl) :is([data-part="previous"], [data-part="next"]) svg {
+    transform: scaleX(-1);
   }
 
   ai-questions [data-part="summary"] {
@@ -159,15 +178,6 @@
   ai-questions dd[data-skipped] {
     color: var(--_ai-questions-muted);
     font-style: italic;
-  }
-
-  ai-questions [data-part="announcement"] {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
   }
 
   @media (prefers-reduced-motion: reduce) {
