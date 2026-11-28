@@ -883,7 +883,7 @@ export class AiChatElement extends BaseElement {
         void this.#run({ text: user?.text ?? "", files: [], references: [] });
       });
     };
-    const event = { "ai-question": "questionanswer", "ai-approval": "approvaldecision", "ai-plan": "plandecision", "ai-questions": "questionsanswer" }[card.localName]!;
+    const event = { "ai-question": "questionanswer", "ai-approval": "decisionchange", "ai-plan": "plandecision", "ai-questions": "questionsanswer" }[card.localName]!;
     card.addEventListener(event, resume, { once: true });
     if (card.localName === "ai-question") card.addEventListener("questionskip", resume, { once: true });
   }
@@ -917,9 +917,9 @@ export class AiChatElement extends BaseElement {
     card.input = chunk.input;
     card.always = chunk.always ?? false;
     card.reason = chunk.reason ?? false;
-    card.addEventListener("approvaldecision", (event) => {
-      if (card !== this.#waitingOn) return;
-      const decision = event.detail;
+    card.addEventListener("decisionchange", (event) => {
+      if (card !== this.#waitingOn || !event.detail.value) return;
+      const decision = event.detail.value;
       if (decision.decision === "always") this.#allowed.add(chunk.name);
       queueMicrotask(() => this.#settle(decision));
     });

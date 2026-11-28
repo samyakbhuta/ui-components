@@ -7,6 +7,8 @@ An agent asks permission before it acts, like running a command, deleting files 
 
 It's the permission half of "the agent is waiting on you"; [`<ai-question>`](../ai-question/README.md) is the half that asks for information.
 
+It's built as a ui-sdk primitive, `approval` (in `approval.ts`), rendered as custom elements with ui-sdk's `createParts`. So it reports changes like ui-sdk's own components do, with a reason and a source, and AI agents see it as one component.
+
 ```ts
 import "@samyakbhuta/ui-components/ai-approval"; // registers <ai-approval> and loads its CSS
 ```
@@ -24,8 +26,8 @@ import "@samyakbhuta/ui-components/ai-approval"; // registers <ai-approval> and 
 ```ts
 const approval = document.querySelector("ai-approval")!;
 approval.input = "rm -rf dist"; // what the tool would get: shown as text, strings as they are, anything else as JSON
-approval.addEventListener("approvaldecision", (event) => {
-  const { decision, reason } = event.detail; // "allow", "always" or "deny"; reason is what was typed, with Deny
+approval.addEventListener("decisionchange", (event) => {
+  const { decision, reason } = event.detail.value; // "allow", "always" or "deny"; reason is what was typed, with Deny
   if (decision === "deny") tellAgent(reason ?? "The person denied it.");
   else runTool();
 });
@@ -57,7 +59,7 @@ The chat shell in this repo does both.
 | `always` | off | Adds Always allow. Offer it only if your app remembers the choice. |
 | `reason` | off | Adds a text box to say what to do instead. What's typed is sent with Deny, and Enter in the box denies. A reason typed before Allow once isn't sent. |
 | `disabled` | off | Locks the buttons and the box. |
-| `decided` | set by the element | Present once a decision is made. Style it, don't set it; use `decision` instead. |
+| `decided` | set by the element | Present once a decision is made. Style it, don't set it; use `decision` instead. `data-decision` says which. |
 
 ## Properties
 
@@ -66,20 +68,24 @@ The chat shell in this repo does both.
 | `name`, `label`, `description`, `always`, `reason`, `disabled` | | The same as the attributes. |
 | `input` | `unknown` | What the tool would get, like a command or its arguments. Strings show as they are; anything else as indented JSON. Always text, never HTML. Long input scrolls, and can be reached with Tab. |
 | `reasonText` | `string` | What's typed in the reason box. |
-| `decision` | `{ decision, reason } \| null` | The decision once made, or `null`. Set it to show a saved decision, like when a chat opens again. `null` makes it ask again. |
+| `decision` | `{ decision, reason } \| null` | The decision once made, or `null`. Set it to show a saved decision, like when a chat opens again. `null` makes it ask again. Setting it doesn't fire `decisionchange`. |
+| `defaultDecision` | `{ decision, reason } \| null` | The decision it starts with, read once when it's created. |
 | `strings` | `Partial<ApprovalStrings>` | Words to replace; see below. |
 
 ## Methods
 
+Its methods are on `api`, like ui-sdk's elements:
+
 | Method | What it does |
 | --- | --- |
-| `decide(decision, reason?)` | Decides, as pressing a button does: `"allow"`, `"always"` (only with `always`) or `"deny"`, with an optional reason for Deny. Returns `false` when nothing happened: it was already decided, it's disabled, or a listener cancelled the event. |
+| `api.decide(decision, { reason }?)` | Decides, as pressing a button does: `"allow"`, `"always"` (only with `always`) or `"deny"`, with an optional reason for Deny. Returns `false` when nothing happened: it was already decided, it's disabled, or a listener cancelled the change. |
+| `api.deny(reason?)` | Denies, with what to do instead. The one decision an agent can make on its own. |
 
 ## Events
 
 | Event | `detail` | When |
 | --- | --- | --- |
-| `approvaldecision` | `{ decision, reason }` | A button was pressed, Enter was pressed in the reason box, or `decide()` was called. `decision` is `"allow"`, `"always"` or `"deny"`. `reason` is what was typed, with Deny, or `null`. It bubbles and is cancelable: `preventDefault()` keeps it asking. |
+| `decisionchange` | `{ value, reason, source }` | A decision was asked for. `value` is `{ decision, reason }`: `decision` is `"allow"`, `"always"` or `"deny"`, and `reason` is what was typed, with Deny, or `null`. `reason` (beside `value`) says what asked: `"press"` for a button, `"enter-key"` for Enter in the reason box, `"imperative"` for `api.decide()`. `source` says how: `"mouse"`, `"keyboard"`, `"agent"` and so on. Cancelable: `preventDefault()` keeps it asking. Like ui-sdk's change events, it doesn't bubble: listen on the element, or on an element around it with `{ capture: true }`. |
 
 The event fires before the element shows the decision. To save it with the decision, wait a tick: `queueMicrotask(save)`.
 
@@ -97,7 +103,7 @@ async function runWithApproval(call: { name: string; input: unknown }, reply: HT
     approval.always = true;
     approval.reason = true;
     approval.slot = "footer";
-    approval.addEventListener("approvaldecision", (event) => resolve(event.detail));
+    approval.addEventListener("decisionchange", (event) => resolve(event.detail.value!));
     reply.append(approval); // the <ai-message> that's showing the reply
   });
   if (decision.decision === "always") alwaysAllowed.add(call.name);
@@ -133,9 +139,9 @@ Showing the input matters: people should see exactly what they're allowing. Pass
 
 - **Keyboard:** Tab moves through the input box (when it's long enough to scroll), the reason box, then Allow once, Always allow and Deny. Enter or Space presses a button, and Enter in the reason box denies with what's typed.
 - The element is a group named by its heading and, while waiting, described by "Waiting for your approval".
-- After deciding, focus moves to the decision line, and a status region announces it.
+- After deciding, focus moves to the decision line (ui-sdk's focus recovery), and ui-sdk's shared live region announces it.
 - The decision isn't told by colour alone: the line says it in words.
-- ui-sdk's agent bridge can press the buttons: `{ ref: "Deny", action: "press" }`. An agent can't approve its own request, though: Allow once and Always allow carry `data-agent-confirm`, so the bridge asks the person first (through `createAgent`'s `allow`), and refuses the step without one.
+- ui-sdk's agent bridge sees the card as one `approval` component, named by its heading, with one action: `{ ref: "Run a command", action: "deny", args: ["Only clear dist/cache"] }`. It can press the buttons too. An agent can't approve its own request, though: Allow once and Always allow carry `data-agent-confirm`, so the bridge asks the person first (through `createAgent`'s `allow`), and refuses the step without one. That's why `decide` isn't an agent action: a mark covers a whole element, so it couldn't ask for Allow and not for Deny.
 
 ## Styling
 
@@ -155,7 +161,7 @@ Set its custom properties on `ai-approval` itself, or once on an element around 
 - `--ai-approval-allowed`
 - `--ai-approval-denied`
 
-**Parts:** `[data-part="status"]`, `status-dot`, `status-text`, `header`, `heading`, `name`, `description`, `input`, `reason`, `actions`, `allow`, `always`, `deny`, `decision` (with `data-decision`) and `announcement`. `ai-approval[decided]` styles a decided approval, and `ai-approval:not([decided])` one that's waiting.
+**Parts:** `[data-part="status"]`, `status-dot`, `status-text`, `header`, `heading`, `name`, `description`, `input`, `reason`, `actions`, `allow`, `always`, `deny` and `decision` (with `data-decision`). The primitive's parts also carry ui-sdk's `data-slot`: `approval` on the element, and `approval-status`, `approval-heading`, `approval-actions` and `approval-decision`. `ai-approval[decided]` styles a decided approval, and `ai-approval:not([decided])` one that's waiting.
 
 ## Tests
 
@@ -164,7 +170,8 @@ Set its custom properties on `ai-approval` itself, or once on an element around 
 - each decision, focus and the announcement;
 - Always allow, the reason box and Enter;
 - cancelling, restoring a saved decision, and disabled;
-- translation, attempts to inject HTML, and agent use.
+- translation, attempts to inject HTML, and agent use;
+- what each change reports, and the primitive on its own: server rendering, and its parts coming and going.
 
 The browser tests in `e2e/approval.spec.ts` cover:
 - keyboard use and focus;

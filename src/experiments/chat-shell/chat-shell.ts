@@ -1136,17 +1136,24 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   });
 
   // A decision continues the same turn: the agent runs the command, or says it won't.
-  transcript.addEventListener("approvaldecision", (event) => {
+  // ui-sdk change events don't bubble, so the transcript hears them on the way down.
+  transcript.addEventListener(
+    "decisionchange",
+    (event) => {
+    if (event.target instanceof HTMLElement && event.target.localName !== "ai-approval") return;
     if (composer.busy) return event.preventDefault();
     const message = (event.target as HTMLElement).closest("ai-message") as AiMessageElement | null;
     const detail = message ? asked.get(message) : undefined;
-    const { decision, reason } = event.detail;
+    if (!event.detail.value) return;
+    const { decision, reason } = event.detail.value;
     if (decision === "always") current.allowed = [...new Set([...(current.allowed ?? []), (event.target as HTMLElementTagNameMap["ai-approval"]).name])];
     queueMicrotask(() => {
       if (!detail) return save();
       startReply(detail, undefined, decision === "deny" ? { cleanup: "denied", reason: reason ?? undefined } : { cleanup: "allowed" });
     });
-  });
+    },
+    { capture: true },
+  );
 
   /** The answers sent with the newest set of questions. */
   function giftAnswers() {

@@ -39,18 +39,34 @@ for (const module of manifest.modules) {
 await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 // Editor support, from the built elements: each one's observedAttributes, by tag.
-const { buildEditorData } = await import("./editor-data.mjs");
+const { attributesOf, buildEditorData } = await import("./editor-data.mjs");
 const built = await import(join(dist, "index.js"));
-const attributes = Object.fromEntries(
-  Object.entries(built)
-    .filter(([name]) => /^Ai\w+Element$/.test(name))
-    .map(([name, element]) => [
-      name.replace(/Element$/, "").replace(/[A-Z]/g, (letter, index) => `${index ? "-" : ""}${letter.toLowerCase()}`),
-      element.observedAttributes ?? [],
-    ]),
-);
+const attributes = attributesOf(built);
 const { version } = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 const { vscode, webTypes } = buildEditorData({ root, attributes, version });
+
+// The manifest analyzer only sees element classes, so an element made from a ui-sdk primitive
+// with `createParts` gets its entry from the editor data instead.
+const listed = new Set(manifest.modules.flatMap((module) => (module.declarations ?? []).map((declaration) => declaration.tagName)));
+for (const tag of vscode.tags.filter((tag) => !listed.has(tag.name))) {
+  const events = webTypes.contributions.html.elements.find((element) => element.name === tag.name)?.events ?? [];
+  manifest.modules.push({
+    kind: "javascript-module",
+    path: `src/${tag.name}/${tag.name}.ts`,
+    declarations: [
+      {
+        kind: "class",
+        name: tag.name.replace(/(^|-)(\w)/g, (_, __, letter) => letter.toUpperCase()) + "Element",
+        tagName: tag.name,
+        customElement: true,
+        description: tag.description.value,
+        attributes: tag.attributes.map((attribute) => ({ name: attribute.name, description: attribute.description?.value })),
+        events: events.map((event) => ({ name: event.name, description: event.description, type: { text: event.arguments[0]?.type } })),
+      },
+    ],
+  });
+}
+await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 await writeFile(join(dist, "vscode.html-custom-data.json"), `${JSON.stringify(vscode, null, 2)}\n`);
 await writeFile(join(dist, "web-types.json"), `${JSON.stringify(webTypes, null, 2)}\n`);
 

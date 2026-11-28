@@ -179,7 +179,11 @@ export interface AiApprovalProps {
   input?: unknown;
   reasonText?: string;
   decision?: ApprovalDecisionDetail | null;
+  /** The decision it starts with, read once. `decision` shows a saved one at any time. */
+  defaultDecision?: ApprovalDecisionDetail | null;
   strings?: Partial<ApprovalStrings>;
+  /** ui-sdk's own: logs the primitive's state and changes to the console. */
+  debug?: boolean;
 }
 
 export interface AiQuestionsProps {

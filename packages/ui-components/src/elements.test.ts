@@ -45,8 +45,9 @@ test("every tag is in the map, with every attribute and writable property in its
     const setters = Object.entries(Object.getOwnPropertyDescriptors(element.prototype))
       .filter(([, descriptor]) => descriptor.set)
       .map(([name]) => name);
+    // An element made from a ui-sdk primitive also watches its own role and aria-disabled, which aren't props.
     const attributes = ((element as unknown as { observedAttributes?: string[] }).observedAttributes ?? []).filter(
-      (name) => !keys.has(camel(name)),
+      (name) => !keys.has(camel(name)) && name !== "role" && !name.startsWith("aria-"),
     );
     const missing = [...setters, ...attributes].filter((name) => !keys.has(name));
     expect(missing, `${tag} props`).toEqual([]);
