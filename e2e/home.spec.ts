@@ -86,3 +86,11 @@ test("each component card also links to its API reference", async ({ page }) => 
   );
   await expect(page.getByRole("link", { name: /API$/ })).toHaveCount(10);
 });
+
+test("the VS Code setting for editor support copies", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Copy VS Code setting" }).click();
+  const copied = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
+  expect(copied).toEqual({ "html.customData": ["./node_modules/@samyakbhuta/ui-components/dist/vscode.html-custom-data.json"] });
+});

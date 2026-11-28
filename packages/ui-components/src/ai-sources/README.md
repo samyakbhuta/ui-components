@@ -51,7 +51,11 @@ Rendering Markdown yourself? `citation(n)` returns the same marker element, to p
 | `cardId` | The id of the shared preview card, which each citation names with `for`. |
 | `citation(n)` | A citation marker for source `n`, counting from 1, or `null` when there's no source `n`. |
 
-It fires `sourceschange` (bubbling) when its sources change, which is how a message knows to link its citations again.
+## Events
+
+| Event | `detail` | When |
+| --- | --- | --- |
+| `sourceschange` | `null` | The sources or the words changed, or it joined the page. It bubbles, which is how a surrounding `<ai-message>` knows to link its citations again. |
 
 ## Translation
 

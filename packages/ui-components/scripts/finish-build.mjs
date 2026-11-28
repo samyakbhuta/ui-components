@@ -38,4 +38,20 @@ for (const module of manifest.modules) {
 }
 await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
-console.log("Copied CSS and READMEs, cleaned the elements manifest, and pointed declarations at .js files.");
+// Editor support, from the built elements: each one's observedAttributes, by tag.
+const { buildEditorData } = await import("./editor-data.mjs");
+const built = await import(join(dist, "index.js"));
+const attributes = Object.fromEntries(
+  Object.entries(built)
+    .filter(([name]) => /^Ai\w+Element$/.test(name))
+    .map(([name, element]) => [
+      name.replace(/Element$/, "").replace(/[A-Z]/g, (letter, index) => `${index ? "-" : ""}${letter.toLowerCase()}`),
+      element.observedAttributes ?? [],
+    ]),
+);
+const { version } = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
+const { vscode, webTypes } = buildEditorData({ root, attributes, version });
+await writeFile(join(dist, "vscode.html-custom-data.json"), `${JSON.stringify(vscode, null, 2)}\n`);
+await writeFile(join(dist, "web-types.json"), `${JSON.stringify(webTypes, null, 2)}\n`);
+
+console.log("Copied CSS and READMEs, cleaned the elements manifest, pointed declarations at .js files, and wrote the editor data.");
