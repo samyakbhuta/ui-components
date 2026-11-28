@@ -68,7 +68,7 @@ reply.done(); // renders what's left and fires messagecomplete
 | `messagecomplete` | `null` | Streaming ended. It bubbles, so a transcript can listen once for every message. |
 | `messagefeedback` | `{ feedback, text }` | Good response or Bad response was pressed. `feedback` is `"good"`, `"bad"`, or `null` when it was pressed again to clear it. `preventDefault()` keeps the rating as it was. |
 | `messageversion` | `{ version, versions }` | Previous or Next was pressed. Set `text` to that version's reply. `preventDefault()` stays on the current one. |
-| `attachmentopen` | `{ attachment, index, kind }` | An image thumbnail (`kind: "image"`) or a file link (`kind: "file"`) was clicked. `index` is its place in `attachments`. `preventDefault()` keeps the viewer shut, or the link from opening, so you can show it your own way. |
+| `attachmentopen` | `{ attachment, index, kind }` | An image (`kind: "image"`) or a file link (`kind: "file"`) was clicked, before it opens. `preventDefault()` stops it opening; see [Showing attachments your own way](#showing-attachments-your-own-way). |
 
 ```ts
 transcript.addEventListener("messageaction", (event) => {
@@ -101,20 +101,45 @@ reply.addEventListener("messageversion", (event) => (reply.text = answers[event.
 
 Image attachments show only from `http:`, `https:`, `blob:` and image `data:` addresses; anything else shows as a file. A `File` gets an object URL that is revoked when `attachments` changes.
 
-**Seeing an image full size.** Each thumbnail is a button, "View chart.png". It opens a viewer over the page, a ui-sdk Dialog, with the image as large as fits, its name, and a Close button. When the message has more than one image, arrows step through them, with "2 of 3" between, and so do the Left and Right arrow keys. Escape, Close or a click on the dark space around the image closes it, and focus goes back to the thumbnail of the image last shown.
+#### Seeing an image full size
 
-**Opening a file.** A file that isn't an image opens in a new tab when it has a `url` from `http:`, `https:` or `blob:`, with `rel="noopener noreferrer"`. A file without one, like a `File` the person just picked, stays its name and size.
+Each image shows as a small thumbnail. Clicking it opens the image as large as fits, over the page, with its name and a Close button. If the message has more than one image, arrows step through them, with "2 of 3" between, and so do the Left and Right arrow keys. Escape, Close or a click on the dark space around the image closes it, and keyboard users land back on the thumbnail of the image they last looked at. The viewer is a ui-sdk Dialog.
+
+#### Opening a file
+
+A file that isn't an image, like a PDF, opens in a new tab when it has a `url` from `http:`, `https:` or `blob:`. A file without one, like a `File` the person just picked, shows only its name and size.
 
 ```ts
 sent.attachments = [
   { name: "chart.png", type: "image/png", url: "https://example.com/chart.png" }, // opens full size
   { name: "report.pdf", type: "application/pdf", size: 2_400_000, url: "https://example.com/report.pdf" }, // opens in a new tab
 ];
+```
 
-// Or show them your own way.
+#### Showing attachments your own way
+
+The built-in viewer and the new tab suit most apps. If yours already has an image gallery, or shows PDFs inside the app, you can take over.
+
+Every click on an image or a file link fires `attachmentopen` first, before anything opens. Its `detail` says what was clicked: the `attachment` itself, its `index` in `attachments`, and its `kind`, `"image"` or `"file"`.
+
+- **Call `event.preventDefault()`** and nothing opens. Show the attachment however you like.
+- **Don't call it,** and the built-in viewer or new tab opens as usual. Listening without cancelling is handy for counting clicks, say.
+
+```ts
+// Use your own lightbox for images.
 sent.addEventListener("attachmentopen", (event) => {
+  if (event.detail.kind !== "image") return; // files still open in a new tab
   event.preventDefault();
   myLightbox.show(event.detail.attachment);
+});
+
+// Show PDFs inside the app instead of in a new tab.
+sent.addEventListener("attachmentopen", (event) => {
+  const { attachment, kind } = event.detail;
+  if (kind === "file" && attachment.type === "application/pdf") {
+    event.preventDefault();
+    openPdfPanel(attachment);
+  }
 });
 ```
 
@@ -157,8 +182,18 @@ The colours are custom properties you can change: `--ai-message-syntax-comment`,
 
 ## Translation
 
+Every word the message shows or says comes from `strings`, so an app in another language can replace them all. Give only the ones you want to change; the rest stay in English.
+
 ```ts
 message.strings = { copy: "Copier", copied: "Copié", retry: "Réessayer", edit: "Modifier" };
+```
+
+Some of these words never show on screen. They're the names screen readers say for buttons and links, like "View chart.png" for an image's thumbnail, or "Previous image" for an arrow. Translate them too, or people using a screen reader hear English in an app that's otherwise in their language.
+
+Inside [`<ai-chat>`](../ai-chat/README.md), which makes the messages for you, put them under `message` in the chat's `strings`:
+
+```ts
+chat.strings = { message: { closeViewer: "Fermer", previousImage: "Image précédente", nextImage: "Image suivante" } };
 ```
 
 | Key | Default |
@@ -176,11 +211,11 @@ message.strings = { copy: "Copier", copied: "Copié", retry: "Réessayer", edit:
 | `versionName(version, versions)` | `Version 2 of 3`: the name of the arrows' group |
 | `attachments` | `Attachments`: the name of the list of files |
 | `fileSize(bytes)` | `512 B`, `24 KB` or `2.3 MB` |
-| `viewImage(name)` | `View chart.png`: a thumbnail's name |
-| `openFile(name)` | `Open report.pdf in a new tab`: a file link's name |
-| `previousImage`, `nextImage` | `Previous image`, `Next image`: the viewer's arrows |
-| `imagePosition(index, count)` | `2 of 3`: between the viewer's arrows |
-| `closeViewer` | `Close`: the viewer's close button |
+| `viewImage(name)` | `View chart.png`: what screen readers say for an image's thumbnail |
+| `openFile(name)` | `Open report.pdf in a new tab`: what screen readers say for a file link, also its tooltip |
+| `previousImage`, `nextImage` | `Previous image`, `Next image`: the image viewer's arrows, said by screen readers |
+| `imagePosition(index, count)` | `2 of 3`: shown between the image viewer's arrows |
+| `closeViewer` | `Close`: the image viewer's close button, said by screen readers |
 
 ## Slots
 
