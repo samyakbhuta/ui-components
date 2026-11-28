@@ -29,6 +29,7 @@ The element is the scroll container, so give it a height, or put it in a grid or
 - **Following.** While you're at the bottom, growing content keeps the newest line in view. Scroll up and it stops following; scroll back down and it follows again.
 - **Your messages.** A new message with `from="user"` always brings the conversation back to the bottom.
 - **Jump to latest.** When you've scrolled away from the bottom, a button floats above it. It scrolls smoothly, or instantly with Reduce motion, and keeps focus in the conversation.
+- **Waiting for your answer.** When something below waits on you, and its buttons are out of view, the same button says so instead, in the accent colour with a pulsing dot: "Waiting for your answer" for an [`<ai-question>`](../ai-question/README.md) or [`<ai-questions>`](../ai-questions/README.md), "Waiting for your approval" for an [`<ai-approval>`](../ai-approval/README.md), "Waiting for your review" for an [`<ai-plan>`](../ai-plan/README.md), and "Sending is paused" for an [`<ai-notice>`](../ai-notice/README.md) that isn't `info`. It shows even while following. Pressing it scrolls the card into view and focuses it, so it can be answered at once: its first choice, or else its first button or link, or else its text box. Once the card is answered, decided or gone, the button is Jump to latest again.
 - **Empty state.** A child with `slot="empty"` shows, centred, until the first message arrives.
 - **Busy.** While any message has `streaming`, the transcript is `aria-busy="true"`.
 - **Announcements.** When an assistant message fires `messagecomplete`, its text is read out once through a polite live region. The transcript itself isn't a live region, so streaming text isn't read word by word.
@@ -40,7 +41,8 @@ The element is the scroll container, so give it a height, or put it in a grid or
 | `announce="none"` | Stops reading finished replies out. |
 | `aria-label` | Names the conversation. It defaults to `strings.label`. |
 | `following` (read-only) | `true` while it follows new content. |
-| `strings` | Words to replace: `label` (`Conversation`), `jump` (`Jump to latest`), `reply(text)`, what's read out for a finished reply, `waiting(question)`, read after it for each [`<ai-question>`](../ai-question/README.md) in the reply still waiting for an answer (`${question} Waiting for your answer.`), `approval(label)`, the same for each [`<ai-approval>`](../ai-approval/README.md) still waiting for a decision (`${label} Waiting for your approval.`), `plan(heading)`, the same for each [`<ai-plan>`](../ai-plan/README.md) (`${heading} Waiting for your review.`), `questions(first, count)`, for each [`<ai-questions>`](../ai-questions/README.md) set (`${count} questions, starting with: ${first} Waiting for your answers.`), and `notice(heading, text, resets)`, for each [`<ai-notice>`](../ai-notice/README.md) that still applies (each part, as a sentence). |
+| `waiting` (read-only) | The newest card still waiting on the person (a question, an approval, a plan, or a notice that isn't `info`), or `null`. |
+| `strings` | Words to replace: `label` (`Conversation`), `jump` (`Jump to latest`), `jumpWaiting(kind)`, the button while a card below waits, with `kind` being `answer`, `approval`, `review` or `notice` (`Waiting for your answer`, `Waiting for your approval`, `Waiting for your review`, `Sending is paused`), `reply(text)`, what's read out for a finished reply, `waiting(question)`, read after it for each [`<ai-question>`](../ai-question/README.md) in the reply still waiting for an answer (`${question} Waiting for your answer.`), `approval(label)`, the same for each [`<ai-approval>`](../ai-approval/README.md) still waiting for a decision (`${label} Waiting for your approval.`), `plan(heading)`, the same for each [`<ai-plan>`](../ai-plan/README.md) (`${heading} Waiting for your review.`), `questions(first, count)`, for each [`<ai-questions>`](../ai-questions/README.md) set (`${count} questions, starting with: ${first} Waiting for your answers.`), and `notice(heading, text, resets)`, for each [`<ai-notice>`](../ai-notice/README.md) that still applies (each part, as a sentence). |
 | `scrollToLatest({ smooth })` | Scrolls to the newest message and follows again. |
 
 ```ts
@@ -53,7 +55,7 @@ transcript.strings = {
 
 ## Styling
 
-The CSS sits in the `ai-transcript` cascade layer. `--ai-transcript-gap` sets the space between messages (`1.25rem`). Parts: `[data-part="jump-bar"]` (a zero-height sticky bar at the bottom), `jump` (the button) and `announcement` (visually hidden).
+The CSS sits in the `ai-transcript` cascade layer. `--ai-transcript-gap` sets the space between messages (`1.25rem`), and `--ai-transcript-waiting` the button's colour while something waits (blue, at least 4.5:1 in light and dark). Parts: `[data-part="jump-bar"]` (a zero-height sticky bar at the bottom), `jump` (the button, with `data-waiting` while it points to a waiting card), `jump-dot`, `jump-label` and `announcement` (visually hidden).
 
 Set its custom properties on `ai-transcript` itself, or once on an element around it, like `ai-chat` or `:root`, and every `<ai-transcript>` inside takes them.
 
@@ -62,9 +64,10 @@ Set its custom properties on `ai-transcript` itself, or once on an element aroun
 - It's a region named "Conversation", and it can take focus so it scrolls from the keyboard.
 - Finished replies are announced once, after `aria-busy` clears.
 - Jump to latest is a real button, and it shows only when there's something below.
+- While something waits, the button's name says what for, in words, not only by colour and the dot. Pressing it moves focus into the card. The dot keeps still with Reduce motion, and in Windows high contrast mode the button takes system colours.
 
 ## Files
 
 - `ai-transcript.ts`: the element.
 - `ai-transcript.css`: its styles.
-- `ai-transcript.test.ts`: tests for naming, part order, busy state, announcements and following.
+- `ai-transcript.test.ts`: tests for naming, part order, busy state, announcements, following, and the waiting card.
