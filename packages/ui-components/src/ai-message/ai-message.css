@@ -325,6 +325,20 @@
     justify-content: end;
   }
 
+  ai-message [data-part="attachment-open"] {
+    display: block;
+    padding: 0;
+    border: 0;
+    border-radius: 0.75rem;
+    background: none;
+    cursor: zoom-in;
+  }
+
+  ai-message [data-part="attachment-open"]:focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 2px;
+  }
+
   ai-message [data-part="attachment"][data-kind="image"] img {
     display: block;
     width: var(--_ai-message-thumbnail-size);
@@ -334,7 +348,12 @@
     border-radius: 0.75rem;
   }
 
-  ai-message [data-part="attachment"][data-kind="file"] {
+  ai-message [data-part="attachment-open"]:hover img {
+    border-color: var(--_ai-message-muted);
+  }
+
+  ai-message [data-part="attachment"][data-kind="file"],
+  ai-message [data-part="file-link"] {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
@@ -343,6 +362,158 @@
     border: 1px solid var(--_ai-message-border);
     border-radius: 0.75rem;
     font-size: 0.875rem;
+  }
+
+  /* A file with an address is a link: the whole card, with no border of its own inside the item's. */
+  ai-message [data-part="attachment"][data-kind="file"]:has(> [data-part="file-link"]) {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+
+  ai-message [data-part="file-link"] {
+    box-sizing: border-box;
+    max-width: 100%;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  ai-message [data-part="file-link"]:hover {
+    border-color: var(--_ai-message-muted);
+  }
+
+  ai-message [data-part="file-link"]:hover [data-part="file-name"] {
+    text-decoration: underline;
+  }
+
+  ai-message [data-part="file-link"]:focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 2px;
+  }
+
+  /* The image viewer, over the page. */
+
+  /* Takes no room in the message: its parts are fixed over the page. */
+  ai-message [data-part="viewer"] {
+    display: contents;
+  }
+
+  ai-message [data-part="viewer-backdrop"] {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: color-mix(in srgb, black 85%, transparent);
+  }
+
+  ai-message [data-part="viewer-content"] {
+    position: fixed;
+    inset: 0;
+    z-index: 1001;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    box-sizing: border-box;
+    padding: 0.75rem;
+    color: white;
+    line-height: 1.4;
+    color-scheme: dark;
+    pointer-events: none;
+  }
+
+  ai-message [data-part="viewer-content"] > * {
+    pointer-events: auto;
+  }
+
+  ai-message [data-part="viewer-header"] {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    justify-self: center;
+    width: min(100%, 64rem);
+  }
+
+  ai-message [data-part="viewer-title"] {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  ai-message [data-part="viewer-position"] {
+    flex: none;
+    color: #d0d0d0;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  ai-message [data-part="viewer-stage"] {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.5rem;
+    align-items: center;
+    justify-items: center;
+    min-height: 0;
+    padding-top: 0.75rem;
+    /* Presses on the dark space around the image fall through to the backdrop, which closes the viewer. */
+    pointer-events: none;
+  }
+
+  ai-message [data-part="viewer-stage"] > * {
+    pointer-events: auto;
+  }
+
+  ai-message [data-part="viewer-image"] {
+    grid-column: 2;
+    max-width: 100%;
+    max-height: 100%;
+    min-height: 0;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    background: white;
+  }
+
+  ai-message [data-part="viewer-previous"] {
+    grid-column: 1;
+  }
+
+  ai-message [data-part="viewer-next"] {
+    grid-column: 3;
+  }
+
+  ai-message [data-part="viewer-content"] [data-button] {
+    flex: none;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background: color-mix(in srgb, white 14%, transparent);
+    color: white;
+  }
+
+  ai-message [data-part="viewer-content"] [data-button]:hover:not(:disabled) {
+    background: color-mix(in srgb, white 26%, transparent);
+    color: white;
+  }
+
+  ai-message [data-part="viewer-content"] [data-button]:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
+  }
+
+  ai-message [data-part="viewer-content"] [data-button]:disabled {
+    background: color-mix(in srgb, white 14%, transparent);
+    color: white;
+    opacity: 0.35;
+  }
+
+  ai-message [data-part="viewer-content"] [data-button] svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  /* Right to left, the arrows point the other way. */
+  ai-message [data-part="viewer-content"]:dir(rtl) :is([data-part="viewer-previous"], [data-part="viewer-next"]) svg {
+    scale: -1 1;
   }
 
   ai-message [data-part="file-icon"] svg {

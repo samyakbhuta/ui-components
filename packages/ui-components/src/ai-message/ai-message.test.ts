@@ -305,9 +305,11 @@ test("attachments show images as thumbnails and other files by name and size", a
   const list = within(message).getByRole("list", { name: "Attachments" });
   const items = within(list).getAllByRole("listitem");
   expect(items).toHaveLength(3);
-  const img = within(items[0]).getByRole("img", { name: "chart.png" }) as HTMLImageElement;
-  expect(img.src).toBe("https://example.com/chart.png");
+  within(items[0]).getByRole("button", { name: "View chart.png" });
+  expect(items[0].querySelector("img")!.src).toBe("https://example.com/chart.png");
   expect(items[1].textContent).toBe("notes.pdf2.3 MB");
+  // With no address, a file is only its name and size.
+  expect(within(items[1]).queryByRole("link")).toBeNull();
   // An address that isn't an image link shows as a file, never as a source.
   expect(items[2].dataset.kind).toBe("file");
   expect(items[2].querySelector("img")).toBeNull();
@@ -328,6 +330,115 @@ test("attachments take File objects, like the ones <ai-composer> sends", async (
   message.attachments = [];
   expect(revoked).toHaveBeenCalledWith("blob:preview");
   vi.unstubAllGlobals();
+});
+
+test("a thumbnail opens the image full size, and the viewer steps through the message's images", async () => {
+  const user = userEvent.setup();
+  const { message } = await mount(`<ai-message from="user">Which is better?</ai-message>`, (m) => {
+    m.attachments = [
+      { name: "front.png", type: "image/png", url: "https://example.com/front.png" },
+      { name: "notes.pdf", type: "application/pdf" },
+      { name: "back.png", type: "image/png", url: "https://example.com/back.png" },
+      { name: "side.png", type: "image/png", url: "https://example.com/side.png" },
+    ];
+  });
+  const opened = vi.fn();
+  message.addEventListener("attachmentopen", (event) => opened(event.detail));
+  const thumbnail = within(message).getByRole("button", { name: "View back.png" });
+  await user.click(thumbnail);
+  expect(opened).toHaveBeenCalledWith({ attachment: message.attachments[2], index: 2, kind: "image" });
+
+  const viewer = await vi.waitFor(() => within(message).getByRole("dialog", { name: "back.png" }));
+  const image = () => within(viewer).getByRole("img") as HTMLImageElement;
+  expect(image().src).toBe("https://example.com/back.png");
+  expect(image().alt).toBe("back.png");
+  expect(viewer.querySelector("[data-part='viewer-position']")!.textContent).toBe("2 of 3");
+  expect(document.activeElement).toBe(within(viewer).getByRole("button", { name: "Close" }));
+
+  await user.click(within(viewer).getByRole("button", { name: "Next image" }));
+  expect(image().src).toBe("https://example.com/side.png");
+  expect(viewer.querySelector("[data-part='viewer-position']")!.textContent).toBe("3 of 3");
+  expect((within(viewer).getByRole("button", { name: "Next image" }) as HTMLButtonElement).disabled).toBe(true);
+  // At the end, focus moves to the arrow that still works.
+  expect(document.activeElement).toBe(within(viewer).getByRole("button", { name: "Previous image" }));
+
+  await user.keyboard("{ArrowLeft}{ArrowLeft}");
+  expect(image().src).toBe("https://example.com/front.png");
+  expect((within(viewer).getByRole("button", { name: "Previous image" }) as HTMLButtonElement).disabled).toBe(true);
+
+  // Escape closes it, and focus goes to the thumbnail of the image last shown.
+  await user.keyboard("{Escape}");
+  await vi.waitFor(() => expect(within(message).queryByRole("dialog")).toBeNull());
+  await vi.waitFor(() => expect(document.activeElement).toBe(within(message).getByRole("button", { name: "View front.png" })));
+  message.remove();
+});
+
+test("a single image shows no arrows, and attachmentopen can be cancelled to show it your own way", async () => {
+  const user = userEvent.setup();
+  const { message } = await mount(`<ai-message from="user">Hi</ai-message>`, (m) => {
+    m.attachments = [{ name: "cat.png", type: "image/png", url: "https://example.com/cat.png" }];
+  });
+  await user.click(within(message).getByRole("button", { name: "View cat.png" }));
+  const viewer = await vi.waitFor(() => within(message).getByRole("dialog", { name: "cat.png" }));
+  expect(within(viewer).queryByRole("button", { name: "Next image" })).toBeNull();
+  expect(viewer.querySelector<HTMLElement>("[data-part='viewer-position']")!.hidden).toBe(true);
+  await user.click(within(viewer).getByRole("button", { name: "Close" }));
+  await vi.waitFor(() => expect(within(message).queryByRole("dialog")).toBeNull());
+
+  message.addEventListener("attachmentopen", (event) => event.preventDefault());
+  await user.click(within(message).getByRole("button", { name: "View cat.png" }));
+  await settle();
+  expect(within(message).queryByRole("dialog")).toBeNull();
+  message.remove();
+});
+
+test("a file with an address opens in a new tab, and only from web and blob addresses", async () => {
+  const { message } = await mount(`<ai-message from="user">Read this</ai-message>`, (m) => {
+    m.attachments = [
+      { name: "report.pdf", type: "application/pdf", size: 2048, url: "https://example.com/report.pdf" },
+      { name: "evil.html", type: "text/html", url: "javascript:alert(1)" },
+      { name: "page.html", type: "text/html", url: "data:text/html,<script>alert(1)</script>" },
+    ];
+  });
+  const link = within(message).getByRole("link", { name: "Open report.pdf in a new tab" }) as HTMLAnchorElement;
+  expect(link.href).toBe("https://example.com/report.pdf");
+  expect(link.target).toBe("_blank");
+  expect(link.rel).toBe("noopener noreferrer");
+  expect(link.textContent).toBe("report.pdf2 KB");
+  expect(within(message).getAllByRole("link")).toHaveLength(1);
+
+  const opened = vi.fn((event: Event) => event.preventDefault());
+  message.addEventListener("attachmentopen", opened);
+  const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+  link.dispatchEvent(click);
+  expect(opened).toHaveBeenCalledTimes(1);
+  expect((opened.mock.calls[0][0] as CustomEvent).detail).toMatchObject({ index: 0, kind: "file" });
+  expect(click.defaultPrevented).toBe(true);
+  message.remove();
+});
+
+test("the viewer's words can be translated", async () => {
+  const user = userEvent.setup();
+  const { message } = await mount(`<ai-message from="user" lang="fr">Lequel ?</ai-message>`, (m) => {
+    m.strings = {
+      viewImage: (name) => `Voir ${name}`,
+      previousImage: "Image précédente",
+      nextImage: "Image suivante",
+      imagePosition: (index, count) => `${index} sur ${count}`,
+      closeViewer: "Fermer",
+    };
+    m.attachments = [
+      { name: "a.png", type: "image/png", url: "https://example.com/a.png" },
+      { name: "b.png", type: "image/png", url: "https://example.com/b.png" },
+    ];
+  });
+  await user.click(within(message).getByRole("button", { name: "Voir a.png" }));
+  const viewer = await vi.waitFor(() => within(message).getByRole("dialog", { name: "a.png" }));
+  within(viewer).getByRole("button", { name: "Fermer" });
+  within(viewer).getByRole("button", { name: "Image suivante" });
+  expect(viewer.querySelector("[data-part='viewer-position']")!.textContent).toBe("1 sur 2");
+  await user.keyboard("{Escape}");
+  message.remove();
 });
 
 test("agents can rate a reply and step between versions", async () => {

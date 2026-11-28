@@ -91,6 +91,7 @@ function logEvents(root: HTMLElement) {
     "suggestionselect",
     "messagefeedback",
     "messageversion",
+    "attachmentopen",
     "questionanswer",
     "questionskip",
     "questionsanswer",
@@ -398,11 +399,14 @@ reply.addEventListener("messageaction", (event) => {
     id: "message-states",
     title: "Attachments, errors, feedback and versions",
     intro:
-      "A message can show the files sent with it, a reply that failed part way, Good response and Bad response, and arrows to step between versions after Retry. Rate the reply or step through its versions: the event shows below.",
+      "A message can show the files sent with it (click an image to see it full size), a reply that failed part way, Good response and Bad response, and arrows to step between versions after Retry. Rate the reply or step through its versions: the event shows below.",
     html: `<ai-message from="user" class="with-files">What's in these?</ai-message>
 <ai-message class="failed-reply"></ai-message>
 <ai-message class="rated-reply" actions="copy retry feedback"></ai-message>`,
     script: `sent.attachments = event.detail.files // File objects, or { name, type, size, url }
+sent.addEventListener("attachmentopen", (event) => {
+  // event.detail: { attachment, index, kind: "image" | "file" }; preventDefault() to show it your own way
+})
 reply.fail("The connection dropped. Try again.")
 
 reply.setAttribute("actions", "copy retry feedback")
@@ -413,10 +417,13 @@ reply.addEventListener("messageversion", (event) => {
     setup: (root) => {
       const sent = root.querySelector<HTMLElementTagNameMap["ai-message"]>(".with-files")!;
       const chart = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" fill="#e8eefc"/><rect x="14" y="52" width="14" height="30" fill="#2b5bc4"/><rect x="41" y="34" width="14" height="48" fill="#2b5bc4"/><rect x="68" y="18" width="14" height="64" fill="#2b5bc4"/></svg>');
+      const pie = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" fill="#fdf0e6"/><circle cx="48" cy="48" r="30" fill="#c2571a"/><path d="M48 48V18a30 30 0 0 1 28 40Z" fill="#f2b37d"/></svg>');
+      const notes = "Q1 30, Q2 48, Q3 64. Ask about the third quarter.";
       sent.attachments = [
-        new File([chart], "chart.svg", { type: "image/svg+xml" }),
+        new File([chart], "sales-by-quarter.svg", { type: "image/svg+xml" }),
+        new File([pie], "share-by-region.svg", { type: "image/svg+xml" }),
         { name: "quarterly-report.pdf", type: "application/pdf", size: 2_400_000 },
-        { name: "notes.txt", type: "text/plain", size: 812 },
+        { name: "notes.txt", type: "text/plain", size: notes.length, url: URL.createObjectURL(new Blob([notes], { type: "text/plain" })) },
       ];
       const failed = root.querySelector<HTMLElementTagNameMap["ai-message"]>(".failed-reply")!;
       failed.text = "The chart shows sales rising each quarter, from";
