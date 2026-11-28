@@ -890,7 +890,7 @@ export class AiChatElement extends BaseElement {
         void this.#run({ text: user?.text ?? "", files: [], references: [] });
       });
     };
-    const event = { "ai-question": "questionanswer", "ai-approval": "decisionchange", "ai-plan": "plandecision", "ai-questions": "questionsanswer" }[card.localName]!;
+    const event = { "ai-question": "questionanswer", "ai-approval": "decisionchange", "ai-plan": "decisionchange", "ai-questions": "questionsanswer" }[card.localName]!;
     card.addEventListener(event, resume, { once: true });
     if (card.localName === "ai-question") card.addEventListener("questionskip", resume, { once: true });
   }
@@ -954,12 +954,13 @@ export class AiChatElement extends BaseElement {
     if (chunk.href) card.href = chunk.href;
     card.plan = chunk.plan ?? "";
     card.accepts = chunk.accepts ?? [];
-    card.addEventListener("plandecision", (event) => {
+    card.addEventListener("decisionchange", (event) => {
+      const decision = event.detail.value;
+      if (!decision) return;
       // Accepting with a mode switches the composer to it, when it offers that mode.
-      const { mode } = event.detail;
+      const { mode } = decision;
       if (mode && this.composer.modes.some((option) => option.value === mode)) this.composer.mode = mode;
       if (card !== this.#waitingOn) return;
-      const decision = event.detail;
       queueMicrotask(() => this.#settle(decision));
     });
     return card;

@@ -70,7 +70,7 @@ export const valid = (
       plan={"1. Look.\n2. Delete."}
       accepts={[{ value: "auto", label: "auto mode" }]}
       open
-      onplandecision={(event) => (event.detail.decision === "accept" ? event.detail.mode : event.detail.feedback)}
+      ondecisionchange={(event) => (event.detail.value?.decision === "accept" ? event.detail.value.mode : event.detail.reason)}
     />
     <ai-notice
       heading="You've reached your usage limit"

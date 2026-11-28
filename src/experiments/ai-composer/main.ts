@@ -99,7 +99,7 @@ function logEvents(root: HTMLElement) {
     "questionskip",
     "questionsanswer",
     "decisionchange",
-    "plandecision",
+    "openchange",
     "noticeaction",
     "noticeexpire",
     "noticedismiss",
@@ -716,15 +716,15 @@ approval.decision = savedDecision // shows a saved decision, like when a chat op
 <button type="button" class="reset-demo">Reset demo</button>`,
     script: `plan.plan = "## Steps\\n\\n1. Pick a date: the Saturday after Sam's birthday.\\n…"
 plan.accepts = [{ value: "auto", label: "auto mode" }] // adds "Accept and use auto mode"
-plan.addEventListener("plandecision", (event) => {
-  const { decision, mode, feedback } = event.detail // "accept", "reject" or "revise"
+plan.addEventListener("decisionchange", (event) => {
+  const { decision, mode, feedback } = event.detail.value // "accept", "reject" or "revise"
 })`,
     setup: (root) => {
       const plan = root.querySelector<HTMLElementTagNameMap["ai-plan"]>(".sample-plan")!;
       plan.plan =
         "## Steps\n\n1. Pick a date: the Saturday after Sam's birthday.\n2. Make a guest list, and send invites by message.\n3. Book the back room at a local restaurant.\n4. Order a cake and some decorations.\n5. Keep it secret: a cover story for the evening.\n\n## Not doing\n\n- Spending more than the budget you set.\n- Telling Sam.";
       plan.accepts = [{ value: "auto", label: "auto mode" }];
-      resetDemo(root, "ai-plan[decided]", ["plandecision"], () => {
+      resetDemo(root, "ai-plan[decided]", ["decisionchange"], () => {
         plan.decision = null;
         plan.feedbackText = "";
         return plan.querySelector<HTMLElement>("[data-part='accept'] button");

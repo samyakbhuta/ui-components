@@ -205,7 +205,13 @@ export interface AiPlanProps {
   accepts?: PlanAcceptOption[];
   feedbackText?: string;
   decision?: PlanDecisionDetail | null;
+  /** The decision it starts with, read once. `decision` shows a saved one at any time. */
+  defaultDecision?: PlanDecisionDetail | null;
+  /** Whether the plan starts open, read once. */
+  defaultOpen?: boolean;
   strings?: Partial<PlanStrings>;
+  /** ui-sdk's own: logs the primitive's state and changes to the console. */
+  debug?: boolean;
 }
 
 export interface AiNoticeProps {

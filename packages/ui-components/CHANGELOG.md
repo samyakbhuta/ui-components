@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `<ai-plan>` is now built as a ui-sdk primitive, `plan`, exported beside the element and rendered with ui-sdk's `createParts`, like `<ai-approval>`. Breaking changes:
+  - `plandecision` is now `decisionchange`, with `{ value, reason, source }` in `detail`: `value` is the `{ decision, mode, feedback }` it used to carry. It doesn't bubble: listen on the element, or with `{ capture: true }` around it.
+  - Opening and closing the plan fires the new `openchange`, with `"trigger-press"`, `"find-in-page"` or `"imperative"`, and can be cancelled. New `default-open` and `defaultDecision`.
+  - `decide()` is `api.decide()`, and there are `api.setOpen()`, `api.startRevising()` and `api.stopRevising()`.
+  - Open plan is ui-sdk's Collapsible, so AI agents can open the plan, and a closed plan can be found with the browser's find in page, which opens it.
+  - Screen readers hear the decision through ui-sdk's shared live region, so the `announcement` part is gone. The list indent in the plan follows the reading direction.
+- `<ai-approval>` and `<ai-plan>` type their events on the element, through `ApprovalElementEventMap` and `PlanElementEventMap`, instead of the global `HTMLElementEventMap`, since both fire `decisionchange` with different details. `element.addEventListener("decisionchange", …)` is typed as before; a listener on an element around them casts the event.
 - `<ai-approval>` is now built as a ui-sdk primitive, `approval`, exported beside the element and rendered with ui-sdk's `createParts`. Breaking changes:
   - `approvaldecision` is now `decisionchange`, with `{ value, reason, source }` in `detail`: `value` is the `{ decision, reason }` it used to carry, `reason` says what asked (`"press"`, `"enter-key"` or `"imperative"`), and `source` says how (`"mouse"`, `"keyboard"`, `"agent"` and so on). Like ui-sdk's change events, it doesn't bubble: listen on the element, or with `{ capture: true }` around it.
   - `decide()` is `api.decide()`, and there's a new `api.deny(reason?)` for app code. AI agents see the card as one `approval` component, named by its heading, with its decision, and decide through its buttons, each of which asks the person first.

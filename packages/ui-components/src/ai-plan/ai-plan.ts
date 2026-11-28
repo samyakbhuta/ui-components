@@ -1,452 +1,258 @@
 import "@ui-sdk/web/button";
+import "@ui-sdk/web/collapsible";
 import "@ui-sdk/web/input";
+import type { ChangeSource } from "@ui-sdk/core";
+import { createParts, type UiActionDetail } from "@ui-sdk/web";
 import { needsPerson } from "../agent.ts";
 import { renderMarkdown } from "../ai-message/markdown.ts";
-import { adoptStyles, BaseElement, define } from "../styles.ts";
+import { adoptStyles } from "../styles.ts";
+import { plan, type PlanAcceptOption, type PlanDecision, type PlanDecisionDetail, type PlanDecisionReason, type PlanOpenReason, type PlanStrings } from "./plan.ts";
 import styles from "./ai-plan.css?inline";
 
-/** What people decided: accept the plan, reject it, or ask for changes. */
-export type PlanDecision = "accept" | "reject" | "revise";
+export { defaultPlanStrings, plan } from "./plan.ts";
+export type { PlanAcceptOption, PlanDecision, PlanDecisionDetail, PlanDecisionReason, PlanOpenReason, PlanOptions, PlanStrings } from "./plan.ts";
 
-/** One more way to accept: accept and switch to a mode, like `{ value: "auto", label: "auto mode" }`. */
-export type PlanAcceptOption = {
-  /** The mode's value, given back in the decision. In `<ai-chat>`, the composer's Mode switches to it. */
-  value: string;
-  /** The mode's name, as it reads after "Accept and use": "auto mode". */
-  label: string;
+/** What `decisionchange` carries in `event.detail`. */
+export type PlanDecisionChangeDetail = {
+  value: PlanDecisionDetail | null;
+  reason: PlanDecisionReason;
+  source: ChangeSource;
+  event?: Event;
 };
 
-/** What `plandecision` carries in `event.detail`, and what `decision` holds once decided. */
-export type PlanDecisionDetail = {
-  decision: PlanDecision;
-  /** With Accept, the value of the mode chosen with it, or null for plain Accept. */
-  mode: string | null;
-  /** With Revise, what to change. */
-  feedback: string | null;
-};
-
-/** Every word `<ai-plan>` shows or announces. Override any of them through `strings`. */
-export type PlanStrings = {
-  /** The line at the top while it waits for a decision. It also describes the card. */
-  waiting: string;
-  /** The heading, unless the `heading` attribute gives one. */
-  heading: string;
-  open: string;
-  close: string;
-  accept: string;
-  /** The button for each of `accepts`: "Accept and use auto mode". */
-  acceptWith: (label: string) => string;
-  reject: string;
-  revise: string;
-  /** The feedback box's accessible name. */
-  feedbackLabel: string;
-  feedbackPlaceholder: string;
-  send: string;
-  cancel: string;
-  /** The line shown, and announced, once decided. `label` is the chosen mode's label, if any. */
-  decided: (detail: PlanDecisionDetail, label: string | null) => string;
-  /** What an agent pressing Accept would do, asked of the person first (`data-agent-confirm`). */
-  acceptConfirm: string;
-  /** What an agent pressing one of `accepts` would do, asked of the person first. */
-  acceptWithConfirm: (label: string) => string;
-  /** What an agent pressing Reject would do, asked of the person first. */
-  rejectConfirm: string;
-  /** What an agent sending changes from the Revise box would do, with what's typed, asked of the person first. */
-  reviseConfirm: (feedback: string) => string;
-};
-
-export const defaultPlanStrings: PlanStrings = {
-  waiting: "Waiting for your review",
-  heading: "Proposed plan",
-  open: "Open plan",
-  close: "Close plan",
-  accept: "Accept",
-  acceptWith: (label) => `Accept and use ${label}`,
-  reject: "Reject",
-  revise: "Revise…",
-  feedbackLabel: "What should change?",
-  feedbackPlaceholder: "Tell it what to change in the plan",
-  send: "Send changes",
-  cancel: "Cancel",
-  decided: ({ decision, mode, feedback }, label) =>
-    decision === "accept"
-      ? mode
-        ? `Accepted, using ${label ?? mode}`
-        : "Accepted"
-      : decision === "reject"
-        ? "Rejected"
-        : feedback
-          ? `Asked for changes: “${feedback}”`
-          : "Asked for changes",
-  acceptConfirm: "Accepts the plan, so the agent goes ahead with it",
-  acceptWithConfirm: (label) => `Accepts the plan and switches to ${label}, so the agent goes ahead with it`,
-  rejectConfirm: "Rejects the plan, so the agent stops",
-  reviseConfirm: (feedback) => (feedback ? `Asks for changes to the plan: “${feedback}”` : "Asks for changes to the plan"),
+/** What `openchange` carries in `event.detail`. */
+export type PlanOpenChangeDetail = {
+  value: boolean;
+  reason: PlanOpenReason;
+  source: ChangeSource;
+  event?: Event;
 };
 
 /** The events this element fires, by name. */
 export type PlanEvents = {
-  plandecision: CustomEvent<PlanDecisionDetail>;
+  decisionchange: CustomEvent<PlanDecisionChangeDetail>;
+  openchange: CustomEvent<PlanOpenChangeDetail>;
 };
-
-let count = 0;
 
 /**
  * `<ai-plan>`: an agent proposes a plan before it starts. People can open the plan, then Accept
- * it, Accept and switch mode, Reject it, or Revise it by saying what to change. See README.md
- * beside this file.
- *
- * @customElement ai-plan
- * @fires plandecision - A decision was made. Cancelable.
+ * it, Accept and switch mode, Reject it, or Revise it by saying what to change. It's ui-sdk's
+ * `plan` primitive (`plan.ts`) rendered as custom elements. See README.md beside this file.
  */
-export class AiPlanElement extends BaseElement {
-  static observedAttributes = ["heading", "summary", "href", "open", "disabled"];
-
-  #strings: PlanStrings = defaultPlanStrings;
-  #plan = "";
-  #accepts: PlanAcceptOption[] = [];
-  #feedbackText = "";
-  #revising = false;
-  #decision: PlanDecisionDetail | null = null;
-  #rendered = false;
-  #id = `ai-plan-${++count}`;
-
-  /** The plan's title. Defaults to "Proposed plan". */
-  get heading(): string {
-    return this.getAttribute("heading") ?? "";
-  }
-  set heading(value: string) {
-    this.setAttribute("heading", value);
-  }
-
-  /** A line under the heading, shown while the plan is closed. */
-  get summary(): string {
-    return this.getAttribute("summary") ?? "";
-  }
-  set summary(value: string) {
-    this.setAttribute("summary", value);
-  }
-
-  /** Makes Open plan a link to the app's own page for the plan, instead of opening it here. */
-  get href(): string {
-    return this.getAttribute("href") ?? "";
-  }
-  set href(value: string) {
-    this.setAttribute("href", value);
-  }
-
-  /** Whether the plan is open, showing its full text. */
-  get open(): boolean {
-    return this.hasAttribute("open");
-  }
-  set open(value: boolean) {
-    this.toggleAttribute("open", value !== false);
-  }
-
-  get disabled(): boolean {
-    return this.hasAttribute("disabled");
-  }
-  set disabled(value: boolean) {
-    this.toggleAttribute("disabled", value !== false);
-  }
-
+export interface AiPlanElement extends HTMLElement {
+  heading: string;
+  summary: string;
+  href: string;
+  disabled: boolean;
   /** The full plan, as Markdown. Rendered safely: it's never parsed as HTML. */
-  get plan(): string {
-    return this.#plan;
-  }
-  set plan(value: string) {
-    this.#plan = value ?? "";
-    this.#renderPlan();
-    this.#sync();
-  }
-
-  /** More ways to accept, each switching to a mode: "Accept and use auto mode". */
-  get accepts(): PlanAcceptOption[] {
-    return this.#accepts;
-  }
-  set accepts(value: PlanAcceptOption[]) {
-    this.#accepts = [...(value ?? [])];
-    this.#renderAccepts();
-    this.#sync();
-  }
-
+  plan: string;
+  accepts: PlanAcceptOption[];
+  strings: Partial<PlanStrings> | undefined;
+  /** Whether the plan is open, showing its full text. Setting it doesn't fire `openchange`. */
+  open: boolean;
+  /** The decision once made, or null. Setting it shows a saved decision, or asks again with null, without firing `decisionchange`. */
+  decision: PlanDecisionDetail | null;
   /** What's typed in the Revise box. */
-  get feedbackText(): string {
-    return this.#feedbackText;
-  }
-  set feedbackText(value: string) {
-    this.#feedbackText = value ?? "";
-    this.#sync();
-  }
+  feedbackText: string;
+  api: {
+    /** Decides as a button does: "accept" (with `mode`, one of `accepts`), "reject", or "revise" with `feedback`. Returns false when nothing happened. */
+    decide(decision: PlanDecision, options?: { mode?: string; feedback?: string }): boolean;
+    setOpen(open: boolean): boolean;
+    startRevising(): boolean;
+    stopRevising(): void;
+  };
+  // Its events are typed here, not in the global map: ui-sdk-style names like `decisionchange`
+  // are shared between elements, with different details.
+  addEventListener<K extends keyof PlanElementEventMap>(
+    type: K,
+    listener: (this: AiPlanElement, event: PlanElementEventMap[K]) => unknown,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+  removeEventListener<K extends keyof PlanElementEventMap>(
+    type: K,
+    listener: (this: AiPlanElement, event: PlanElementEventMap[K]) => unknown,
+    options?: boolean | EventListenerOptions,
+  ): void;
+  removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+}
 
-  /** The decision once made, or null. Set it to show a saved one; null makes it ask again. */
-  get decision(): PlanDecisionDetail | null {
-    return this.#decision;
-  }
-  set decision(value: PlanDecisionDetail | null) {
-    this.#decision = value ?? null;
-    this.#revising = false;
-    this.toggleAttribute("decided", this.#decision !== null);
-    this.#sync();
-  }
+/** Every event `<ai-plan>` takes listeners for: its own and the usual HTML ones. */
+export interface PlanElementEventMap extends HTMLElementEventMap, PlanEvents {}
 
-  get strings(): PlanStrings {
-    return this.#strings;
-  }
-  set strings(value: Partial<PlanStrings>) {
-    this.#strings = { ...defaultPlanStrings, ...value };
-    this.#renderAccepts();
-    this.#sync();
-  }
+type Instance = ReturnType<typeof plan>;
 
-  connectedCallback() {
-    if (this.#rendered) return;
-    this.#rendered = true;
-    this.#render();
-  }
+const tag = (name: string, part: string) => {
+  const element = document.createElement(name);
+  element.dataset.part = part;
+  return element;
+};
 
-  attributeChangedCallback(_name: string, previous: string | null, next: string | null) {
-    if (previous !== next) this.#sync();
-  }
-
-  /**
-   * Decides, as pressing a button does: "accept" (with `mode`, one of `accepts`), "reject", or
-   * "revise" with `feedback` saying what to change. Returns false when nothing happened.
-   */
-  decide(decision: PlanDecision, options: { mode?: string; feedback?: string } = {}): boolean {
-    if (this.#decision || this.disabled) return false;
-    const mode = decision === "accept" ? (options.mode ?? null) : null;
-    if (mode !== null && !this.#accepts.some((option) => option.value === mode)) return false;
-    const feedback = decision === "revise" ? (options.feedback ?? this.#feedbackText).trim() : "";
-    if (decision === "revise" && !feedback) return false;
-    const detail: PlanDecisionDetail = { decision, mode, feedback: feedback || null };
-    const proceed = this.dispatchEvent(new CustomEvent("plandecision", { detail, bubbles: true, composed: true, cancelable: true }));
-    if (!proceed) return false;
-    this.decision = detail;
-    const line = this.querySelector<HTMLElement>("[data-part='decision']");
-    const announcement = this.querySelector<HTMLElement>("[data-part='announcement']");
-    if (announcement) announcement.textContent = line?.textContent ?? "";
-    // The buttons just disappeared, so give focus somewhere that stays.
-    line?.focus();
-    return true;
-  }
-
-  // ---- Rendering -------------------------------------------------------------------------------
-
-  #part<T extends HTMLElement = HTMLElement>(name: string) {
-    return this.querySelector<T>(`[data-part='${name}']`)!;
-  }
-
-  #render() {
-    const status = document.createElement("p");
-    status.dataset.part = "status";
-    status.id = `${this.#id}-status`;
-    const dot = document.createElement("span");
-    dot.dataset.part = "status-dot";
-    dot.setAttribute("aria-hidden", "true");
-    const words = document.createElement("span");
-    words.dataset.part = "status-text";
-    status.append(dot, words);
-
-    const header = document.createElement("div");
-    header.dataset.part = "header";
-    const titles = document.createElement("div");
-    titles.dataset.part = "titles";
-    const heading = document.createElement("p");
-    heading.dataset.part = "heading";
-    heading.id = `${this.#id}-heading`;
-    const summary = document.createElement("p");
-    summary.dataset.part = "summary";
-    titles.append(heading, summary);
-
-    // Open plan: a button that shows the plan here, or a link to the app's page with `href`.
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.dataset.part = "toggle";
-    toggle.setAttribute("aria-controls", `${this.#id}-plan`);
-    toggle.addEventListener("click", () => (this.open = !this.open));
-    const link = document.createElement("a");
-    link.dataset.part = "link";
-    header.append(titles, toggle, link);
-
-    const plan = document.createElement("div");
-    plan.dataset.part = "plan";
-    plan.id = `${this.#id}-plan`;
-    // A long plan scrolls inside the card, so keyboard users need to reach it too.
-    plan.tabIndex = 0;
-
-    const revise = document.createElement("div");
-    revise.dataset.part = "revise";
-    const field = document.createElement("ui-input");
-    field.dataset.part = "feedback";
-    const box = document.createElement("input");
-    box.type = "text";
-    box.autocomplete = "off";
-    box.addEventListener("input", () => {
-      this.#feedbackText = box.value;
-      this.#sync();
-    });
-    box.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" && !event.isComposing && box.value.trim()) {
-        event.preventDefault();
-        this.decide("revise");
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        this.#stopRevising();
-      }
-    });
-    field.append(box);
-    const reviseActions = document.createElement("div");
-    reviseActions.dataset.part = "revise-actions";
-    reviseActions.append(
-      this.#button("cancel", () => this.#stopRevising()),
-      this.#button("send", () => this.decide("revise")),
-    );
-    revise.append(field, reviseActions);
-
-    const actions = document.createElement("div");
-    actions.dataset.part = "actions";
-    const secondary = document.createElement("div");
-    secondary.dataset.part = "secondary";
-    secondary.append(
-      this.#button("reject", () => this.decide("reject")),
-      this.#button("revise-button", () => this.#startRevising()),
-    );
-    const primary = document.createElement("div");
-    primary.dataset.part = "primary";
-    primary.append(this.#button("accept", () => this.decide("accept")));
-    actions.append(secondary, primary);
-
-    const decision = document.createElement("p");
-    decision.dataset.part = "decision";
-    decision.tabIndex = -1;
-
-    const announcement = document.createElement("span");
-    announcement.dataset.part = "announcement";
-    announcement.setAttribute("role", "status");
-
-    this.replaceChildren(status, header, plan, revise, actions, decision, announcement);
-    if (!this.hasAttribute("role")) this.setAttribute("role", "group");
-    this.setAttribute("aria-labelledby", heading.id);
-    this.#renderPlan();
-    this.#renderAccepts();
-    this.#sync();
-  }
-
-  #button(part: string, press: () => void) {
-    const wrapper = document.createElement("ui-button");
-    wrapper.dataset.part = part;
+/** Builds the card once, then keeps its words and controls in line with the options and state. */
+function render(el: HTMLElement, instance: Instance) {
+  const press = (part: string, run: (source: ChangeSource) => void) => {
+    const wrapper = tag("ui-button", part);
     const button = document.createElement("button");
     button.type = "button";
     wrapper.append(button);
-    wrapper.addEventListener("action", press);
+    // The press's own source, since the change comes from the button's event, not a key or pointer of ours.
+    wrapper.addEventListener("action", (event) => run((event as CustomEvent<UiActionDetail>).detail.source));
     return wrapper;
+  };
+
+  if (!el.querySelector(":scope > [data-part='actions']")) {
+    const status = tag("ai-plan-status", "status");
+    const dot = tag("span", "status-dot");
+    dot.setAttribute("aria-hidden", "true");
+    status.append(dot, tag("span", "status-text"));
+
+    // Open plan is ui-sdk's Collapsible: the header holds its trigger, and the plan is its panel.
+    const collapsible = tag("ui-collapsible", "collapsible") as HTMLElement & { open: boolean };
+    const header = tag("div", "header");
+    const titles = tag("div", "titles");
+    titles.append(tag("ai-plan-heading", "heading"), tag("p", "summary"));
+    const trigger = document.createElement("ui-collapsible-trigger");
+    const toggle = tag("button", "toggle") as HTMLButtonElement;
+    toggle.type = "button";
+    trigger.append(toggle);
+    header.append(titles, trigger, tag("a", "link"));
+    const panel = tag("ui-collapsible-panel", "plan");
+    // Closed, the plan stays findable with the browser's find in page, which opens it.
+    panel.setAttribute("hidden-until-found", "");
+    panel.setAttribute("hidden", "until-found");
+    // A long plan scrolls inside the card, so keyboard users need to reach it too.
+    panel.tabIndex = 0;
+    collapsible.append(header, panel);
+    collapsible.addEventListener("openchange", (event) => {
+      const { value, reason, source } = (event as CustomEvent<{ value: boolean; reason: PlanOpenReason; source: ChangeSource }>).detail;
+      if (!instance.api.setOpen(value, { reason, source })) event.preventDefault();
+    });
+
+    const revise = tag("ai-plan-revise", "revise");
+    const field = tag("ui-input", "feedback");
+    const box = document.createElement("input");
+    box.type = "text";
+    box.autocomplete = "off";
+    box.addEventListener("input", () => instance.api.setFeedbackText(box.value));
+    field.append(box);
+    const reviseActions = tag("div", "revise-actions");
+    reviseActions.append(
+      press("cancel", () => instance.api.stopRevising()),
+      press("send", (source) => instance.api.decide("revise", { source, why: "press" })),
+    );
+    revise.append(field, reviseActions);
+
+    const actions = tag("ai-plan-actions", "actions");
+    const secondary = tag("div", "secondary");
+    secondary.append(
+      press("reject", (source) => instance.api.decide("reject", { source, why: "press" })),
+      press("revise-button", () => instance.api.startRevising()),
+    );
+    const primary = tag("div", "primary");
+    primary.append(press("accept", (source) => instance.api.decide("accept", { source, why: "press" })));
+    actions.append(secondary, primary);
+
+    el.replaceChildren(status, collapsible, revise, actions, tag("ai-plan-decision", "decision"));
   }
 
-  #renderPlan() {
-    if (!this.#rendered) return;
-    const blocks = renderMarkdown(this.#plan).map((block) => block.node);
-    const plan = this.#part("plan");
-    plan.replaceChildren(...blocks);
-    // Code blocks come with a Copy button that only <ai-message> handles.
-    for (const copy of plan.querySelectorAll("[data-part='code-copy']")) copy.remove();
-  }
+  const part = <T extends HTMLElement = HTMLElement>(name: string) => el.querySelector<T>(`:scope [data-part='${name}']`)!;
+  let shownPlan: string | null = null;
+  let shownAccepts = "";
 
-  /** One "Accept and use …" button per option, after plain Accept. */
-  #renderAccepts() {
-    if (!this.#rendered) return;
-    const primary = this.#part("primary");
-    for (const old of primary.querySelectorAll("[data-part='accept-with']")) old.remove();
-    for (const option of this.#accepts) {
-      const wrapper = this.#button("accept-with", () => this.decide("accept", { mode: option.value }));
-      wrapper.dataset.mode = option.value;
-      needsPerson(wrapper, this.#strings.acceptWithConfirm(option.label));
-      wrapper.querySelector("button")!.textContent = this.#strings.acceptWith(option.label);
-      primary.append(wrapper);
+  const sync = () => {
+    const { decision, open, feedbackText, heading, summary, href, disabled, plan: markdown, accepts, strings: s } = instance.get();
+
+    part("status-text").textContent = s.waiting;
+    part("heading").textContent = heading || s.heading;
+    const summaryLine = part("summary");
+    summaryLine.textContent = summary;
+    summaryLine.hidden = !summary;
+
+    if (markdown !== shownPlan) {
+      shownPlan = markdown;
+      const panel = part("plan");
+      panel.replaceChildren(...renderMarkdown(markdown).map((block) => block.node));
+      // Code blocks come with a Copy button that only <ai-message> handles.
+      for (const copy of panel.querySelectorAll("[data-part='code-copy']")) copy.remove();
     }
-  }
-
-  #startRevising() {
-    if (this.#decision || this.disabled) return;
-    this.#revising = true;
-    this.#sync();
-    this.#part("feedback").querySelector("input")!.focus();
-  }
-
-  #stopRevising() {
-    this.#revising = false;
-    this.#sync();
-    this.#part("revise-button").querySelector("button")!.focus();
-  }
-
-  /** Brings the parts in line with the state, without rebuilding them. */
-  #sync() {
-    if (!this.#rendered) return;
-    const s = this.#strings;
-    const decided = this.#decision !== null;
-    const disabled = this.disabled;
-
-    const status = this.#part("status");
-    status.hidden = decided;
-    status.querySelector("[data-part='status-text']")!.textContent = s.waiting;
-    if (decided) this.removeAttribute("aria-describedby");
-    else this.setAttribute("aria-describedby", status.id);
-
-    this.#part("heading").textContent = this.heading || s.heading;
-    const summary = this.#part("summary");
-    summary.textContent = this.summary;
-    summary.hidden = !this.summary;
-
-    const hasPlan = this.#plan.trim() !== "";
-    const toggle = this.#part<HTMLButtonElement>("toggle");
-    const link = this.#part<HTMLAnchorElement>("link");
-    toggle.hidden = Boolean(this.href) || !hasPlan;
-    toggle.textContent = this.open ? s.close : s.open;
-    toggle.setAttribute("aria-expanded", String(this.open));
-    link.hidden = !this.href;
+    const hasPlan = markdown.trim() !== "";
+    const collapsible = part<HTMLElement & { open: boolean }>("collapsible");
+    const inPlace = hasPlan && !href;
+    if (collapsible.open !== (open && inPlace)) collapsible.open = open && inPlace;
+    const toggle = part<HTMLButtonElement>("toggle");
+    toggle.hidden = !inPlace;
+    toggle.textContent = open ? s.close : s.open;
+    const link = part<HTMLAnchorElement>("link");
+    link.hidden = !href;
     link.textContent = s.open;
-    if (this.href) link.href = this.href;
+    if (href) link.href = href;
     else link.removeAttribute("href");
-    this.#part("plan").hidden = !this.open || !hasPlan || Boolean(this.href);
 
-    const revising = this.#revising && !decided;
-    const box = this.#part("feedback").querySelector("input")!;
-    if (box.value !== this.#feedbackText) box.value = this.#feedbackText;
+    const box = part("feedback").querySelector("input")!;
+    if (box.value !== feedbackText) box.value = feedbackText;
     box.placeholder = s.feedbackPlaceholder;
     box.setAttribute("aria-label", s.feedbackLabel);
     box.disabled = disabled;
-    this.#part("revise").hidden = !revising;
-    this.#part("send").querySelector("button")!.textContent = s.send;
-    this.#part("send").toggleAttribute("disabled", disabled || !this.#feedbackText.trim());
-    this.#part("cancel").querySelector("button")!.textContent = s.cancel;
+    part("send").querySelector("button")!.textContent = s.send;
+    part("send").toggleAttribute("disabled", disabled || !feedbackText.trim());
+    part("cancel").querySelector("button")!.textContent = s.cancel;
 
-    this.#part("actions").hidden = decided || revising;
+    // One "Accept and use …" per option, after plain Accept.
+    const acceptsKey = JSON.stringify([accepts, s.acceptWith(""), s.acceptWithConfirm("")]);
+    if (acceptsKey !== shownAccepts) {
+      shownAccepts = acceptsKey;
+      const primary = part("primary");
+      for (const old of primary.querySelectorAll("[data-part='accept-with']")) old.remove();
+      for (const option of accepts) {
+        const wrapper = press("accept-with", (source) => instance.api.decide("accept", { mode: option.value, source, why: "press" }));
+        wrapper.dataset.mode = option.value;
+        wrapper.querySelector("button")!.textContent = s.acceptWith(option.label);
+        needsPerson(wrapper, s.acceptWithConfirm(option.label));
+        primary.append(wrapper);
+      }
+    }
     const labels: Record<string, string> = { reject: s.reject, "revise-button": s.revise, accept: s.accept };
-    for (const [part, label] of Object.entries(labels)) this.#part(part).querySelector("button")!.textContent = label;
+    for (const [name, label] of Object.entries(labels)) part(name).querySelector("button")!.textContent = label;
     // An agent decides nothing here on its own: the bridge asks the person first. An empty sentence lets it.
     // Revise… only opens the box, so it stays free; Send changes is what decides.
-    needsPerson(this.#part("accept"), s.acceptConfirm);
-    needsPerson(this.#part("reject"), s.rejectConfirm);
-    needsPerson(this.#part("send"), s.reviseConfirm(this.#feedbackText.trim()));
-    for (const wrapper of this.querySelectorAll<HTMLElement>("[data-part='actions'] ui-button")) wrapper.toggleAttribute("disabled", disabled);
-    // The first "Accept and use …" is the main action when there is one, otherwise Accept.
-    this.toggleAttribute("data-accept-with", this.#accepts.length > 0);
+    needsPerson(part("accept"), s.acceptConfirm);
+    needsPerson(part("reject"), s.rejectConfirm);
+    needsPerson(part("send"), s.reviseConfirm(feedbackText.trim()));
+    for (const wrapper of el.querySelectorAll<HTMLElement>("[data-part='actions'] ui-button")) wrapper.toggleAttribute("disabled", disabled);
 
-    const line = this.#part("decision");
-    line.hidden = !decided;
-    const chosen = this.#decision?.mode ? (this.#accepts.find((option) => option.value === this.#decision!.mode)?.label ?? null) : null;
-    line.textContent = this.#decision ? s.decided(this.#decision, chosen) : "";
-    if (this.#decision) line.dataset.decision = this.#decision.decision;
-    else delete line.dataset.decision;
-  }
+    const chosen = decision?.mode ? (accepts.find((option) => option.value === decision.mode)?.label ?? null) : null;
+    part("decision").textContent = decision ? s.decided(decision, chosen) : "";
+  };
+  sync();
+  return instance.subscribe(sync);
 }
 
+const parts = createParts(plan, {
+  root: {
+    tag: "ai-plan",
+    display: "block",
+    state: {
+      decision: { get: (api) => api.getDecision(), set: (api, value) => api.restore(value) },
+      open: { get: (api) => api.getOpen(), set: (api, value) => api.setOpen(value !== false) },
+      feedbackText: { get: (api) => api.getFeedbackText(), set: (api, value) => api.setFeedbackText(value) },
+    },
+    api: ["decide", "setOpen", "startRevising", "stopRevising"],
+    render: (el, instance) => render(el, instance),
+  },
+  status: { tag: "ai-plan-status", display: "block" },
+  heading: { tag: "ai-plan-heading", display: "block" },
+  revise: { tag: "ai-plan-revise", display: "block" },
+  actions: { tag: "ai-plan-actions", display: "block" },
+  decision: { tag: "ai-plan-decision", display: "block" },
+});
+
+/** The element's class, for `instanceof` checks. Undefined on a server, where nothing is defined. */
+export const AiPlanElement = parts.Root as unknown as { new (): AiPlanElement; prototype: AiPlanElement } | undefined;
+
 adoptStyles(styles);
-define("ai-plan", AiPlanElement);
 
 declare global {
   interface HTMLElementTagNameMap {
     "ai-plan": AiPlanElement;
   }
-  interface HTMLElementEventMap extends PlanEvents {}
 }

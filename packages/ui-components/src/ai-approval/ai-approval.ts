@@ -30,7 +30,7 @@ export type ApprovalEvents = {
  * can say what to do instead. It's ui-sdk's `approval` primitive (`approval.ts`) rendered as
  * custom elements. See README.md beside this file.
  */
-export type AiApprovalElement = HTMLElement & {
+export interface AiApprovalElement extends HTMLElement {
   name: string;
   label: string;
   description: string;
@@ -48,7 +48,24 @@ export type AiApprovalElement = HTMLElement & {
     decide(decision: ApprovalDecision, options?: { reason?: string }): boolean;
     deny(reason?: string): boolean;
   };
-};
+  // Its events are typed here, not in the global map: ui-sdk-style names like `decisionchange`
+  // are shared between elements, with different details.
+  addEventListener<K extends keyof ApprovalElementEventMap>(
+    type: K,
+    listener: (this: AiApprovalElement, event: ApprovalElementEventMap[K]) => unknown,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+  removeEventListener<K extends keyof ApprovalElementEventMap>(
+    type: K,
+    listener: (this: AiApprovalElement, event: ApprovalElementEventMap[K]) => unknown,
+    options?: boolean | EventListenerOptions,
+  ): void;
+  removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+}
+
+/** Every event `<ai-approval>` takes listeners for: its own and the usual HTML ones. */
+export interface ApprovalElementEventMap extends HTMLElementEventMap, ApprovalEvents {}
 
 type Instance = ReturnType<typeof approval>;
 
@@ -174,5 +191,4 @@ declare global {
   interface HTMLElementTagNameMap {
     "ai-approval": AiApprovalElement;
   }
-  interface HTMLElementEventMap extends ApprovalEvents {}
 }
