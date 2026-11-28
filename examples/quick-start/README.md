@@ -14,7 +14,7 @@ cd my-chat && npm install && npm run dev
 
 Or try it in your browser, with nothing to install: **Open in StackBlitz** on https://uisdk-components.netlify.app.
 
-To make it your own, one step at a time, follow [the recipes](https://github.com/samyakbhuta/ui-components/blob/main/docs/making-ai-chat-your-own.md): files and a model picker, a welcome, your own words and colours, richer replies, questions and approvals, saved chats and a sidebar.
+To make it your own, one step at a time, follow [the recipes](https://uisdk-components.netlify.app/guides/making-ai-chat-your-own.html): files and a model picker, a welcome, your own words and colours, richer replies, questions and approvals, saved chats and a sidebar.
 
 To arrange the parts your own way, or run the conversation yourself, start from [`examples/from-parts`](../from-parts) instead.
 

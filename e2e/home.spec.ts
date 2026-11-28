@@ -87,7 +87,7 @@ test("each component card also links to its API reference", async ({ page }) => 
   await page.goto("/");
   await expect(page.getByRole("link", { name: "ai-approval API" })).toHaveAttribute(
     "href",
-    "https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-approval/README.md",
+    "/guides/components/ai-approval.html",
   );
   await expect(page.getByRole("link", { name: /API$/ })).toHaveCount(11);
 });

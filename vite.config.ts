@@ -1,6 +1,7 @@
 import { readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig } from "vite";
+import { guidePages } from "./scripts/guide-pages.mjs";
 
 const page = (path: string) => resolve(import.meta.dirname, path);
 
@@ -15,6 +16,8 @@ export const packageAlias = [
 
 export default defineConfig({
   resolve: { alias: packageAlias },
+  // The guides and component READMEs, as pages at /guides/…
+  plugins: [guidePages(import.meta.dirname)],
   build: {
     rollupOptions: {
       input: {
