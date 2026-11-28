@@ -14,7 +14,7 @@ import type { AiApprovalElement, ApprovalDecisionDetail, ApprovalStrings } from 
 import { needsPerson } from "../agent.ts";
 import { type AiComposerElement, type PromptSubmitDetail, quotesToMarkdown } from "../ai-composer/ai-composer.ts";
 import type { AiMessageElement, MessageAttachment, MessageFeedback, MessageStrings } from "../ai-message/ai-message.ts";
-import type { AiNoticeElement, NoticeAction, NoticeStrings, NoticeTone } from "../ai-notice/ai-notice.ts";
+import { type AiNoticeElement, type NoticeAction, type NoticeActionDetail, type NoticeStrings, type NoticeTone, resetDate } from "../ai-notice/ai-notice.ts";
 import type { AiPlanElement, PlanAcceptOption, PlanDecisionDetail, PlanStrings } from "../ai-plan/ai-plan.ts";
 import type { AiQuestionsElement, QuestionsAnswerDetail, QuestionsItem, QuestionsStrings } from "../ai-questions/ai-questions.ts";
 import type { AiQuestionElement, QuestionAnswer, QuestionOption, QuestionStrings } from "../ai-question/ai-question.ts";
@@ -205,6 +205,8 @@ export const defaultChatStrings: ChatStrings = {
 export type ChatEvents = {
   chatchange: CustomEvent<{ messages: ChatMessage[] }>;
   chaterror: CustomEvent<{ error: unknown }>;
+  /** A notice's button or link was pressed, passed on from the `<ai-notice>`. Cancelable. */
+  noticeaction: CustomEvent<NoticeActionDetail>;
 };
 
 type Turn = { data: ChatMessage; element: AiMessageElement };
@@ -980,7 +982,14 @@ export class AiChatElement extends BaseElement {
       if (this.#lock?.notice === card) this.unlock();
     };
     card.addEventListener("noticeexpire", release);
-    card.addEventListener("noticedismiss", (event) => queueMicrotask(() => !event.defaultPrevented && release()));
+    card.addEventListener("openchange", (event) => {
+      if (!event.detail.value) queueMicrotask(() => !event.defaultPrevented && release());
+    });
+    // ui-sdk events don't bubble, so the chat passes notice actions on: apps listen on the chat.
+    card.addEventListener("noticeaction", (event) => {
+      const passed = new CustomEvent("noticeaction", { detail: event.detail, cancelable: true });
+      if (!this.dispatchEvent(passed)) event.preventDefault();
+    });
     return card;
   }
 
@@ -1014,7 +1023,7 @@ export class AiChatElement extends BaseElement {
       hint: previous ? previous.hint : composer.getAttribute("hint"),
     };
     composer.disabled = true;
-    composer.setAttribute("hint", this.#strings.locked(notice.resetsAt));
+    composer.setAttribute("hint", this.#strings.locked(resetDate(notice.resetsAt)));
     this.setAttribute("locked", "");
   }
 

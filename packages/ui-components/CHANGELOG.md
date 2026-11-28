@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- `<ai-notice>` is now built as a ui-sdk primitive, `notice`, exported beside the element and rendered with ui-sdk's `createParts`. Breaking changes:
+  - Dismiss now closes it through a new `open` state: `noticedismiss` is replaced by `openchange` (`{ value: false, reason: "close-press" }`), and there's `default-open`.
+  - `noticeaction` carries `{ value, reason, source }`, and `noticeexpire` `{ value: null, reason: "timeout" }`. Like ui-sdk's events, they don't bubble; `<ai-chat>` passes `noticeaction` on, so listening on the chat works as before.
+  - `act()` and `dismiss()` are `api.act()` and `api.dismiss()`. The `expired` property is gone: check the `expired` attribute. `resetsAt` holds what was set, a `Date` or a string; `resetDate()` turns it into a `Date`.
+  - New: an action's `confirm` asks the person before an AI agent presses it, like one that spends money.
+  - Screen readers hear it through ui-sdk's shared live region, so the `announcement` part is gone.
 - `<ai-plan>` is now built as a ui-sdk primitive, `plan`, exported beside the element and rendered with ui-sdk's `createParts`, like `<ai-approval>`. Breaking changes:
   - `plandecision` is now `decisionchange`, with `{ value, reason, source }` in `detail`: `value` is the `{ decision, mode, feedback }` it used to carry. It doesn't bubble: listen on the element, or with `{ capture: true }` around it.
   - Opening and closing the plan fires the new `openchange`, with `"trigger-press"`, `"find-in-page"` or `"imperative"`, and can be cancelled. New `default-open` and `defaultDecision`.

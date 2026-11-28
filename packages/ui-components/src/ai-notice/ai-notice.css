@@ -65,15 +65,6 @@
     overflow-wrap: anywhere;
   }
 
-  ai-notice [data-part="announcement"] {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
   ai-notice [data-part="text"] {
     margin: 0.125rem 0 0;
     overflow-wrap: anywhere;
