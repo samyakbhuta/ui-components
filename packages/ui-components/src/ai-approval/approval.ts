@@ -30,6 +30,8 @@ export type ApprovalStrings = {
   allowConfirm: (name: string) => string;
   /** What an agent pressing Always allow would do, asked of the person first. */
   alwaysConfirm: (name: string) => string;
+  /** What an agent pressing Deny would do, with what's typed in the reason box, asked of the person first. */
+  denyConfirm: (name: string, reason: string) => string;
 };
 
 export const defaultApprovalStrings: ApprovalStrings = {
@@ -45,6 +47,7 @@ export const defaultApprovalStrings: ApprovalStrings = {
     decision === "allow" ? "Allowed once" : decision === "always" ? "Always allowed" : reason ? `Denied. Instead, you suggested: “${reason}”` : "Denied",
   allowConfirm: (name) => (name ? `Allows ${name} to run, this once` : "Allows this action, this once"),
   alwaysConfirm: (name) => (name ? `Always allows ${name}, without asking again` : "Always allows this action, without asking again"),
+  denyConfirm: (name, reason) => (reason ? `Denies ${name || "this action"}, and tells it instead: “${reason}”` : `Denies ${name || "this action"}, so it won't run`),
 };
 
 /** What asked for a decision: a button, Enter in the reason box, or code calling `decide`. */
@@ -129,7 +132,7 @@ export const approval = definePrimitive({
     return {
       recovery,
       decide,
-      /** Denies, with what to do instead. The one decision an agent can make alone. */
+      /** Denies, with what to do instead. */
       deny: (reason?: string) => decide("deny", { reason }),
       setReasonText: (text: string) => context.store.set({ reasonText: text ?? "" }),
       getDecision: () => context.store.get().decision,
@@ -169,7 +172,7 @@ export const approval = definePrimitive({
       attrs: (state) => ({ tabindex: "-1", "data-decision": state.decision?.decision }),
     }),
   }),
-  // Allow once and Always allow are buttons marked for a person; an agent presses them, and the
-  // bridge asks first. A `decide` action would let an agent allow without asking.
-  agent: { actions: ["deny"] },
+  // Every decision is a button marked for a person, so the bridge asks before an agent presses
+  // one. An action here would skip those marks, and a mark on the root couldn't say which choice.
+  agent: { actions: [] },
 });

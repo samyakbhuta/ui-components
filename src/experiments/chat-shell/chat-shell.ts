@@ -520,6 +520,16 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     const waiting = request !== null;
     if (request) composer.setAttribute("placeholder", waitingPlaceholder[request.localName === "ai-approval" ? "approval" : request.localName === "ai-plan" ? "plan" : "question"]);
     else composer.removeAttribute("placeholder");
+    // What's typed while an approval or a plan waits decides it, so an agent's Send needs the person too.
+    const send = composer.querySelector<HTMLElement>("[data-part='send']");
+    const confirm =
+      request?.localName === "ai-approval"
+        ? `Denies ${(request as HTMLElementTagNameMap["ai-approval"]).name || "this action"}, and tells it what's typed instead`
+        : request?.localName === "ai-plan"
+          ? "Asks for changes to the plan, as typed"
+          : "";
+    if (send && confirm) send.dataset.agentConfirm = confirm;
+    else if (send) delete send.dataset.agentConfirm;
     document.title = `${waiting && document.hidden ? "Waiting for you · " : ""}${title} · AI chat`;
     exportButton.disabled = current.messages.length === 0;
   }

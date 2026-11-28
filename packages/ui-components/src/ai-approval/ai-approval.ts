@@ -2,6 +2,7 @@ import "@ui-sdk/web/button";
 import "@ui-sdk/web/input";
 import type { ChangeSource } from "@ui-sdk/core";
 import { createParts, type UiActionDetail } from "@ui-sdk/web";
+import { needsPerson } from "../agent.ts";
 import { showValue } from "../format.ts";
 import { adoptStyles } from "../styles.ts";
 import { approval, type ApprovalDecision, type ApprovalDecisionDetail, type ApprovalDecisionReason, type ApprovalStrings } from "./approval.ts";
@@ -135,8 +136,9 @@ function render(el: HTMLElement, instance: Instance) {
       wrapper.querySelector("button")!.textContent = s[choice];
       wrapper.toggleAttribute("disabled", card.disabled);
       if (choice === "always") wrapper.hidden = !card.always;
-      // An agent can't approve its own request: the bridge asks the person first. Deny stays free.
-      if (choice !== "deny") wrapper.dataset.agentConfirm = (choice === "allow" ? s.allowConfirm : s.alwaysConfirm)(card.name);
+      // An agent decides nothing here on its own: the bridge asks the person first. An empty sentence lets it.
+      const typed = card.reason ? reasonText.trim() : "";
+      needsPerson(wrapper, choice === "deny" ? s.denyConfirm(card.name, typed) : (choice === "allow" ? s.allowConfirm : s.alwaysConfirm)(card.name));
     }
 
     part("decision").textContent = decision ? s.decided(decision.decision, decision.reason) : "";

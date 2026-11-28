@@ -162,7 +162,7 @@ test("words can be replaced, and the heading, summary and plan are text, never H
   expect(view.getAllByRole("button").map((button) => button.textContent)).toEqual(["Close plan", "Refuser", "Modifier…", "Accepter", "Accepter en mode auto"]);
 });
 
-test("an agent can't accept on its own: the person is asked first, and Reject needs no one", async () => {
+test("an agent can't accept on its own: the person is asked first", async () => {
   const { decisions } = await mount(`<ai-plan></ai-plan>`, (element) => {
     element.accepts = [{ value: "auto", label: "auto mode" }];
   });
@@ -186,11 +186,43 @@ test("an agent can't accept on its own: the person is asked first, and Reject ne
   expect(decisions).toEqual([{ decision: "accept", mode: "auto", feedback: null }]);
 });
 
-test("plain Accept asks the person too, while Reject doesn't", async () => {
+test("Accept, Reject and sending changes all ask the person; Revise… only opens the box, so it doesn't", async () => {
   const { decisions } = await mount(`<ai-plan></ai-plan>`);
-  const agent = createAgent({ allow: (step) => !step.confirm });
+  const asked: string[] = [];
+  let approve = false;
+  const agent = createAgent({
+    allow: (step) => {
+      if (step.confirm) asked.push(step.confirm);
+      return !step.confirm || approve;
+    },
+  });
   expect((await agent.act({ steps: [{ ref: "Accept", action: "press" }] })).ok).toBe(false);
-  const result = await agent.act({ steps: [{ ref: "Reject", action: "press" }] });
+  expect((await agent.act({ steps: [{ ref: "Reject", action: "press" }] })).ok).toBe(false);
+  const opened = await agent.act({ steps: [{ ref: "Revise…", action: "press" }] });
+  expect(opened.ok, opened.error?.message).toBe(true);
+  await settle();
+  const revise = () =>
+    agent.act({
+      steps: [
+        { ref: "What should change?", action: "setValue", args: ["Keep the cache"] },
+        { ref: "Send changes", action: "press" },
+      ],
+    });
+  expect((await revise()).ok).toBe(false);
+  expect(decisions).toEqual([]);
+  expect(asked).toEqual(["Accepts the plan, so the agent goes ahead with it", "Rejects the plan, so the agent stops", "Asks for changes to the plan: “Keep the cache”"]);
+
+  approve = true;
+  const result = await revise();
+  expect(result.ok, result.error?.message).toBe(true);
+  expect(decisions).toEqual([{ decision: "revise", mode: null, feedback: "Keep the cache" }]);
+});
+
+test("an app can let agents reject alone, by emptying its confirm sentence", async () => {
+  const { decisions } = await mount(`<ai-plan></ai-plan>`, (element) => {
+    element.strings = { rejectConfirm: "" };
+  });
+  const result = await createAgent({ allow: (step) => !step.confirm }).act({ steps: [{ ref: "Reject", action: "press" }] });
   expect(result.ok, result.error?.message).toBe(true);
   expect(decisions).toEqual([{ decision: "reject", mode: null, feedback: null }]);
 });

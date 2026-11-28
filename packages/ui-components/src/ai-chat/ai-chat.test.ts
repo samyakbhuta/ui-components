@@ -710,3 +710,58 @@ test("an agent can use the whole chat: every control is named, it can ask and an
     { decision: "allow", reason: null },
   ]);
 });
+
+test("while an approval or a plan waits, an agent's typed answer decides it, so Send asks the person first", async () => {
+  const answers: unknown[] = [];
+  const { chat, idle, waiting } = await mount("<ai-chat></ai-chat>", (c) => {
+    c.model = async function* () {
+      answers.push(yield { type: "approval", name: "run_command", input: "rm -rf dist", reason: true } as ChatChunk);
+      answers.push(yield { type: "plan", plan: "1. Tidy up." } as ChatChunk);
+      yield "Done.";
+    };
+  });
+  const sendButton = chat.querySelector<HTMLElement>("ai-composer [data-part='send']")!;
+  expect(sendButton.hasAttribute("data-agent-confirm")).toBe(false);
+  await send(chat, "Clean up");
+  await waiting();
+  expect(sendButton.dataset.agentConfirm).toBe("Denies run_command, and tells it what's typed instead");
+
+  const asked: string[] = [];
+  let approve = false;
+  const agent = createAgent({
+    allow: (step) => {
+      if (step.confirm) asked.push(step.confirm);
+      return !step.confirm || approve;
+    },
+  });
+  const type = (text: string) =>
+    agent.act({
+      steps: [
+        { ref: "Prompt", action: "setValue", args: [text] },
+        { ref: "Send message", action: "press" },
+      ],
+    });
+  expect((await type("Back it up first")).ok).toBe(false);
+  expect(chat.waiting).toBe(true);
+  approve = true;
+  const denied = await type("Back it up first");
+  expect(denied.ok, denied.error?.message).toBe(true);
+  await waitFor(() => expect(answers).toEqual([{ decision: "deny", reason: "Back it up first" }]));
+
+  await waiting();
+  expect(sendButton.dataset.agentConfirm).toBe("Asks for changes to the plan, as typed");
+  approve = false;
+  expect((await type("Keep the cache")).ok).toBe(false);
+  approve = true;
+  expect((await type("Keep the cache")).ok).toBe(true);
+  await idle();
+  expect(answers.at(-1)).toEqual({ decision: "revise", mode: null, feedback: "Keep the cache" });
+  expect(asked).toEqual([
+    "Denies run_command, and tells it what's typed instead",
+    "Denies run_command, and tells it what's typed instead",
+    "Asks for changes to the plan, as typed",
+    "Asks for changes to the plan, as typed",
+  ]);
+  // Nothing waits, so sending is free again.
+  expect(sendButton.hasAttribute("data-agent-confirm")).toBe(false);
+});

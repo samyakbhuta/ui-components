@@ -11,6 +11,7 @@ import "../ai-thinking/ai-thinking.ts";
 import "../ai-tool-call/ai-tool-call.ts";
 import "../ai-transcript/ai-transcript.ts";
 import type { AiApprovalElement, ApprovalDecisionDetail, ApprovalStrings } from "../ai-approval/ai-approval.ts";
+import { needsPerson } from "../agent.ts";
 import { type AiComposerElement, type PromptSubmitDetail, quotesToMarkdown } from "../ai-composer/ai-composer.ts";
 import type { AiMessageElement, MessageAttachment, MessageFeedback, MessageStrings } from "../ai-message/ai-message.ts";
 import type { AiNoticeElement, NoticeAction, NoticeStrings, NoticeTone } from "../ai-notice/ai-notice.ts";
@@ -160,6 +161,10 @@ export type ChatStrings = {
   approvalPlaceholder: string;
   /** The composer's placeholder while a plan waits for a decision. */
   planPlaceholder: string;
+  /** While an approval waits, what an agent pressing Send would do, asked of the person first. Empty lets it. */
+  approvalSendConfirm: (name: string) => string;
+  /** While a plan waits, what an agent pressing Send would do, asked of the person first. Empty lets it. */
+  planSendConfirm: string;
   /** Under the message box while a notice locks it, with the reset time when there is one. */
   locked: (resetsAt: Date | null) => string;
   /**
@@ -188,6 +193,8 @@ export const defaultChatStrings: ChatStrings = {
   answerPlaceholder: "Answer the question above, or type your answer",
   approvalPlaceholder: "Allow or deny above, or tell it what to do instead",
   planPlaceholder: "Accept or reject the plan above, or say what to change",
+  approvalSendConfirm: (name) => `Denies ${name || "this action"}, and tells it what's typed instead`,
+  planSendConfirm: "Asks for changes to the plan, as typed",
   locked: (resetsAt) =>
     resetsAt
       ? `Sending is paused until ${new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(resetsAt)}.`
@@ -1069,6 +1076,12 @@ export class AiChatElement extends BaseElement {
       this.#placeholder = null;
     }
     this.toggleAttribute("waiting", card !== null);
+    // What's typed while an approval or a plan waits decides it, so an agent's Send needs the person too.
+    const send = composer.querySelector<HTMLElement>(":scope [data-part='send']");
+    if (send) {
+      const name = card?.localName === "ai-approval" ? (card as AiApprovalElement).name : "";
+      needsPerson(send, card?.localName === "ai-approval" ? this.#strings.approvalSendConfirm(name) : card?.localName === "ai-plan" ? this.#strings.planSendConfirm : "");
+    }
   }
 
   #questionOf(card: AiQuestionElement): ChatQuestion {
