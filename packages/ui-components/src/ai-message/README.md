@@ -1,6 +1,6 @@
 # `<ai-message>`
 
-One message in a conversation. An assistant message renders Markdown safely and streams in a piece at a time; a user message shows what was typed. Each offers actions: **Copy**, plus **Retry** on replies and **Edit** on your own messages. A message can also show its attachments, a failed reply's error, **Good response** and **Bad response** buttons, and arrows to step between versions of a reply.
+One message in a conversation. An assistant message renders Markdown safely and streams in a piece at a time; a user message shows what was typed. Each offers actions: **Copy**, plus **Retry** on replies and **Edit** on your own messages. A message can also show its attachments (click an image to see it full size), a failed reply's error, **Good response** and **Bad response** buttons, and arrows to step between versions of a reply.
 
 Put messages in an [`<ai-transcript>`](../ai-transcript/README.md), which scrolls and announces them, or anywhere else.
 
@@ -52,9 +52,9 @@ reply.done(); // renders what's left and fires messagecomplete
 | --- | --- |
 | `text` | The message's source. Setting it replaces the message. |
 | `from`, `format`, `streaming`, `actions`, `error`, `feedback`, `versions`, `version` | The same as the attributes. `actions` is an array of `copy`, `retry`, `edit` and `feedback`, and also takes the attribute's words as a string; `error` and `feedback` are `null` when unset. |
-| `attachments` | Files shown above the text: `File` objects, like the ones `<ai-composer>` sends, or `{ name, type?, size?, url? }`. Images show as thumbnails; other files show their name and size. |
+| `attachments` | Files shown above the text: `File` objects, like the ones `<ai-composer>` sends, or `{ name, type?, size?, url? }`. Images show as thumbnails that open full size; other files show their name and size, and open in a new tab when they have a `url`. |
 | `strings` | Words to replace; see below. |
-| `icons` | SVG markup for `copy`, `copied`, `retry`, `edit`, `good`, `bad`, `error`, `previous`, `next` and `file`. |
+| `icons` | SVG markup for `copy`, `copied`, `retry`, `edit`, `good`, `bad`, `error`, `previous`, `next`, `file` and `close`. |
 | `highlighter` | Colours code blocks: `(code, language) => Node[] \| null`. Defaults to the built-in highlighter; `null` shows code plain. |
 | `appendText(chunk)` | Adds streamed text to the end. |
 | `done()` | Ends streaming. The same as `streaming = false`. |
@@ -68,6 +68,7 @@ reply.done(); // renders what's left and fires messagecomplete
 | `messagecomplete` | `null` | Streaming ended. It bubbles, so a transcript can listen once for every message. |
 | `messagefeedback` | `{ feedback, text }` | Good response or Bad response was pressed. `feedback` is `"good"`, `"bad"`, or `null` when it was pressed again to clear it. `preventDefault()` keeps the rating as it was. |
 | `messageversion` | `{ version, versions }` | Previous or Next was pressed. Set `text` to that version's reply. `preventDefault()` stays on the current one. |
+| `attachmentopen` | `{ attachment, index, kind }` | An image thumbnail (`kind: "image"`) or a file link (`kind: "file"`) was clicked. `index` is its place in `attachments`. `preventDefault()` keeps the viewer shut, or the link from opening, so you can show it your own way. |
 
 ```ts
 transcript.addEventListener("messageaction", (event) => {
@@ -99,6 +100,23 @@ reply.addEventListener("messageversion", (event) => (reply.text = answers[event.
 ```
 
 Image attachments show only from `http:`, `https:`, `blob:` and image `data:` addresses; anything else shows as a file. A `File` gets an object URL that is revoked when `attachments` changes.
+
+**Seeing an image full size.** Each thumbnail is a button, "View chart.png". It opens a viewer over the page, a ui-sdk Dialog, with the image as large as fits, its name, and a Close button. When the message has more than one image, arrows step through them, with "2 of 3" between, and so do the Left and Right arrow keys. Escape, Close or a click on the dark space around the image closes it, and focus goes back to the thumbnail of the image last shown.
+
+**Opening a file.** A file that isn't an image opens in a new tab when it has a `url` from `http:`, `https:` or `blob:`, with `rel="noopener noreferrer"`. A file without one, like a `File` the person just picked, stays its name and size.
+
+```ts
+sent.attachments = [
+  { name: "chart.png", type: "image/png", url: "https://example.com/chart.png" }, // opens full size
+  { name: "report.pdf", type: "application/pdf", size: 2_400_000, url: "https://example.com/report.pdf" }, // opens in a new tab
+];
+
+// Or show them your own way.
+sent.addEventListener("attachmentopen", (event) => {
+  event.preventDefault();
+  myLightbox.show(event.detail.attachment);
+});
+```
 
 ## Markdown
 
@@ -158,6 +176,11 @@ message.strings = { copy: "Copier", copied: "Copié", retry: "Réessayer", edit:
 | `versionName(version, versions)` | `Version 2 of 3`: the name of the arrows' group |
 | `attachments` | `Attachments`: the name of the list of files |
 | `fileSize(bytes)` | `512 B`, `24 KB` or `2.3 MB` |
+| `viewImage(name)` | `View chart.png`: a thumbnail's name |
+| `openFile(name)` | `Open report.pdf in a new tab`: a file link's name |
+| `previousImage`, `nextImage` | `Previous image`, `Next image`: the viewer's arrows |
+| `imagePosition(index, count)` | `2 of 3`: between the viewer's arrows |
+| `closeViewer` | `Close`: the viewer's close button |
 
 ## Slots
 
@@ -189,7 +212,7 @@ Set its custom properties on `ai-message` itself, or once on an element around i
 | `--ai-message-error` | the error's border and icon, at least 3:1 in light and dark |
 | `--ai-message-thumbnail-size` | `6rem`: the size of image attachments |
 
-Parts: `[data-part="body"]`, `attachments`, `attachment` (with `data-kind="image"` or `"file"`), `file-name`, `file-size`, `error`, `actions`, `versions`, `version`, `feedback`, `code-block`, `code-header`, `code-language`, `code-copy` and `table`. Buttons show `data-copied` for a moment after copying, and the message has `data-error` while it shows an error.
+Parts: `[data-part="body"]`, `attachments`, `attachment` (with `data-kind="image"` or `"file"`), `attachment-open` (an image's button), `file-link`, `file-name`, `file-size`, the viewer's `viewer`, `viewer-backdrop`, `viewer-content`, `viewer-header`, `viewer-title`, `viewer-position`, `viewer-close`, `viewer-stage`, `viewer-image`, `viewer-previous` and `viewer-next`, `error`, `actions`, `versions`, `version`, `feedback`, `code-block`, `code-header`, `code-language`, `code-copy` and `table`. Buttons show `data-copied` for a moment after copying, and the message has `data-error` while it shows an error.
 
 ## Accessibility
 
@@ -197,7 +220,8 @@ Parts: `[data-part="body"]`, `attachments`, `attachment` (with `data-kind="image
 - Good response and Bad response are ui-sdk Toggles in a group named "Feedback". Each reports `aria-pressed`, and Left and Right move between them.
 - Previous and Next sit in a group named for the version showing, like "Version 2 of 3". At either end the unusable arrow is disabled, and focus moves to the other one.
 - An error is announced once when it's set. Its colour isn't the only cue: it has an icon and a border, and the text says what went wrong.
-- Attachments are a list named "Attachments". Images use the file name as their alternative text.
+- Attachments are a list named "Attachments". Each image is a button named "View" and its file name, and a file with an address is a link named "Open" and its file name "in a new tab".
+- The image viewer is a modal dialog named by the file name. Focus starts on Close and stays inside until it closes, then returns to the thumbnail of the image last shown. The image's alternative text is its file name. "2 of 3" is read out as it changes. The arrows are named "Previous image" and "Next image", are disabled at either end, and move focus to the other one there. In right-to-left text, Left and Right swap, and so do the arrows' icons.
 - While streaming, the message is `aria-busy`. The caret is drawn in CSS, so it isn't read out, and it doesn't blink with Reduce motion turned on.
 - AI agents can press Copy, Retry, Edit, Previous and Next, and set Good response or Bad response with `setPressed`, through ui-sdk's agent bridge.
 
@@ -207,5 +231,5 @@ Parts: `[data-part="body"]`, `attachments`, `attachment` (with `data-kind="image
 - `markdown.ts`: the safe Markdown renderer.
 - `highlight.ts`: the syntax highlighter.
 - `ai-message.css`: its styles.
-- `ai-message.test.ts`: tests for the Markdown it covers, attempts to inject HTML and scripts, streaming, actions, errors, feedback, versions, attachments, slots and agent use.
+- `ai-message.test.ts`: tests for the Markdown it covers, attempts to inject HTML and scripts, streaming, actions, errors, feedback, versions, attachments and the image viewer, slots and agent use.
 - `highlight.test.ts`: tests for each language, unfinished code, lossless output and the `highlighter` property.

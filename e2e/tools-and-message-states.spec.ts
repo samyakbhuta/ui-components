@@ -59,8 +59,8 @@ test.describe("on the docs page", () => {
   test("a message shows attachments and an error, rates a reply, and steps between versions", async ({ page }) => {
     const section = page.locator("#message-states");
     const files = section.getByRole("list", { name: "Attachments" });
-    await expect(files.getByRole("img", { name: "chart.svg" })).toBeVisible();
-    await expect(files.getByRole("listitem")).toHaveCount(3);
+    await expect(files.getByRole("button", { name: "View sales-by-quarter.svg" })).toBeVisible();
+    await expect(files.getByRole("listitem")).toHaveCount(4);
     await expect(section.locator(".failed-reply [data-part='error']")).toHaveText("The connection dropped. Try again.");
 
     const reply = section.locator(".rated-reply");
@@ -75,6 +75,87 @@ test.describe("on the docs page", () => {
     await reply.getByRole("button", { name: "Previous version" }).click();
     await expect(reply.getByRole("button", { name: "Previous version" })).toBeDisabled();
     await expect(reply.getByRole("button", { name: "Next version" })).toBeFocused();
+  });
+
+  test("a thumbnail opens the image full size, steps to the next one, and closes back to the thumbnail", async ({ page }) => {
+    const section = page.locator("#message-states");
+    const files = section.getByRole("list", { name: "Attachments" });
+    await files.getByRole("button", { name: "View sales-by-quarter.svg" }).click();
+    await expect(section.locator(".event-log")).toHaveText('attachmentopen {"attachment":"File(sales-by-quarter.svg)","index":0,"kind":"image"}');
+
+    const viewer = page.getByRole("dialog");
+    await expect(viewer).toHaveAccessibleName("sales-by-quarter.svg");
+    await expect(viewer.getByRole("button", { name: "Close" })).toBeFocused();
+    await expect(viewer.locator("[data-part='viewer-position']")).toHaveText("1 of 2");
+    // Full size: far bigger than the thumbnail, and inside the window.
+    const box = (await viewer.getByRole("img", { name: "sales-by-quarter.svg" }).boundingBox())!;
+    expect(box.height).toBeGreaterThan(400);
+    expect(box.y + box.height).toBeLessThanOrEqual(900);
+
+    await page.keyboard.press("ArrowRight");
+    await expect(viewer.locator("[data-part='viewer-image']")).toHaveAccessibleName("share-by-region.svg");
+    await expect(viewer).toHaveAccessibleName("share-by-region.svg");
+    await expect(viewer.locator("[data-part='viewer-position']")).toHaveText("2 of 2");
+    await expect(viewer.getByRole("button", { name: "Next image" })).toBeDisabled();
+    await viewer.getByRole("button", { name: "Previous image" }).click();
+    await expect(viewer.locator("[data-part='viewer-position']")).toHaveText("1 of 2");
+    await expect(viewer.getByRole("button", { name: "Next image" })).toBeFocused();
+    await page.keyboard.press("Enter");
+
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(files.getByRole("button", { name: "View share-by-region.svg" })).toBeFocused();
+
+    // A press on the dark space around the image closes it too.
+    await files.getByRole("button", { name: "View sales-by-quarter.svg" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.mouse.click(20, 450);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
+
+  test("a file with an address opens in a new tab", async ({ page }) => {
+    const files = page.locator("#message-states").getByRole("list", { name: "Attachments" });
+    const link = files.getByRole("link", { name: "Open notes.txt in a new tab" });
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("href", /^blob:/);
+    const [tab] = await Promise.all([page.context().waitForEvent("page"), link.click()]);
+    await expect(tab.locator("body")).toContainText("Ask about the third quarter.");
+    await tab.close();
+    // Without an address, a file is only its name and size.
+    await expect(files.getByRole("link")).toHaveCount(1);
+  });
+
+  test("the viewer's name, position and buttons are readable @theme", async ({ page }) => {
+    await page.locator("#message-states").getByRole("button", { name: "View sales-by-quarter.svg" }).click();
+    const viewer = page.getByRole("dialog");
+    await expect(viewer).toBeVisible();
+    const colours = await viewer.evaluate((content) => {
+      const backdrop = getComputedStyle(content.closest("[data-part='viewer']")!.querySelector("[data-part='viewer-backdrop']")!).backgroundColor;
+      const colour = (part: string) => getComputedStyle(content.querySelector(`[data-part='${part}']`)!).color;
+      return { backdrop, title: colour("viewer-title"), position: colour("viewer-position"), close: colour("viewer-close") };
+    });
+    // The backdrop is see-through black: test against black, then against the page showing through at its lightest.
+    const behind = (alpha: number) => `rgb(${Math.round(255 * (1 - alpha))}, ${Math.round(255 * (1 - alpha))}, ${Math.round(255 * (1 - alpha))})`;
+    const [, a, b] = colours.backdrop.match(/\/\s*([\d.]+)\)$|rgba\(.*,\s*([\d.]+)\)$/) ?? [];
+    const alpha = Number(a ?? b ?? 1);
+    expect(alpha).toBeGreaterThanOrEqual(0.7);
+    for (const text of [colours.title, colours.position, colours.close]) {
+      expect(contrastRatio(text, behind(alpha))).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  test("on a phone, the viewer fits the screen", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 700 });
+    await page.locator("#message-states").getByRole("button", { name: "View sales-by-quarter.svg" }).click();
+    const viewer = page.getByRole("dialog");
+    await expect(viewer).toBeVisible();
+    for (const part of ["viewer-image", "viewer-close", "viewer-previous", "viewer-next"]) {
+      const box = (await viewer.locator(`[data-part='${part}']`).boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(375);
+      expect(box.y + box.height).toBeLessThanOrEqual(700);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
   });
 
   test("the error's border and icon are readable @theme", async ({ page }) => {
@@ -116,6 +197,23 @@ test.describe("in the chat shell", () => {
     await page.keyboard.press("Enter");
     await waitForReply(page);
     await expect(page.locator("ai-message[from='user']").getByRole("list", { name: "Attachments" })).toContainText("notes.txt");
+  });
+
+  test("an attached image opens full size from your message", async ({ page }) => {
+    // A 2×2 red PNG.
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR42mP8z8DwnwEJMBJmAQBfOgP9yX7ZrQAAAABJRU5ErkJggg==", "base64");
+    const chooser = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "Attach files" }).click();
+    await (await chooser).setFiles({ name: "receipt.png", mimeType: "image/png", buffer: png });
+    await page.getByRole("textbox", { name: "Prompt" }).fill("Can you read this?");
+    await page.keyboard.press("Enter");
+    await waitForReply(page);
+    await page.locator("ai-message[from='user']").getByRole("button", { name: "View receipt.png" }).click();
+    const viewer = page.getByRole("dialog", { name: "receipt.png" });
+    await expect(viewer).toBeVisible();
+    expect(await viewer.locator("[data-part='viewer-image']").evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(2);
+    await viewer.getByRole("button", { name: "Close" }).click();
+    await expect(viewer).toHaveCount(0);
   });
 
   test("a failed reply shows an error, and Retry adds a second version", async ({ page }) => {

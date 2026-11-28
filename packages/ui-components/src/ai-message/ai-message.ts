@@ -1,4 +1,5 @@
 import "@ui-sdk/web/button";
+import "@ui-sdk/web/dialog";
 import "@ui-sdk/web/toggle";
 import { adoptStyles, BaseElement, define } from "../styles.ts";
 import styles from "./ai-message.css?inline";
@@ -19,6 +20,9 @@ export type MessageFeedback = "good" | "bad";
 
 /** What `messagefeedback` carries in `event.detail`: the new rating, or null when it's cleared. */
 export type MessageFeedbackDetail = { feedback: MessageFeedback | null; text: string };
+
+/** What `attachmentopen` carries in `event.detail`: the attachment, where it is in `attachments`, and how it opens. */
+export type MessageAttachmentOpenDetail = { attachment: MessageAttachment; index: number; kind: "image" | "file" };
 
 /** What `messageversion` carries in `event.detail`: the version asked for, counting from 1. */
 export type MessageVersionDetail = { version: number; versions: number };
@@ -47,6 +51,12 @@ export type MessageStrings = {
   versionName: (version: number, versions: number) => string;
   attachments: string;
   fileSize: (bytes: number) => string;
+  viewImage: (name: string) => string;
+  openFile: (name: string) => string;
+  previousImage: string;
+  nextImage: string;
+  imagePosition: (index: number, count: number) => string;
+  closeViewer: string;
 };
 
 export const defaultMessageStrings: MessageStrings = {
@@ -70,9 +80,15 @@ export const defaultMessageStrings: MessageStrings = {
   attachments: "Attachments",
   fileSize: (bytes) =>
     bytes < 1024 ? `${bytes} B` : bytes < 1024 ** 2 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 ** 2).toFixed(1)} MB`,
+  viewImage: (name) => `View ${name}`,
+  openFile: (name) => `Open ${name} in a new tab`,
+  previousImage: "Previous image",
+  nextImage: "Next image",
+  imagePosition: (index, count) => `${index} of ${count}`,
+  closeViewer: "Close",
 };
 
-export type MessageIcons = Record<MessageAction | MessageFeedback | "copied" | "error" | "previous" | "next" | "file", string>;
+export type MessageIcons = Record<MessageAction | MessageFeedback | "copied" | "error" | "previous" | "next" | "file" | "close", string>;
 
 const icon = (paths: string) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
@@ -88,10 +104,16 @@ export const defaultMessageIcons: MessageIcons = {
   previous: icon('<path d="m15 18-6-6 6-6"/>'),
   next: icon('<path d="m9 18 6-6-6-6"/>'),
   file: icon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/>'),
+  close: icon('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'),
 };
 
 /** Only these addresses may be shown as an attachment's image. */
 const safeImage = /^(?:https?:|blob:|data:image\/(?:png|jpe?g|gif|webp|avif);)/i;
+
+/** Only these addresses may be opened from a file attachment. */
+const safeLink = /^(?:https?:|blob:)/i;
+
+type Viewer = HTMLElement & { open: boolean };
 
 type Rendered = HTMLElement & { aiSource?: string };
 
@@ -170,6 +192,10 @@ export class AiMessageElement extends BaseElement {
   #observer = new MutationObserver((records) => this.#adopt(records));
   #attachments: MessageAttachment[] = [];
   #objectUrls: string[] = [];
+  /** The images the viewer steps through: where each is in `attachments`, its name and address. */
+  #images: { index: number; name: string; url: string; button: HTMLButtonElement }[] = [];
+  #viewing = 0;
+  #viewer: Viewer | null = null;
 
   /** Who wrote it: "assistant" (the default) or "user". */
   get from(): "assistant" | "user" {
@@ -425,12 +451,16 @@ export class AiMessageElement extends BaseElement {
   #renderAttachments() {
     const list = this.querySelector<HTMLElement>(":scope > [data-part='attachments']");
     if (!list) return;
+    // The addresses are about to be revoked, so the viewer can't keep showing one.
+    if (this.#viewer?.open) this.#viewer.open = false;
     for (const url of this.#objectUrls) URL.revokeObjectURL(url);
     this.#objectUrls = [];
-    list.setAttribute("aria-label", this.#strings.attachments);
+    this.#images = [];
+    const s = this.#strings;
+    list.setAttribute("aria-label", s.attachments);
     list.replaceChildren();
     list.hidden = this.#attachments.length === 0;
-    for (const file of this.#attachments) {
+    this.#attachments.forEach((file, index) => {
       const item = document.createElement("li");
       item.dataset.part = "attachment";
       const isFile = typeof File !== "undefined" && file instanceof File;
@@ -442,29 +472,145 @@ export class AiMessageElement extends BaseElement {
       }
       if (image && safeImage.test(url)) {
         item.dataset.kind = "image";
+        const button = document.createElement("button");
+        const position = this.#images.push({ index, name: file.name, url, button }) - 1;
+        button.type = "button";
+        button.dataset.part = "attachment-open";
+        button.setAttribute("aria-label", s.viewImage(file.name));
+        button.title = file.name;
         const img = document.createElement("img");
         img.src = url;
-        img.alt = file.name;
-        img.title = file.name;
-        item.append(img);
+        img.alt = "";
+        button.append(img);
+        button.addEventListener("click", () => {
+          if (this.#opening(index, "image")) this.#view(position);
+        });
+        item.append(button);
       } else {
         item.dataset.kind = "file";
+        const link = !image && !isFile && safeLink.test(url);
+        const holder = link ? document.createElement("a") : item;
         const mark = document.createElement("span");
         mark.dataset.part = "file-icon";
         mark.innerHTML = this.#icons.file;
         const name = document.createElement("span");
         name.dataset.part = "file-name";
         name.textContent = file.name;
-        item.append(mark, name);
+        holder.append(mark, name);
         if (typeof file.size === "number") {
           const size = document.createElement("span");
           size.dataset.part = "file-size";
-          size.textContent = this.#strings.fileSize(file.size);
-          item.append(size);
+          size.textContent = s.fileSize(file.size);
+          holder.append(size);
+        }
+        if (holder instanceof HTMLAnchorElement) {
+          holder.dataset.part = "file-link";
+          holder.href = url;
+          holder.target = "_blank";
+          holder.rel = "noopener noreferrer";
+          holder.setAttribute("aria-label", s.openFile(file.name));
+          holder.title = s.openFile(file.name);
+          holder.addEventListener("click", (event) => {
+            if (!this.#opening(index, "file")) event.preventDefault();
+          });
+          item.append(holder);
         }
       }
       list.append(item);
+    });
+  }
+
+  /** Fires `attachmentopen`, and says whether to go on. */
+  #opening(index: number, kind: "image" | "file") {
+    const detail: MessageAttachmentOpenDetail = { attachment: this.#attachments[index], index, kind };
+    return this.dispatchEvent(new CustomEvent("attachmentopen", { detail, bubbles: true, composed: true, cancelable: true }));
+  }
+
+  /** Shows the image at `position` among the message's images, full size, over the page. */
+  #view(position: number) {
+    const viewer = (this.#viewer ??= this.#buildViewer());
+    this.#show(position);
+    viewer.open = true;
+  }
+
+  #show(position: number) {
+    const viewer = this.#viewer;
+    const count = this.#images.length;
+    if (!viewer || !count) return;
+    this.#viewing = Math.min(Math.max(position, 0), count - 1);
+    const { name, url } = this.#images[this.#viewing];
+    const s = this.#strings;
+    const img = viewer.querySelector<HTMLImageElement>("[data-part='viewer-image']")!;
+    img.src = url;
+    img.alt = name;
+    viewer.querySelector("[data-part='viewer-title']")!.textContent = name;
+    const many = count > 1;
+    const where = viewer.querySelector<HTMLElement>("[data-part='viewer-position']")!;
+    where.hidden = !many;
+    where.textContent = many ? s.imagePosition(this.#viewing + 1, count) : "";
+    for (const [part, label, disabled] of [
+      ["viewer-previous", s.previousImage, this.#viewing === 0],
+      ["viewer-next", s.nextImage, this.#viewing === count - 1],
+    ] as const) {
+      const button = viewer.querySelector<HTMLButtonElement>(`[data-part='${part}']`)!;
+      button.innerHTML = this.#icons[part === "viewer-previous" ? "previous" : "next"];
+      button.hidden = !many;
+      button.disabled = disabled;
+      button.setAttribute("aria-label", label);
+      button.title = label;
     }
+    const close = viewer.querySelector<HTMLButtonElement>("[data-part='viewer-close']")!;
+    close.innerHTML = this.#icons.close;
+    close.setAttribute("aria-label", s.closeViewer);
+    close.title = s.closeViewer;
+  }
+
+  /** Moves to the previous or next image, keeping focus on the arrow pressed, or the other one at either end. */
+  #stepImage(by: -1 | 1, focus = false) {
+    const next = this.#viewing + by;
+    if (next < 0 || next >= this.#images.length) return;
+    this.#show(next);
+    if (!focus) return;
+    const atEnd = by < 0 ? next === 0 : next === this.#images.length - 1;
+    const part = (by < 0) !== atEnd ? "viewer-previous" : "viewer-next";
+    this.#viewer?.querySelector<HTMLButtonElement>(`[data-part='${part}']`)?.focus();
+  }
+
+  #buildViewer(): Viewer {
+    const viewer = document.createElement("ui-dialog") as unknown as Viewer;
+    viewer.dataset.part = "viewer";
+    viewer.innerHTML = `
+      <ui-dialog-backdrop data-part="viewer-backdrop" hidden></ui-dialog-backdrop>
+      <ui-dialog-content data-part="viewer-content" initial-focus="[data-part='viewer-close']" final-focus="none" hidden>
+        <div data-part="viewer-header">
+          <ui-dialog-title data-part="viewer-title"></ui-dialog-title>
+          <span data-part="viewer-position" aria-live="polite"></span>
+          <ui-dialog-close><button type="button" data-part="viewer-close" data-button="icon"></button></ui-dialog-close>
+        </div>
+        <div data-part="viewer-stage">
+          <button type="button" data-part="viewer-previous" data-button="icon"></button>
+          <img data-part="viewer-image" alt="">
+          <button type="button" data-part="viewer-next" data-button="icon"></button>
+        </div>
+      </ui-dialog-content>`;
+    viewer.querySelector("[data-part='viewer-previous']")!.addEventListener("click", () => this.#stepImage(-1, true));
+    viewer.querySelector("[data-part='viewer-next']")!.addEventListener("click", () => this.#stepImage(1, true));
+    viewer.querySelector("[data-part='viewer-content']")!.addEventListener("keydown", (event) => {
+      const key = (event as KeyboardEvent).key;
+      if (key !== "ArrowLeft" && key !== "ArrowRight") return;
+      event.preventDefault();
+      // Left is back, except in right-to-left text, where it goes forward.
+      const rtl = getComputedStyle(this).direction === "rtl";
+      this.#stepImage((key === "ArrowLeft") !== rtl ? -1 : 1);
+    });
+    // Back to the thumbnail of the image last shown, which may not be the one clicked.
+    viewer.addEventListener("openchangecomplete", (event) => {
+      if ((event as CustomEvent<{ value: boolean }>).detail.value) return;
+      const button = this.#images[this.#viewing]?.button;
+      if (button?.isConnected) button.focus();
+    });
+    this.append(viewer);
+    return viewer;
   }
 
   #say(text: string) {
@@ -663,6 +809,7 @@ export type MessageEvents = {
   messagecomplete: CustomEvent<null>;
   messagefeedback: CustomEvent<MessageFeedbackDetail>;
   messageversion: CustomEvent<MessageVersionDetail>;
+  attachmentopen: CustomEvent<MessageAttachmentOpenDetail>;
 };
 
 adoptStyles(styles);
