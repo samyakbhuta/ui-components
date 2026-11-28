@@ -17,6 +17,10 @@ export type StoredMessage = {
   text: string;
   /** The line under the message, like "Auto · Sonnet 5.5 · Thinking: Medium" or "Stopped". */
   meta?: string;
+  /** When it was sent, or the reply started, as an ISO time. */
+  createdAt?: string;
+  /** The model that wrote a reply, as its label. */
+  model?: string;
   prompt?: StoredPrompt;
   thinking?: { seconds: number; reasoning: string };
   /** What the reply cited. */
@@ -213,7 +217,10 @@ export function chatToMarkdown(chat: StoredChat, { exportedAt = new Date(), loca
     const label = message.from === "user" ? "**You**" : "**Assistant**";
     const versions = message.versions && message.versions.length > 1 ? message.versions : undefined;
     const version = versions ? (message.version ?? versions.length) : 1;
+    const sent = message.createdAt ? new Date(message.createdAt) : undefined;
     const details = [
+      message.from === "assistant" ? message.model : undefined,
+      sent && !Number.isNaN(sent.getTime()) ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(sent) : undefined,
       message.from === "user" ? message.meta : undefined,
       message.thinking ? `Thought for ${message.thinking.seconds}s` : undefined,
       versions ? `Version ${version} of ${versions.length}` : undefined,

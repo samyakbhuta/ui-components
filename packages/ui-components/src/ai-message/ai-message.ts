@@ -57,7 +57,28 @@ export type MessageStrings = {
   nextImage: string;
   imagePosition: (index: number, count: number) => string;
   closeViewer: string;
+  /** How long ago it was sent, like "5 minutes ago". `lang` is the element's language. */
+  time: (at: Date, now: Date, lang: string) => string;
+  /** The full date and time, shown on hover over the time. */
+  fullTime: (at: Date, lang: string) => string;
 };
+
+/** "just now" under a minute, then "5 minutes ago", "yesterday", "3 weeks ago" and so on. Never a future time. */
+export function timeAgo(at: Date, now: Date, lang: string) {
+  const seconds = Math.max(0, (now.getTime() - at.getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [
+    ["minute", 60],
+    ["hour", 3600],
+    ["day", 86400],
+    ["week", 604800],
+    ["month", 2629800],
+    ["year", 31557600],
+  ];
+  let [unit, size] = units[0];
+  for (const [next, length] of units) if (seconds >= length) [unit, size] = [next, length];
+  return new Intl.RelativeTimeFormat(lang, { numeric: "auto" }).format(-Math.floor(seconds / size), unit);
+}
 
 export const defaultMessageStrings: MessageStrings = {
   copy: "Copy",
@@ -86,7 +107,27 @@ export const defaultMessageStrings: MessageStrings = {
   nextImage: "Next image",
   imagePosition: (index, count) => `${index} of ${count}`,
   closeViewer: "Close",
+  time: timeAgo,
+  fullTime: (at, lang) => new Intl.DateTimeFormat(lang, { dateStyle: "full", timeStyle: "short" }).format(at),
 };
+
+/** Every connected message with a time, so one timer keeps them all current. */
+const timed = new Set<{ tick(now: Date): void; age(now: Date): number }>();
+let ticker: ReturnType<typeof setTimeout> | undefined;
+
+function scheduleTick() {
+  clearTimeout(ticker);
+  ticker = undefined;
+  if (!timed.size) return;
+  const now = new Date();
+  // Every 30 seconds while any is under an hour old, then every minute.
+  const young = [...timed].some((message) => message.age(now) < 3_600_000);
+  ticker = setTimeout(() => {
+    const now = new Date();
+    for (const message of timed) message.tick(now);
+    scheduleTick();
+  }, young ? 30_000 : 60_000);
+}
 
 export type MessageIcons = Record<MessageAction | MessageFeedback | "copied" | "error" | "previous" | "next" | "file" | "close", string>;
 
@@ -180,7 +221,7 @@ function dedent(text: string) {
  * @customElement ai-message
  */
 export class AiMessageElement extends BaseElement {
-  static observedAttributes = ["from", "format", "streaming", "actions", "error", "feedback", "version", "versions"];
+  static observedAttributes = ["from", "format", "streaming", "actions", "error", "feedback", "version", "versions", "time", "model"];
 
   #source = "";
   #rendered = false;
@@ -196,6 +237,7 @@ export class AiMessageElement extends BaseElement {
   #images: { index: number; name: string; url: string; button: HTMLButtonElement }[] = [];
   #viewing = 0;
   #viewer: Viewer | null = null;
+  #clock = { tick: (now: Date) => this.#renderMeta(now), age: (now: Date) => now.getTime() - (this.time?.getTime() ?? 0) };
 
   /** Who wrote it: "assistant" (the default) or "user". */
   get from(): "assistant" | "user" {
@@ -279,6 +321,28 @@ export class AiMessageElement extends BaseElement {
     this.setAttribute("version", String(value));
   }
 
+  /** When it was sent, or null. Set a `Date` or an ISO time; it shows as "5 minutes ago", and keeps up. */
+  get time(): Date | null {
+    const value = this.getAttribute("time");
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  set time(value: Date | string | number | null) {
+    const date = value === null || value === undefined || value === "" ? null : new Date(value);
+    if (!date || Number.isNaN(date.getTime())) this.removeAttribute("time");
+    else this.setAttribute("time", date.toISOString());
+  }
+
+  /** The model that wrote it, like "Sonnet 5.5", shown beside the time. Text only. */
+  get model(): string {
+    return this.getAttribute("model") ?? "";
+  }
+  set model(value: string | null) {
+    if (value) this.setAttribute("model", value);
+    else this.removeAttribute("model");
+  }
+
   /** Files shown with the message, like the ones sent with a prompt. Images show as thumbnails. */
   get attachments(): MessageAttachment[] {
     return this.#attachments;
@@ -339,7 +403,8 @@ export class AiMessageElement extends BaseElement {
   }
 
   connectedCallback() {
-    if (this.#rendered) return;
+    // Back on the page: the time picks up where it was.
+    if (this.#rendered) return this.#renderMeta();
     const slotted = [...this.children].filter((child): child is HTMLElement => child.hasAttribute("slot"));
     // Text written inside the element is its starting source.
     if (!this.#source) {
@@ -356,6 +421,8 @@ export class AiMessageElement extends BaseElement {
     body.dataset.part = "body";
     const error = document.createElement("div");
     error.dataset.part = "error";
+    const meta = document.createElement("p");
+    meta.dataset.part = "meta";
     const actions = document.createElement("div");
     actions.dataset.part = "actions";
     actions.setAttribute("role", "group");
@@ -368,6 +435,7 @@ export class AiMessageElement extends BaseElement {
       body,
       error,
       ...slotted.filter((child) => child.slot === "footer"),
+      meta,
       actions,
       announcement,
     );
@@ -381,6 +449,7 @@ export class AiMessageElement extends BaseElement {
   disconnectedCallback() {
     cancelAnimationFrame(this.#frame);
     this.#frame = 0;
+    if (timed.delete(this.#clock)) scheduleTick();
   }
 
   /** Moves header and footer children added later into place. */
@@ -389,7 +458,7 @@ export class AiMessageElement extends BaseElement {
       for (const node of record.addedNodes) {
         if (!(node instanceof HTMLElement) || node.parentElement !== this) continue;
         const body = this.querySelector(":scope > [data-part='attachments']");
-        const actions = this.querySelector(":scope > [data-part='actions']");
+        const actions = this.querySelector(":scope > [data-part='meta']");
         if (!body || !actions) continue;
         const before = (other: Node) => Boolean(node.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING);
         // Moving a node records another mutation, so only move what is out of place.
@@ -413,6 +482,8 @@ export class AiMessageElement extends BaseElement {
     } else if (name === "feedback") {
       const group = this.querySelector<HTMLElement & { value: string[] }>("[data-part='feedback']");
       if (group) group.value = this.feedback ? [this.feedback] : [];
+    } else if (name === "time" || name === "model") {
+      this.#renderMeta();
     } else if (name === "version" || name === "versions") {
       this.#renderActions();
       this.#syncStreaming();
@@ -425,8 +496,44 @@ export class AiMessageElement extends BaseElement {
     this.#renderAttachments();
     this.#renderBody(true);
     this.#renderError();
+    this.#renderMeta();
     this.#renderActions();
     this.#syncStreaming();
+  }
+
+  /** The line with the model and how long ago it was sent. */
+  #renderMeta(now = new Date()) {
+    const line = this.querySelector<HTMLElement>(":scope > [data-part='meta']");
+    if (!line) return;
+    const at = this.time;
+    const model = this.model;
+    line.hidden = !at && !model;
+    const parts: Node[] = [];
+    if (model) {
+      const name = document.createElement("span");
+      name.dataset.part = "model";
+      name.textContent = model;
+      parts.push(name);
+    }
+    if (at) {
+      const lang = this.closest("[lang]")?.getAttribute("lang") || navigator.language;
+      const time = document.createElement("time");
+      time.dataset.part = "time";
+      time.dateTime = at.toISOString();
+      time.title = this.#strings.fullTime(at, lang);
+      time.textContent = this.#strings.time(at, now, lang);
+      if (parts.length) parts.push(document.createTextNode(" · "));
+      parts.push(time);
+    }
+    line.replaceChildren(...parts);
+    const tracked = timed.has(this.#clock);
+    if (at && this.isConnected && !tracked) {
+      timed.add(this.#clock);
+      scheduleTick();
+    } else if (!at && tracked) {
+      timed.delete(this.#clock);
+      scheduleTick();
+    }
   }
 
   #errorText() {

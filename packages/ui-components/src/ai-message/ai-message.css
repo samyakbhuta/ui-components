@@ -278,6 +278,36 @@
     gap: 0.125rem;
   }
 
+  /* The model and the time: out of the way until the message is pointed at or focused. */
+  ai-message [data-part="meta"] {
+    margin: 0;
+    max-width: var(--_ai-message-max-width);
+    color: var(--_ai-message-muted);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  ai-message:is(:hover, :focus-within) [data-part="meta"],
+  ai-transcript:focus-visible ai-message [data-part="meta"] {
+    opacity: 1;
+  }
+
+  /* Without a pointer that hovers, there's no way to reveal it, so it always shows. */
+  @media (hover: none), (forced-colors: active) {
+    ai-message [data-part="meta"] {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    ai-message [data-part="meta"] {
+      transition: none;
+    }
+  }
+
   ai-message [data-button][aria-pressed="true"] {
     background: color-mix(in srgb, CanvasText 10%, Canvas);
     color: CanvasText;

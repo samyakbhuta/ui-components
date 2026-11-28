@@ -156,3 +156,23 @@ test("a plan exports as its heading, the plan quoted, and the decision", () => {
   expect(exported({ decision: "revise", mode: null, feedback: "Smaller" })).toContain("*Asked for changes: “Smaller”*");
   expect(exported()).toContain("*Not decided.*");
 });
+
+test("the export gives each message's time, and each reply's model", () => {
+  const markdown = chatToMarkdown(
+    {
+      id: "t",
+      title: "Times",
+      createdAt: 1,
+      updatedAt: 1,
+      messages: [
+        { from: "user", text: "Hi", createdAt: new Date(2026, 10, 28, 15, 4).toISOString() },
+        { from: "assistant", text: "Hello", model: "Sonnet 5.5", createdAt: new Date(2026, 10, 28, 15, 5).toISOString() },
+        { from: "assistant", text: "Old", createdAt: "not a time" },
+      ],
+    },
+    { exportedAt: new Date(2026, 10, 28), locale: "en-GB" },
+  );
+  expect(markdown).toContain("**You** · 28 Nov 2026, 15:04\n");
+  expect(markdown).toContain("**Assistant** · Sonnet 5.5 · 28 Nov 2026, 15:05\n");
+  expect(markdown).toContain("**Assistant**\n");
+});

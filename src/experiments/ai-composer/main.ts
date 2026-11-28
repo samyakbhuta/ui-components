@@ -143,7 +143,6 @@ const giftQuestions = [
   { question: "What's your budget?", options: ["Under £20", "£20 to £50", "Over £50"], skippable: true },
 ];
 
-/** The docs page's pretend model for <ai-chat>: it shows each kind of chunk, by what you ask. */
 /** The usage limit's ways round it, as the docs and the chat demo offer them. */
 const limitActions: NoticeAction[] = [
   { value: "upgrade", label: "Upgrade plan", href: "#notice", primary: true },
@@ -156,7 +155,10 @@ const limitActions: NoticeAction[] = [
 const notified = (actions: NoticeAction[]) =>
   actions.map((action) => (action.value === "notify" ? { ...action, label: "We'll remind you", disabled: true } : action));
 
+/** The docs page's pretend model for <ai-chat>: it shows each kind of chunk, by what you ask. */
 const pretendChatModel: ChatModel = async function* ({ messages, signal }) {
+  // Says which model answered, for the line beside the reply's time.
+  yield { type: "model", name: "Pretend 1.0" };
   const pause = (ms: number) =>
     new Promise<void>((resolve, reject) => {
       const timer = setTimeout(resolve, ms);
@@ -401,11 +403,13 @@ composer.models = [
     id: "messages",
     title: "<ai-message>",
     intro:
-      "One message. Assistant messages render Markdown safely and offer Copy and Retry; yours show as typed and offer Copy and Edit. Text streams in with appendText().",
-    html: `<ai-message from="user">Show me what a reply can look like</ai-message>
-<ai-message class="sample-reply"></ai-message>
+      "One message. Assistant messages render Markdown safely and offer Copy and Retry; yours show as typed and offer Copy and Edit. Text streams in with appendText(). Point at a message, or focus its buttons, to see when it was sent and the model that wrote it.",
+    html: `<ai-message from="user" class="sample-question">Show me what a reply can look like</ai-message>
+<ai-message class="sample-reply" model="Sonnet 5.5"></ai-message>
 <button type="button" class="replay">Stream it again</button>`,
     script: `const reply = document.createElement("ai-message")
+reply.time = new Date() // shows as "just now", then "2 minutes ago"
+reply.model = "Sonnet 5.5"
 reply.streaming = true
 transcript.append(reply)
 for await (const chunk of stream) reply.appendText(chunk)
@@ -416,6 +420,9 @@ reply.addEventListener("messageaction", (event) => {
 })`,
     setup: (root) => {
       const reply = root.querySelector<HTMLElementTagNameMap["ai-message"]>(".sample-reply")!;
+      // Asked two days ago, answered just now.
+      root.querySelector<HTMLElementTagNameMap["ai-message"]>(".sample-question")!.time = Date.now() - 2 * 86_400_000;
+      reply.time = new Date();
       reply.text = sampleReply;
       root.querySelector(".replay")!.addEventListener("click", () => stream(reply, sampleReply));
       root.addEventListener("messageaction", (event) => {
@@ -735,6 +742,7 @@ notice.addEventListener("noticeaction", (event) => {
 </ai-chat>`,
     script: `chat.suggestions = ["What are custom elements?", "Plan a weekend trip", "Clean up my build folder", "Plan a surprise birthday party", "Help me pick a gift", "Show me the usage limit"]
 chat.model = async function* ({ messages, signal }) {
+  yield { type: "model", name: "Pretend 1.0" } // shown beside each reply's time
   yield { type: "thinking", text: "Looking it up." }
   yield { type: "tool", id: "1", name: "web_search", input: { query } }
   yield { type: "tool-result", id: "1", summary: "Searched the web" }

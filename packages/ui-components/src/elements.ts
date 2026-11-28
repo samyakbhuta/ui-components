@@ -91,6 +91,10 @@ export interface AiMessageProps {
   feedback?: MessageFeedback | null;
   versions?: NumberAttribute;
   version?: NumberAttribute;
+  /** When it was sent: a `Date`, an ISO time, or milliseconds. */
+  time?: Date | string | number | null;
+  /** The model that wrote it, like "Sonnet 5.5". */
+  model?: string | null;
   attachments?: MessageAttachment[];
   strings?: Partial<MessageStrings>;
   highlighter?: Highlighter | null;

@@ -96,6 +96,7 @@ export type ChatChunk =
   | { type: "tool-result"; id: string; summary?: string; output?: unknown; error?: string }
   | { type: "sources"; sources: Source[] }
   | { type: "suggestions"; suggestions: Suggestion[] }
+  | { type: "model"; name: string }
   | ChatQuestion
   | ChatApproval
   | ChatPlan
@@ -112,6 +113,10 @@ export type ChatToolCall = { id: string; name: string; label?: string; summary?:
 export type ChatMessage = {
   role: "user" | "assistant";
   text: string;
+  /** When it was sent, or when the reply started, as an ISO time. */
+  createdAt?: string;
+  /** The model that wrote a reply, as its label: the composer's chosen model, or a `model` chunk. */
+  model?: string;
   attachments?: MessageAttachment[];
   /** Why the reply failed. */
   error?: string;
@@ -469,7 +474,7 @@ export class AiChatElement extends BaseElement {
       }
       return;
     }
-    const message: ChatMessage = { role: "user", text: prompt.text };
+    const message: ChatMessage = { role: "user", text: prompt.text, createdAt: new Date().toISOString() };
     if (prompt.files.length) message.attachments = [...prompt.files];
     this.#turns.push(this.#show(message));
     void this.#run(prompt);
@@ -494,6 +499,8 @@ export class AiChatElement extends BaseElement {
     this.#controller = controller;
     const composer = this.composer;
     composer.busy = true;
+    // The model chosen when it was sent, by its label, for the reply's line.
+    let chosenModel = composer.models.find((option) => option.value === composer.model)?.label;
     this.#syncRetry();
 
     let turn: Turn | null = null;
@@ -502,7 +509,8 @@ export class AiChatElement extends BaseElement {
     const tools = new Map<string, { call: AiToolCallElement; data: ChatToolCall }>();
     const reply = () => {
       if (turn) return turn;
-      const data: ChatMessage = { role: "assistant", text: "" };
+      const data: ChatMessage = { role: "assistant", text: "", createdAt: new Date().toISOString() };
+      if (chosenModel) data.model = chosenModel;
       const element = this.#messageElement(data);
       element.streaming = true;
       this.transcript.append(element);
@@ -542,6 +550,16 @@ export class AiChatElement extends BaseElement {
           if (step.done) break;
           const chunk = typeof step.value === "string" ? { type: "text" as const, text: step.value } : step.value;
           switch (chunk.type) {
+            case "model": {
+              // Before the reply shows, only remember it, so the reply doesn't appear early.
+              chosenModel = chunk.name || undefined;
+              const current = turn as Turn | null;
+              if (!current) break;
+              if (chosenModel) current.data.model = chosenModel;
+              else delete current.data.model;
+              current.element.model = chosenModel ?? null;
+              break;
+            }
             case "text": {
               endThinking();
               reply().element.appendText(chunk.text);
@@ -736,6 +754,8 @@ export class AiChatElement extends BaseElement {
     const element = this.#part("ai-message");
     element.from = data.role;
     if (data.role === "assistant") element.setAttribute("actions", this.actions);
+    if (data.createdAt) element.time = data.createdAt;
+    if (data.model) element.model = data.model;
     return element;
   }
 

@@ -305,8 +305,8 @@ test("Export downloads the chat as Markdown, from the header or the list", async
     expect(names).toEqual(["write-a-haiku-about-web-components.md"]);
     const markdown = await blobs[0].text();
     expect(markdown).toContain("# Write a haiku about web components");
-    expect(markdown).toContain("**You** · Auto · Sonnet 5.5 · Thinking: Off\n\nWrite a haiku about web components");
-    expect(markdown).toContain("**Assistant**\n\nCustom tags bloom —");
+    expect(markdown).toMatch(/\*\*You\*\* · [^\n]*\d:\d\d[^\n]* · Auto · Sonnet 5\.5 · Thinking: Off\n\nWrite a haiku about web components/);
+    expect(markdown).toMatch(/\*\*Assistant\*\* · Sonnet 5\.5 · [^\n]*\d:\d\d[^\n]*\n\nCustom tags bloom —/);
 
     await user.click(within(list).getByRole("button", { name: "Options for Write a haiku about web components" }));
     await user.click(within(list).getByRole("menuitem", { name: "Export as Markdown" }));

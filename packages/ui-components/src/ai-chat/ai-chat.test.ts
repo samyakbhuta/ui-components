@@ -51,11 +51,12 @@ test("a sent prompt shows as yours, and the model's streamed text as the reply",
   expect(chat.composer.busy).toBe(false);
   expect(chat.querySelector("ai-message[from='user']")!.textContent).toContain("Hi");
   expect(replies()[0].text).toBe("Hello **there**.");
-  expect(seen[0].messages).toEqual([{ role: "user", text: "Hi" }]);
+  const at = expect.stringMatching(/^\d{4}-\d\d-\d\dT/);
+  expect(seen[0].messages).toEqual([{ role: "user", text: "Hi", createdAt: at }]);
   expect(seen[0].prompt.text).toBe("Hi");
   expect(chat.messages).toEqual([
-    { role: "user", text: "Hi" },
-    { role: "assistant", text: "Hello **there**." },
+    { role: "user", text: "Hi", createdAt: at },
+    { role: "assistant", text: "Hello **there**.", createdAt: at },
   ]);
   expect(changes.at(-1)).toEqual(chat.messages);
 });
@@ -558,4 +559,42 @@ test("dismissing a notice unlocks the box, and the notice's words come from chat
   await user.click(within(chat.querySelector("ai-notice")!).getByRole("button", { name: "Fermer" }));
   await settle();
   expect(chat.locked).toBe(false);
+});
+
+test("each message gets its time, and replies the model's name, which are saved and shown again", async () => {
+  const { chat, replies, idle } = await mount("<ai-chat></ai-chat>", (c) => {
+    c.composer.models = [
+      { value: "sonnet", label: "Sonnet 5.5" },
+      { value: "haiku", label: "Haiku 5.5" },
+    ];
+    c.composer.model = "sonnet";
+    c.model = async function* ({ messages }) {
+      if (messages.at(-1)!.text === "routed") yield { type: "model", name: "Haiku 5.5" };
+      yield "Done.";
+    };
+  });
+  const before = Date.now();
+  await send(chat, "Hi");
+  await idle();
+  const [user, reply] = chat.messages;
+  expect(Date.parse(user.createdAt!)).toBeGreaterThanOrEqual(before - 1000);
+  expect(user.model).toBeUndefined();
+  expect(reply.model).toBe("Sonnet 5.5");
+  expect(replies()[0].model).toBe("Sonnet 5.5");
+  expect(replies()[0].time?.toISOString()).toBe(reply.createdAt);
+  expect(chat.querySelector<HTMLTimeElement>("ai-message[from='user'] time")!.dateTime).toBe(user.createdAt);
+  expect(replies()[0].querySelector("[data-part='meta']")!.textContent).toBe("Sonnet 5.5 · just now");
+
+  // A model chunk says which model really answered.
+  await send(chat, "routed");
+  await idle();
+  expect(chat.messages.at(-1)!.model).toBe("Haiku 5.5");
+  expect(replies().at(-1)!.model).toBe("Haiku 5.5");
+
+  // Saved and set again, they show the same; one saved without them shows none.
+  const saved = chat.messages;
+  chat.messages = [...saved, { role: "assistant", text: "Old" }];
+  expect(replies()[0].getAttribute("time")).toBe(saved[1].createdAt);
+  expect(replies()[0].model).toBe("Sonnet 5.5");
+  expect(replies().at(-1)!.querySelector<HTMLElement>("[data-part='meta']")!.hidden).toBe(true);
 });

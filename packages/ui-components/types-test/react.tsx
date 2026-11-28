@@ -26,10 +26,10 @@ export const valid = (
       ref={(element) => element?.focus()}
     />
     <ai-transcript>
-      <ai-message from="assistant" text="Hi [1]" actions="copy retry feedback" feedback="good" versions={2} onmessagefeedback={(event) => event.detail}>
+      <ai-message from="assistant" text="Hi [1]" time="2026-11-28T15:04:00Z" model="Sonnet 5.5" actions="copy retry feedback" feedback="good" versions={2} onmessagefeedback={(event) => event.detail}>
         <ai-sources slot="footer" max={2} sources={[{ title: "MDN", url: "https://developer.mozilla.org" }]} />
       </ai-message>
-      <ai-message from="user" actions={["copy", "edit"]} attachments={[{ name: "a.txt", type: "text/plain", size: 1 }]} />
+      <ai-message from="user" time={new Date()} actions={["copy", "edit"]} attachments={[{ name: "a.txt", type: "text/plain", size: 1 }]} />
     </ai-transcript>
     <ai-thinking status="done" duration={12} timer />
     <ai-tool-call name="search" status="running" input={{ query: "x" }} />

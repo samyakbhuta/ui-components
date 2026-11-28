@@ -184,12 +184,12 @@ test("header and footer children sit around the text, even when added later", as
       <small slot="footer">Sonnet 5.5</small>
     </ai-message>`);
   const parts = () => [...message.children].map((child) => child.getAttribute("slot") ?? child.getAttribute("data-part"));
-  expect(parts()).toEqual(["header", "attachments", "body", "error", "footer", "actions", "announcement"]);
+  expect(parts()).toEqual(["header", "attachments", "body", "error", "footer", "meta", "actions", "announcement"]);
   expect(message.text).toBe("Answer");
 
   message.append(Object.assign(document.createElement("span"), { slot: "header", textContent: "Searching" }));
   await settle();
-  expect(parts()).toEqual(["header", "header", "attachments", "body", "error", "footer", "actions", "announcement"]);
+  expect(parts()).toEqual(["header", "header", "attachments", "body", "error", "footer", "meta", "actions", "announcement"]);
 });
 
 test("agents can copy, retry or edit a message", async () => {
@@ -453,4 +453,62 @@ test("agents can rate a reply and step between versions", async () => {
   expect(result.ok, result.error?.message).toBe(true);
   expect(message.feedback).toBe("good");
   expect(message.version).toBe(1);
+});
+
+test("the time and model show on one line, as text, with the full date on hover", async () => {
+  vi.useFakeTimers({ now: new Date(2026, 10, 28, 15, 4, 30), toFake: ["setTimeout", "clearTimeout", "Date"] });
+  try {
+    document.body.innerHTML = `<div lang="en-GB"></div>`;
+    const message = document.createElement("ai-message");
+    message.text = "Hi";
+    message.model = "<b>Sonnet 5.5</b>";
+    message.time = new Date(2026, 10, 28, 15, 4);
+    document.body.firstElementChild!.append(message);
+    const line = message.querySelector<HTMLElement>("[data-part='meta']")!;
+    const time = line.querySelector("time")!;
+    expect(line.hidden).toBe(false);
+    expect(line.textContent).toBe("<b>Sonnet 5.5</b> · just now");
+    expect(line.querySelector("b")).toBeNull();
+    expect(time.dateTime).toBe(new Date(2026, 10, 28, 15, 4).toISOString());
+    expect(time.title).toMatch(/^Saturday,? 28 November 2026,? (at )?15:04$/);
+    expect(message.getAttribute("time")).toBe(time.dateTime);
+    // It sits after the footer slot and before the actions.
+    expect(line.nextElementSibling?.getAttribute("data-part")).toBe("actions");
+
+    vi.advanceTimersByTime(2 * 60_000);
+    expect(line.querySelector("time")!.textContent).toBe("2 minutes ago");
+    vi.advanceTimersByTime(60 * 60_000);
+    expect(line.querySelector("time")!.textContent).toBe("1 hour ago");
+    vi.advanceTimersByTime(24 * 3_600_000);
+    expect(line.querySelector("time")!.textContent).toBe("yesterday");
+
+    // Translation.
+    message.strings = { time: (at, now) => `il y a ${Math.round((now.getTime() - at.getTime()) / 3_600_000)} h`, fullTime: () => "samedi" };
+    expect(line.querySelector("time")!.textContent).toBe("il y a 25 h");
+    expect(line.querySelector("time")!.title).toBe("samedi");
+
+    // Off the page, it stops keeping up; back on, it catches up.
+    message.remove();
+    vi.advanceTimersByTime(48 * 3_600_000);
+    expect(vi.getTimerCount()).toBe(0);
+    document.body.append(message);
+    expect(line.querySelector("time")!.textContent).toBe("il y a 73 h");
+
+    message.model = null;
+    message.time = null;
+    expect(line.hidden).toBe(true);
+    expect(message.hasAttribute("time")).toBe(false);
+  } finally {
+    vi.useRealTimers();
+    document.body.replaceChildren();
+  }
+});
+
+test("a time in the future, or not a time at all, is handled", async () => {
+  const { message } = await mount(`<ai-message time="not a time">Hi</ai-message>`);
+  expect(message.time).toBeNull();
+  expect(message.querySelector<HTMLElement>("[data-part='meta']")!.hidden).toBe(true);
+  message.time = Date.now() + 60_000;
+  expect(message.querySelector("time")!.textContent).toBe("just now");
+  message.remove();
 });
