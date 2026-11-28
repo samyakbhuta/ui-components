@@ -1,0 +1,247 @@
+/* The guide pages: the repo's Markdown guides and component READMEs, rendered for the site. */
+.guide {
+  --guide-muted: color-mix(in srgb, CanvasText 70%, Canvas);
+  --guide-border: color-mix(in srgb, CanvasText 22%, Canvas);
+  --guide-code: color-mix(in srgb, CanvasText 6%, Canvas);
+  /* The components' own syntax colours, each at least 4.5:1 against --guide-code. */
+  --guide-comment: light-dark(#5f6670, #9aa1ab);
+  --guide-keyword: light-dark(#a1259f, #d197e8);
+  --guide-string: light-dark(#26722a, #9bcf7d);
+  --guide-number: light-dark(#975b00, #e0a36a);
+  --guide-function: light-dark(#2b5bc4, #7cb8f5);
+  --guide-type: light-dark(#8a5a00, #e8c37a);
+  --guide-tag: light-dark(#c22c26, #f08a8f);
+  --guide-builtin: light-dark(#0f6f85, #6ccfe0);
+  --guide-variable: light-dark(#b0371c, #f0a080);
+
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  grid-template-areas:
+    "header header"
+    "nav content"
+    "nav footer";
+  column-gap: 2.5rem;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 1rem 4rem;
+  line-height: 1.6;
+}
+
+.guide-header {
+  grid-area: header;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  padding: 1rem 0;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--guide-border);
+}
+
+.guide-home {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.guide-header nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  font-size: 0.9375rem;
+}
+
+.guide-nav {
+  grid-area: nav;
+  font-size: 0.9375rem;
+}
+
+.guide-nav details {
+  position: sticky;
+  top: 1rem;
+}
+
+.guide-nav summary {
+  color: var(--guide-muted);
+  cursor: pointer;
+}
+
+.guide-nav h2 {
+  margin: 1.25rem 0 0.25rem;
+  color: var(--guide-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.guide-nav ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide-nav a {
+  display: block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.375rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.guide-nav a:hover {
+  background: var(--guide-code);
+}
+
+.guide-nav a[aria-current="page"] {
+  background: var(--guide-code);
+  font-weight: 600;
+}
+
+.guide-content {
+  grid-area: content;
+  min-width: 0;
+}
+
+.guide-content > :first-child {
+  margin-top: 0;
+}
+
+.guide-content h1 {
+  font-size: clamp(1.75rem, 5vw, 2.25rem);
+  line-height: 1.2;
+}
+
+.guide-content h2 {
+  margin-top: 2.5rem;
+  font-size: 1.375rem;
+}
+
+.guide-content h3 {
+  margin-top: 2rem;
+  font-size: 1.125rem;
+}
+
+.guide-content :is(h1, h2, h3, h4) {
+  scroll-margin-top: 1rem;
+}
+
+.guide-content :is(code, kbd) {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+}
+
+.guide-content :not(pre) > code {
+  padding: 0.1em 0.3em;
+  border-radius: 0.25rem;
+  background: var(--guide-code);
+  overflow-wrap: anywhere;
+}
+
+.guide-content pre {
+  margin: 1rem 0;
+  max-height: 36rem;
+  overflow: auto;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--guide-border);
+  border-radius: 0.5rem;
+  background: var(--guide-code);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.guide-content pre code {
+  font-size: inherit;
+}
+
+.guide-content blockquote {
+  margin: 1rem 0;
+  padding: 0 1rem;
+  border-left: 3px solid var(--guide-border);
+  color: var(--guide-muted);
+}
+
+.guide-table {
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.guide-table:focus-visible {
+  outline: 2px solid CanvasText;
+  outline-offset: 2px;
+}
+
+.guide-content table {
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.guide-content :is(th, td) {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--guide-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.guide-content th {
+  background: var(--guide-code);
+}
+
+.guide-footer {
+  grid-area: footer;
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--guide-border);
+  font-size: 0.9375rem;
+}
+
+/* Syntax colours */
+.guide [data-token="comment"] {
+  color: var(--guide-comment);
+  font-style: italic;
+}
+.guide [data-token="keyword"] {
+  color: var(--guide-keyword);
+}
+.guide :is([data-token="string"], [data-token="inserted"]) {
+  color: var(--guide-string);
+}
+.guide :is([data-token="number"], [data-token="attribute"]) {
+  color: var(--guide-number);
+}
+.guide :is([data-token="function"], [data-token="property"]) {
+  color: var(--guide-function);
+}
+.guide [data-token="type"] {
+  color: var(--guide-type);
+}
+.guide :is([data-token="tag"], [data-token="deleted"]) {
+  color: var(--guide-tag);
+}
+.guide [data-token="builtin"] {
+  color: var(--guide-builtin);
+}
+.guide [data-token="variable"] {
+  color: var(--guide-variable);
+}
+
+/* On a phone: one column, with the list of guides above the page. */
+@media (max-width: 52rem) {
+  .guide {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "header"
+      "nav"
+      "content"
+      "footer";
+  }
+
+  .guide-nav {
+    margin-bottom: 1.5rem;
+  }
+
+  .guide-nav details {
+    position: static;
+  }
+}

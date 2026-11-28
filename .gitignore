@@ -16,3 +16,6 @@ packages/ui-components/docs/
 
 # Netlify CLI: the linked site ID
 .netlify
+
+# Built from the Markdown by scripts/guide-pages.mjs
+guides/

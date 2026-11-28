@@ -23,6 +23,7 @@
         <nav class="home-actions" aria-label="Try it">
           <a class="home-primary" href="/experiments/chat-shell.html">Try the chat demo</a>
           <a href="/experiments/ai-composer.html">See every component</a>
+          <a href="/guides/using-the-components.html">Read the guide</a>
           <ui-button class="home-stackblitz" hidden><button type="button">Open in StackBlitz</button></ui-button>
         </nav>
       </header>
@@ -65,7 +66,7 @@
         </ui-tabs>
         <p>
           With a package manager, <code>import "@samyakbhuta/ui-components"</code> once in your app, and use the tags. The
-          <a href="https://github.com/samyakbhuta/ui-components/blob/main/docs/using-the-components.md">guide</a> covers
+          <a href="/guides/using-the-components.html">guide</a> covers
           frameworks, styling, translation and server rendering.
         </p>
       </section>
@@ -83,7 +84,7 @@
               <code>&lt;ai-chat&gt;</code> runs the whole conversation: the messages, the replies streaming in, Stop,
               Retry and errors. Replace <code>model</code> with a call to your own model; it gets the conversation and
               yields the reply a piece at a time. It can also yield thinking, tool calls, sources, questions and
-              approvals, as <a href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-chat/README.md#the-model">its reference</a> shows.
+              approvals, as <a href="/guides/components/ai-chat.html#the-model">its reference</a> shows.
             </p>
             <pre class="home-code" data-copy-label="quick start"><code>&lt;ai-chat style="height: 80vh"&gt;&lt;/ai-chat&gt;
 
@@ -104,7 +105,7 @@
             <pre class="home-install" data-copy-label="starter command"><code>npx degit samyakbhuta/ui-components/examples/quick-start my-chat</code></pre>
             <p>
               Then make it your own, one step at a time, with
-              <a href="https://github.com/samyakbhuta/ui-components/blob/main/docs/making-ai-chat-your-own.md">the recipes</a>: files and a model picker, a welcome, your own words and colours, richer
+              <a href="/guides/making-ai-chat-your-own.html">the recipes</a>: files and a model picker, a welcome, your own words and colours, richer
               replies, questions and approvals, saved chats and a sidebar. Each one runs on this site too.
             </p>
           </ui-tabs-panel>
@@ -151,7 +152,7 @@
         <p>
           Using React, Vue or Svelte? Add <code>import type {} from "@samyakbhuta/ui-components/react"</code> (or
           <code>/vue</code>, <code>/svelte</code>) once, and every tag is typed. The
-          <a href="https://github.com/samyakbhuta/ui-components/blob/main/docs/using-the-components.md#using-them-with-a-framework">framework guide</a>
+          <a href="/guides/using-the-components.html#using-them-with-a-framework">framework guide</a>
           has the details.
         </p>
       </section>
@@ -173,57 +174,57 @@
         <ul class="home-components">
           <li>
             <a href="/experiments/ai-composer.html#everything"><code>&lt;ai-composer&gt;</code></a>
-            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-composer/README.md" aria-label="ai-composer API">API</a>
+            <a class="home-api" href="/guides/components/ai-composer.html" aria-label="ai-composer API">API</a>
             <p>The input box: attachments, voice, mode, model, thinking level, <kbd>/</kbd> commands and <kbd>@</kbd> references, each opt-in.</p>
           </li>
           <li>
             <a href="/experiments/ai-composer.html#messages"><code>&lt;ai-message&gt;</code></a>
-            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-message/README.md" aria-label="ai-message API">API</a>
+            <a class="home-api" href="/guides/components/ai-message.html" aria-label="ai-message API">API</a>
             <p>One message: safe Markdown, coloured code, streaming, Copy, Retry, Edit, feedback and versions.</p>
           </li>
           <li>
             <a href="/experiments/ai-composer.html#transcript"><code>&lt;ai-transcript&gt;</code></a>
-            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-transcript/README.md" aria-label="ai-transcript API">API</a>
+            <a class="home-api" href="/guides/components/ai-transcript.html" aria-label="ai-transcript API">API</a>
             <p>The scrolling conversation. Follows a streaming reply, and tells screen readers about finished ones.</p>
           </li>
           <li>
             <a href="/experiments/ai-composer.html#thinking"><code>&lt;ai-thinking&gt;</code></a>
-            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-thinking/README.md" aria-label="ai-thinking API">API</a>
+            <a class="home-api" href="/guides/components/ai-thinking.html" aria-label="ai-thinking API">API</a>
             <p>The “Thinking…” indicator, with a timer and the reasoning.</p>
           </li>
           <li>
             <a href="/experiments/ai-composer.html#tools"><code>&lt;ai-tool-call&gt;</code></a>
-            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-tool-call/README.md" aria-label="ai-tool-call API">API</a>
+            <a class="home-api" href="/guides/components/ai-tool-call.html" aria-label="ai-tool-call API">API</a>
             <p>One step an agent takes, like a web search, with its input and result.</p>
           </li>
           <li>
             <a href="/experiments/ai-composer.html#sources"><code>&lt;ai-sources&gt;</code></a>
-            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-sources/README.md" aria-label="ai-sources API">API</a>
+            <a class="home-api" href="/guides/components/ai-sources.html" aria-label="ai-sources API">API</a>
             <p>The sources a reply cites. Turns <code>[1]</code> markers into links with a preview.</p>
           </li>
           <li>
             <a href="/experiments/ai-composer.html#suggestions"><code>&lt;ai-suggestions&gt;</code></a>
-            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-suggestions/README.md" aria-label="ai-suggestions API">API</a>
+            <a class="home-api" href="/guides/components/ai-suggestions.html" aria-label="ai-suggestions API">API</a>
             <p>Prompts to send with one press: starters, or follow-up questions.</p>
           </li>
           <li>
             <a href="/experiments/ai-composer.html#question"><code>&lt;ai-question&gt;</code></a>
-            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-question/README.md" aria-label="ai-question API">API</a>
+            <a class="home-api" href="/guides/components/ai-question.html" aria-label="ai-question API">API</a>
             <p>The model asks, the person picks: one choice, several, or an answer of their own.</p>
           </li>
           <li>
             <a href="/experiments/ai-composer.html#approval"><code>&lt;ai-approval&gt;</code></a>
-            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-approval/README.md" aria-label="ai-approval API">API</a>
+            <a class="home-api" href="/guides/components/ai-approval.html" aria-label="ai-approval API">API</a>
             <p>The agent asks permission before it acts: Allow once, Always allow or Deny.</p>
           </li>
           <li>
             <a href="/experiments/ai-composer.html#chat"><code>&lt;ai-chat&gt;</code></a>
-            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-chat/README.md" aria-label="ai-chat API">API</a>
+            <a class="home-api" href="/guides/components/ai-chat.html" aria-label="ai-chat API">API</a>
             <p>A whole chat in one tag: give it a model that streams, and it runs the conversation, with Stop, Retry, tools, questions and approvals.</p>
           </li>
           <li>
             <a href="/experiments/ai-composer.html#chat-list"><code>&lt;ai-chat-list&gt;</code></a>
-            <a class="home-api" href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/src/ai-chat-list/README.md" aria-label="ai-chat-list API">API</a>
+            <a class="home-api" href="/guides/components/ai-chat-list.html" aria-label="ai-chat-list API">API</a>
             <p>Saved chats for a sidebar, with Rename, Export and Delete.</p>
           </li>
         </ul>
