@@ -61,7 +61,7 @@ export const valid = (
     <ai-questions
       label="About the gift"
       questions={[{ question: "Who is it for?", options: ["A friend", "A parent"], other: true }]}
-      onquestionsanswer={(event) => event.detail.answers.length}
+      onanswerschange={(event) => event.detail.value?.length ?? event.detail.reason}
     />
     <ai-plan
       heading="Clean up the build"

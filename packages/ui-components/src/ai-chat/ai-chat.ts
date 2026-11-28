@@ -892,7 +892,7 @@ export class AiChatElement extends BaseElement {
         void this.#run({ text: user?.text ?? "", files: [], references: [] });
       });
     };
-    const event = { "ai-question": "answerchange", "ai-approval": "decisionchange", "ai-plan": "decisionchange", "ai-questions": "questionsanswer" }[card.localName]!;
+    const event = { "ai-question": "answerchange", "ai-approval": "decisionchange", "ai-plan": "decisionchange", "ai-questions": "answerschange" }[card.localName]!;
     card.addEventListener(event, resume, { once: true });
   }
 
@@ -937,10 +937,10 @@ export class AiChatElement extends BaseElement {
     card.slot = "footer";
     if (chunk.label) card.label = chunk.label;
     card.questions = chunk.questions;
-    card.addEventListener("questionsanswer", (event) => {
-      if (card !== this.#waitingOn) return;
-      const detail = event.detail;
-      queueMicrotask(() => this.#settle(detail));
+    card.addEventListener("answerschange", (event) => {
+      const answers = event.detail.value;
+      if (card !== this.#waitingOn || !answers) return;
+      queueMicrotask(() => this.#settle({ answers }));
     });
     return card;
   }

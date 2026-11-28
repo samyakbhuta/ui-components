@@ -193,10 +193,14 @@ export interface AiApprovalProps {
 export interface AiQuestionsProps {
   label?: string;
   disabled?: boolean;
-  questions?: QuestionsItem[];
+  questions?: QuestionsItem[] | null;
   index?: number;
   answers?: QuestionAnswer[] | null;
+  /** The answers it starts with, read once. `answers` shows saved ones at any time. */
+  defaultAnswers?: QuestionAnswer[] | null;
   strings?: Partial<QuestionsStrings>;
+  /** ui-sdk's own: logs the primitive's state and changes to the console. */
+  debug?: boolean;
 }
 
 export interface AiPlanProps {
