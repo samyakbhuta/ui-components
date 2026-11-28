@@ -59,6 +59,17 @@ export const valid = (
       reason
       onapprovaldecision={(event) => (event.detail.decision === "deny" ? event.detail.reason : null)}
     />
+    <ai-chat
+      actions="copy retry feedback"
+      suggestions={["Write a haiku"]}
+      model={async function* ({ messages, signal }) {
+        signal.throwIfAborted();
+        yield `You said ${messages.at(-1)?.text}`;
+        yield { type: "sources", sources: [{ title: "MDN", url: "https://developer.mozilla.org" }] };
+      }}
+      onchatchange={(event) => event.detail.messages.length}
+      onchaterror={(event) => event.detail.error}
+    />
     <ai-chat-list chats={[{ id: "1", title: "Chat" }]} selected="1" onchatselect={(event) => event.detail.id} />
   </>
 );
@@ -83,6 +94,8 @@ export const invalid = (
     <ai-question onquestionanswer={(event) => event.detail.text} />
     {/* @ts-expect-error a decision is allow, always or deny */}
     <ai-approval decision={{ decision: "maybe", reason: null }} />
+    {/* @ts-expect-error a model's chunks are text or known kinds */}
+    <ai-chat model={async function* () { yield { type: "video", url: "x" }; }} />
     {/* @ts-expect-error sources need a title and a url */}
     <ai-sources sources={[{ title: "No address" }]} />
   </>

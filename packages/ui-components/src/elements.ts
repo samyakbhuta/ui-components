@@ -28,6 +28,7 @@ import type {
   MessageStrings,
 } from "./ai-message/ai-message.ts";
 import type { AiSourcesElement, Source, SourcesEvents, SourcesStrings } from "./ai-sources/ai-sources.ts";
+import type { AiChatElement, ChatEvents, ChatMessage, ChatModel, ChatStrings } from "./ai-chat/ai-chat.ts";
 import type { AiApprovalElement, ApprovalDecisionDetail, ApprovalEvents, ApprovalStrings } from "./ai-approval/ai-approval.ts";
 import type { AiQuestionElement, QuestionAnswer, QuestionEvents, QuestionOption, QuestionStrings } from "./ai-question/ai-question.ts";
 import type { AiSuggestionsElement, Suggestion, SuggestionsEvents, SuggestionsStrings } from "./ai-suggestions/ai-suggestions.ts";
@@ -164,6 +165,16 @@ export interface AiApprovalProps {
   strings?: Partial<ApprovalStrings>;
 }
 
+export interface AiChatProps {
+  model?: ChatModel | null;
+  messages?: ChatMessage[];
+  suggestions?: Suggestion[];
+  alwaysAllowed?: string[];
+  /** The actions each reply offers, as words, like "copy retry feedback". */
+  actions?: string | string[];
+  strings?: Partial<ChatStrings>;
+}
+
 export interface AiChatListProps {
   chats?: ChatSummary[];
   selected?: string | null;
@@ -184,6 +195,7 @@ export interface CustomElements {
   "ai-suggestions": { element: AiSuggestionsElement; props: AiSuggestionsProps; events: SuggestionsEvents };
   "ai-question": { element: AiQuestionElement; props: AiQuestionProps; events: QuestionEvents };
   "ai-approval": { element: AiApprovalElement; props: AiApprovalProps; events: ApprovalEvents };
+  "ai-chat": { element: AiChatElement; props: AiChatProps; events: ChatEvents };
   "ai-chat-list": { element: AiChatListElement; props: AiChatListProps; events: ChatListEvents };
 }
 
