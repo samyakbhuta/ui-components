@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import type { Locator, Page } from "@playwright/test";
 import { ask, contrastRatio, expect, sidewaysOverflow, skipThinking, test, waitForReply } from "./fixtures";
 
@@ -281,4 +282,9 @@ test("writing between quotes keeps them in order, in the box and in the sent mes
     "Quoted: Custom tags",
     "And tags?",
   ]);
+
+  // The Markdown export has the quotes as > lines, in the same place.
+  const [file] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Export as Markdown" }).click()]);
+  const markdown = await readFile(await file.path(), "utf8");
+  expect(markdown).toContain("\n\n> Custom tags bloom\n\nWhy bloom?\n\n> Custom tags\n\nAnd tags?\n");
 });
