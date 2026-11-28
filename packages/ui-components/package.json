@@ -1,6 +1,6 @@
 {
   "name": "@samyakbhuta/ui-components",
-  "version": "0.1.0-beta.3",
+  "version": "0.1.0-beta.4",
   "description": "Web Components for AI chat apps, built on ui-sdk: a composer, messages with safe Markdown and coloured code, a streaming transcript, a thinking indicator, agent tool calls, cited sources, prompt suggestions, questions with choices, approval prompts and a list of saved chats.",
   "license": "MIT",
   "type": "module",
