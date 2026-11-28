@@ -290,3 +290,44 @@ test("with `quotable`, selecting words in a message offers Quote, which fires me
   expect(quote.textContent).toBe("Citer");
   composer.remove();
 });
+
+test("words in a card, like a plan or a tool call, can be quoted too, saying which card; buttons and the action row can't", async () => {
+  const { transcript } = await mount(`<ai-transcript quotable>
+    <ai-message>Here's my plan.<ai-plan slot="footer" heading="Surprise party" summary="Five steps."></ai-plan><ai-tool-call slot="header" name="run_command"></ai-tool-call></ai-message>
+  </ai-transcript>`);
+  await settle();
+  const quote = transcript.querySelector<HTMLButtonElement>("[data-part='quote-button']")!;
+  const quoted: { text: string; source?: string }[] = [];
+  transcript.addEventListener("messagequote", (event) => quoted.push({ text: event.detail.text, source: event.detail.source }));
+  const select = async (node: Node, start = 0, end = node.textContent!.length) => {
+    const range = document.createRange();
+    range.setStart(node, start);
+    range.setEnd(node, end);
+    document.getSelection()!.removeAllRanges();
+    document.getSelection()!.addRange(range);
+    document.dispatchEvent(new Event("selectionchange"));
+    await frame();
+  };
+  const textIn = (element: Element) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, { acceptNode: (node) => (node.nodeValue!.trim() ? 1 : 3) });
+    return walker.nextNode()!;
+  };
+
+  await select(textIn(transcript.querySelector("ai-plan [data-part='summary']")!));
+  expect(quote.hidden).toBe(false);
+  quote.click();
+  expect(quoted.at(-1)).toEqual({ text: "Five steps.", source: "Plan: Surprise party" });
+
+  // The message's own text has no source.
+  await select(textIn(transcript.querySelector("ai-message > [data-part='body']")!));
+  quote.click();
+  expect(quoted.at(-1)).toEqual({ text: "Here's my plan.", source: undefined });
+
+  // A button's label isn't offered.
+  await select(textIn(transcript.querySelector("ai-plan button")!));
+  expect(quote.hidden).toBe(true);
+  transcript.strings = { quoteSource: (kind, name) => `${kind}/${name}` };
+  await select(textIn(transcript.querySelector("ai-plan [data-part='summary']")!));
+  quote.click();
+  expect(quoted.at(-1)!.source).toBe("plan/Surprise party");
+});

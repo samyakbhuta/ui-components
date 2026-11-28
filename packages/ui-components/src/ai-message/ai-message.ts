@@ -28,7 +28,7 @@ export type MessageAttachmentOpenDetail = { attachment: MessageAttachment; index
 export type MessageVersionDetail = { version: number; versions: number };
 
 /** Words this message quotes from earlier in the conversation. With an `id`, the quote is a button that fires `quoteopen`. */
-export type MessageQuote = { text: string; from?: "user" | "assistant"; id?: string };
+export type MessageQuote = { text: string; from?: "user" | "assistant"; id?: string; source?: string };
 
 /** What `quoteopen` carries in `event.detail`: the quote pressed, and where it is in `quotes`. */
 export type MessageQuoteOpenDetail = { quote: MessageQuote; index: number };
@@ -580,10 +580,18 @@ export class AiMessageElement extends BaseElement {
         const text = document.createElement("span");
         text.dataset.part = "quote-text";
         text.textContent = quote.text;
-        item.append(label, text);
+        item.append(label);
+        // For words from a card, which one, like "Plan: Surprise party".
+        if (quote.source) {
+          const source = document.createElement("span");
+          source.dataset.part = "quote-source";
+          source.textContent = quote.source;
+          item.append(source);
+        }
+        item.append(text);
         if (item instanceof HTMLButtonElement) {
           item.type = "button";
-          item.setAttribute("aria-label", `${s.quoted} ${quote.text}`);
+          item.setAttribute("aria-label", [s.quoted, quote.source && `${quote.source}:`, quote.text].filter(Boolean).join(" "));
           item.title = s.goToQuote;
           item.addEventListener("click", () => {
             const detail: MessageQuoteOpenDetail = { quote: this.#quotes[index], index };

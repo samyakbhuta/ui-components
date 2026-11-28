@@ -646,3 +646,19 @@ test("selected words can be quoted into the box, are sent with the prompt, and t
   expect(chat.composer.value).toBe("Like what?");
   expect(chat.composer.quotes).toEqual([{ text: "your own HTML tags", from: "assistant", id: "1" }]);
 });
+
+test("a quote sent while a card waits goes into the typed answer, as > lines, so it isn't lost", async () => {
+  const answers: unknown[] = [];
+  const { chat, waiting, idle } = await mount("<ai-chat></ai-chat>", (c) => {
+    c.model = async function* () {
+      answers.push(yield { type: "approval", name: "run_command", input: "rm -rf dist", reason: true });
+    };
+  });
+  await send(chat, "Clean up");
+  await waiting();
+  chat.composer.addQuote({ text: "rm -rf dist", source: "run_command" });
+  await send(chat, "Only the old builds");
+  await idle();
+  expect(answers[0]).toEqual({ decision: "deny", reason: "> run_command:\n> rm -rf dist\n\nOnly the old builds" });
+  expect(chat.composer.quotes).toEqual([]);
+});

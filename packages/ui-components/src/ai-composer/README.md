@@ -124,7 +124,7 @@ Every attribute can change at any time, and what people have typed, attached and
 | `attachments`, `busy`, `disabled` | `boolean` | The same as the attributes. |
 | `voice` | `boolean \| "hide"` | The same as the attribute. `false` turns it off. |
 | `quoteStyle` | `"card" \| "markdown"` | The same as `quote-style`. |
-| `quotes` | `ComposerQuote[]` | The quote cards above the text, as `{ text, from?, id? }`. Set it to restore them, or `[]` to clear them. |
+| `quotes` | `ComposerQuote[]` | The quote cards above the text, as `{ text, from?, id?, source? }`. `source` says which card the words came from, like "Plan: Surprise party", and shows above them. Set it to restore them, or `[]` to clear them. |
 | `pasteAsFile` | `boolean \| number` | The same as `paste-as-file`: `true` for the default of 2,000 characters, or a number. `false` turns it off. |
 
 `ComposerOption` is `{ value, label, description?, disabled? }`. A `description` shows under the label in the Model and Thinking menus, and as a tooltip on a mode. A `disabled` option shows but can't be chosen.
@@ -230,7 +230,7 @@ Set its custom properties on `ai-composer` itself, or once on an element around 
 }
 ```
 
-For anything else, target the parts by `data-part`: `card`, `attachments`, `attachment`, `quotes`, `quote`, `quote-text`, `quote-remove`, `prompt` (the `ui-textarea`), `bar`, `start`, `end`, `attach`, `mode`, `model`, `thinking`, `voice`, `send`, `send-button`, `popup`, `option-description`, `footer`, `status` and `hint`. ui-sdk's own `data-slot` and state attributes, like `[data-checked]` and `[data-highlighted]`, work too. The send button gets `data-busy` while it's Stop, and the card gets `data-dragging` while files are dragged over it.
+For anything else, target the parts by `data-part`: `card`, `attachments`, `attachment`, `quotes`, `quote`, `quote-source`, `quote-text`, `quote-remove`, `prompt` (the `ui-textarea`), `bar`, `start`, `end`, `attach`, `mode`, `model`, `thinking`, `voice`, `send`, `send-button`, `popup`, `option-description`, `footer`, `status` and `hint`. ui-sdk's own `data-slot` and state attributes, like `[data-checked]` and `[data-highlighted]`, work too. The send button gets `data-busy` while it's Stop, and the card gets `data-dragging` while files are dragged over it.
 
 The composer is a size container: below `34rem` wide it hides the hint and the "Model" prefix. It lays out right to left under `dir="rtl"`.
 

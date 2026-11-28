@@ -324,7 +324,10 @@ export function pretendReply(detail: PromptSubmitDetail) {
     return [
       quotes.length === 1 ? "You quoted:" : `You quoted ${quotes.length} passages:`,
       "",
-      ...quotes.flatMap((quote) => [quote.text.split("\n").map((line) => `> ${line}`).join("\n"), ""]),
+      ...quotes.flatMap((quote) => [
+        [...(quote.source ? [`**${quote.source}**`] : []), ...quote.text.split("\n")].map((line) => `> ${line}`).join("\n"),
+        "",
+      ]),
       detail.text ? `A real model would answer *${detail.text}* about it.` : "A real model would explain it.",
       "",
       `— pretend **${model}**`,
@@ -1107,7 +1110,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   transcript.addEventListener("messagequote", (event) => {
     event.preventDefault();
     const index = messages().indexOf(event.detail.message as AiMessageElement);
-    composer.addQuote({ text: event.detail.text, from: event.detail.from, id: String(index) });
+    const { text, from, source } = event.detail;
+    composer.addQuote({ text, from, ...(source ? { source } : {}), id: String(index) });
   });
   transcript.addEventListener("quoteopen", (event) => {
     const quoted = messages()[Number(event.detail.quote.id)];

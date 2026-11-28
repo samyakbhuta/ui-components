@@ -173,7 +173,7 @@ The reply shows the card, and the message box locks, saying "Sending is paused u
 
 ## Quoting
 
-Selecting words in any message shows a **Quote** button. Pressing it adds them to the box as a card, and several can be added; then people type what they want to ask. The sent message shows the quotes above it, and pressing one scrolls back to the message it came from and marks it for a moment.
+Selecting words anywhere in a message, its cards included, shows a **Quote** button. Words from a card, like a plan's step or a failed command's output, are labelled with it. Pressing it adds them to the box as a card, and several can be added; then people type what they want to ask. The sent message shows the quotes above it, and pressing one scrolls back to the message it came from and marks it for a moment.
 
 Your model gets the quotes on the last message:
 
@@ -188,6 +188,7 @@ chat.model = async function* ({ messages }) {
 - `chat.composer.quoteStyle = "markdown"` puts quotes into the text as `> ` lines instead, so they arrive in `text`.
 - `chat.transcript.quotable = false` turns quoting off.
 - Edit on a message brings its quotes back into the box.
+- While a question, approval or plan waits, what's typed answers it, and answers have no room for cards: quotes go into the answer's text as `> ` lines, after their label.
 
 ## Saving and restoring
 
@@ -201,7 +202,7 @@ chat.messages = JSON.parse(localStorage.getItem("chat") ?? "[]");
 Each `ChatMessage` is `{ role, text, createdAt }`, plus what the reply held:
 - `createdAt`: when it was sent, or when the reply started, as an ISO time. Each message shows it as "5 minutes ago" on hover or focus (see [`<ai-message>`'s Time and model](../ai-message/README.md#time-and-model));
 - `model`: on a reply, the label of the model that wrote it;
-- `quotes`: on a message of yours, the words it quoted, as `{ text, from, id }`, where `id` is the quoted message's index in `messages`. The model gets them too, apart from `text`, so you decide how to put them in its prompt;
+- `quotes`: on a message of yours, the words it quoted, as `{ text, from, id, source? }`, with `source` naming the card for words from one, like "Plan: Surprise party", where `id` is the quoted message's index in `messages`. The model gets them too, apart from `text`, so you decide how to put them in its prompt;
 - `error`, `stopped` and `feedback`;
 - `thinking`, `tools` and `sources`;
 - a `question` with its `answer`, a set of `questions` with its `answers`, an `approval` with its `decision`, or a `plan` with its `decision`.

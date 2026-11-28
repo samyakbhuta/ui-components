@@ -69,6 +69,13 @@
     text-align: start;
   }
 
+  ai-message [data-part="quote-source"] {
+    display: block;
+    color: CanvasText;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
   ai-message [data-part="quote-text"] {
     display: -webkit-box;
     overflow: hidden;

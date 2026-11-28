@@ -118,7 +118,7 @@ export type ChatMessage = {
   /** The model that wrote a reply, as its label: the composer's chosen model, or a `model` chunk. */
   model?: string;
   /** Words a message of yours quoted from earlier in the chat. `id` is the quoted message's index in `messages`. */
-  quotes?: { text: string; from?: "user" | "assistant"; id?: string }[];
+  quotes?: { text: string; from?: "user" | "assistant"; id?: string; source?: string }[];
   attachments?: MessageAttachment[];
   /** Why the reply failed. */
   error?: string;
@@ -416,7 +416,8 @@ export class AiChatElement extends BaseElement {
     transcript.addEventListener("messagequote", (event) => {
       event.preventDefault();
       const index = this.#turns.findIndex(({ element }) => element === event.detail.message);
-      this.composer.addQuote({ text: event.detail.text, from: event.detail.from, ...(index >= 0 ? { id: String(index) } : {}) });
+      const { text, from, source } = event.detail;
+      this.composer.addQuote({ text, from, ...(source ? { source } : {}), ...(index >= 0 ? { id: String(index) } : {}) });
     });
     transcript.addEventListener("quoteopen", (event) => {
       const turn = this.#turns[Number(event.detail.quote.id)];
@@ -478,6 +479,13 @@ export class AiChatElement extends BaseElement {
     // With a question or an approval open, what's typed answers it.
     if (this.#waitingOn && this.#answer) {
       const card = this.#waitingOn;
+      // An answer has no room for quote cards, so they go into its text, as > lines.
+      if (prompt.quotes?.length) {
+        const quoted = prompt.quotes.map((quote) =>
+          [...(quote.source ? [`${quote.source}:`] : []), ...quote.text.split("\n")].map((line) => `> ${line}`.trimEnd()).join("\n"),
+        );
+        prompt = { ...prompt, text: [...quoted, prompt.text].filter(Boolean).join("\n\n"), quotes: [] };
+      }
       if (card instanceof HTMLElement && card.localName === "ai-question") {
         const question = card as AiQuestionElement;
         const answer = typedAnswer(this.#questionOf(question), prompt.text);

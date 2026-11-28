@@ -10,6 +10,8 @@ export type TranscriptStrings = {
   quote: string;
   /** The same button on a touch screen, at the bottom of the conversation, clear of the phone's own menu. */
   quoteSelection: string;
+  /** Where words quoted from a card came from, like "Plan: Surprise party". `name` is the card's heading or name. */
+  quoteSource: (kind: QuoteSourceKind, name: string) => string;
   /** What screen readers hear when a reply finishes. Return "" to say nothing. */
   reply: (text: string) => string;
   /** Read after the reply for each `<ai-question>` in it still waiting for an answer. */
@@ -29,8 +31,29 @@ export type TranscriptStrings = {
 /** What the conversation can be waiting on the person for. */
 export type WaitingKind = "answer" | "approval" | "review" | "notice";
 
-/** What `messagequote` carries in `event.detail`: the words selected, and the message they're in. */
-export type MessageQuoteDetail = { text: string; message: HTMLElement; from: "user" | "assistant" };
+/** The cards in a message that words can be quoted from. */
+export type QuoteSourceKind = "plan" | "tool" | "approval" | "question" | "questions" | "notice" | "sources" | "thinking";
+
+/**
+ * What `messagequote` carries in `event.detail`: the words selected, the message they're in, and,
+ * for words in a card like a plan, where they came from.
+ */
+export type MessageQuoteDetail = { text: string; message: HTMLElement; from: "user" | "assistant"; source?: string };
+
+const sourceCards: Record<string, QuoteSourceKind> = {
+  "ai-plan": "plan",
+  "ai-tool-call": "tool",
+  "ai-approval": "approval",
+  "ai-questions": "questions",
+  "ai-question": "question",
+  "ai-notice": "notice",
+  "ai-sources": "sources",
+  "ai-thinking": "thinking",
+};
+
+/** Controls and the message's own chrome: selecting in them offers no Quote. */
+const notQuotable =
+  "button, input, textarea, select, [contenteditable], ai-message > [data-part='actions'], ai-message > [data-part='meta'], ai-message > [data-part='quotes'], ai-message > [data-part='announcement']";
 
 export type TranscriptEvents = {
   messagequote: CustomEvent<MessageQuoteDetail>;
@@ -68,6 +91,18 @@ export const defaultTranscriptStrings: TranscriptStrings = {
   jump: "Jump to latest",
   quote: "Quote",
   quoteSelection: "Quote selection",
+  quoteSource: (kind, name) =>
+    kind === "plan"
+      ? `Plan: ${name}`
+      : kind === "question"
+        ? `Question: ${name}`
+        : kind === "questions"
+          ? "Questions"
+          : kind === "sources"
+            ? "Sources"
+            : kind === "thinking"
+              ? "Thinking"
+              : name,
   reply: (text) => text,
   waiting: (question) => `${question} Waiting for your answer.`,
   approval: (label) => `${label} Waiting for your approval.`,
@@ -105,7 +140,7 @@ export class AiTranscriptElement extends BaseElement {
   /** How the last selection was made: by touch, the Quote button docks at the bottom. */
   #touch = false;
   /** The selection the Quote button was shown for, kept while it's pressed: a tap can clear the selection first. */
-  #lastSelected: { text: string; message: Message } | null = null;
+  #lastSelected: { text: string; message: Message; source?: string } | null = null;
   #pressing = false;
   /** The waiting card the jump button names, if it does. */
   #pointsTo: HTMLElement | null = null;
@@ -238,17 +273,42 @@ export class AiTranscriptElement extends BaseElement {
   }
 
   /** The selected words, and the message they're in, when they're all in one message's text here. */
-  #selected(): { text: string; message: Message; range: Range } | null {
+  #selected(): { text: string; message: Message; range: Range; source?: string } | null {
     const selection = document.getSelection();
     if (!this.quotable || !selection || selection.isCollapsed || selection.rangeCount === 0) return null;
     const range = selection.getRangeAt(0);
-    const within = (node: Node) => (node instanceof Element ? node : node.parentElement)?.closest("[data-part='body']");
-    const body = within(range.startContainer);
-    if (!body || body !== within(range.endContainer)) return null;
-    const message = body.parentElement;
-    if (!message || message.localName !== "ai-message" || message.parentElement !== this) return null;
+    const element = (node: Node) => (node instanceof Element ? node : node.parentElement);
+    // The message here that holds a node: a child of the transcript.
+    const messageOf = (node: Node) => {
+      let message = element(node)?.closest("ai-message") ?? null;
+      while (message && message.parentElement !== this) message = message.parentElement?.closest("ai-message") ?? null;
+      return message;
+    };
+    const start = element(range.startContainer);
+    const end = element(range.endContainer);
+    const message = messageOf(range.startContainer);
+    if (!start || !end || !message || message !== messageOf(range.endContainer)) return null;
+    if (start.closest(notQuotable) || end.closest(notQuotable)) return null;
     const text = selection.toString().trim();
-    return text ? { text, message: message as Message, range } : null;
+    if (!text) return null;
+    // Words in a card, like a plan, say which card.
+    const card = element(range.commonAncestorContainer)?.closest(Object.keys(sourceCards).join(","));
+    let source: string | undefined;
+    if (card && message.contains(card)) {
+      const kind = sourceCards[card.localName];
+      const set = kind === "question" ? card.parentElement?.closest("ai-questions") : null;
+      const from = set ?? card;
+      const fromKind = set ? "questions" : kind;
+      const name =
+        from.getAttribute("heading") ||
+        from.querySelector(":scope [data-part='heading']")?.textContent?.trim() ||
+        from.getAttribute("question") ||
+        from.getAttribute("label") ||
+        from.getAttribute("name") ||
+        "";
+      source = this.#strings.quoteSource(fromKind, name.length > 60 ? `${name.slice(0, 60)}…` : name) || undefined;
+    }
+    return { text, message: message as Message, range, source };
   }
 
   /** Escape hides Quote, wherever focus is: after selecting with a mouse, it's usually on the page. */
@@ -269,7 +329,7 @@ export class AiTranscriptElement extends BaseElement {
       const selected = this.#selected();
       // Pressing the button can clear the selection before the click: keep it up until then.
       if (!selected && this.#pressing) return;
-      this.#lastSelected = selected ? { text: selected.text, message: selected.message } : null;
+      this.#lastSelected = selected ? { text: selected.text, message: selected.message, source: selected.source } : null;
       // On a touch screen the phone draws its own menu over the selection, so the button docks
       // at the bottom of the conversation instead, where Jump to latest goes.
       const docked = Boolean(selected) && (this.#touch || window.matchMedia?.("(hover: none)").matches === true);
@@ -326,13 +386,18 @@ export class AiTranscriptElement extends BaseElement {
       text: selected.text,
       message: selected.message,
       from: selected.message.getAttribute("from") === "user" ? "user" : "assistant",
+      ...(selected.source ? { source: selected.source } : {}),
     };
     const go = this.dispatchEvent(new CustomEvent("messagequote", { detail, bubbles: true, composed: true, cancelable: true }));
     document.getSelection()?.removeAllRanges();
     const id = this.getAttribute("for");
     const composer = id ? (this.getRootNode() as Document | ShadowRoot).getElementById?.(id) : null;
     if (go && composer && typeof (composer as HTMLElement & { addQuote?: unknown }).addQuote === "function") {
-      (composer as HTMLElement & { addQuote(quote: { text: string; from: string }): boolean }).addQuote({ text: detail.text, from: detail.from });
+      (composer as HTMLElement & { addQuote(quote: { text: string; from: string; source?: string }): boolean }).addQuote({
+        text: detail.text,
+        from: detail.from,
+        ...(detail.source ? { source: detail.source } : {}),
+      });
     }
   }
 

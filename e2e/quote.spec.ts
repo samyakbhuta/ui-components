@@ -204,3 +204,33 @@ test.describe("on a touch screen", () => {
     expect(await sidewaysOverflow(page)).toBe(0);
   });
 });
+
+test("in <ai-chat>, words in a plan card can be quoted, labelled with the plan @theme", async ({ page }) => {
+  await page.goto("/experiments/ai-composer.html");
+  const chat = page.locator("#chat ai-chat");
+  await chat.getByRole("button", { name: "Plan a surprise birthday party" }).click();
+  const plan = chat.locator("ai-plan");
+  await expect(plan).toBeVisible({ timeout: 20_000 });
+  await expect(chat.locator("ai-composer")).not.toHaveAttribute("busy", { timeout: 20_000 });
+  await plan.locator("[data-part='summary']").evaluate((element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    getSelection()!.removeAllRanges();
+    getSelection()!.addRange(range);
+  });
+  await chat.locator("[data-part='quote-button']").click();
+  const card = chat.locator("ai-composer [data-part='quote']");
+  await expect(card.locator("[data-part='quote-source']")).toHaveText("Plan: Surprise party for Sam's 40th");
+  await expect(card.locator("[data-part='quote-text']")).toHaveText(/^Five steps/);
+  const source = await card.locator("[data-part='quote-source']").evaluate((node) => ({
+    text: getComputedStyle(node).color,
+    background: getComputedStyle(node.closest("[data-part='quote']")!).backgroundColor,
+  }));
+  expect(contrastRatio(source.text, source.background)).toBeGreaterThanOrEqual(4.5);
+
+  // Typed while the plan waits, it asks for changes, with the quote in the words.
+  await chat.getByRole("textbox", { name: "Prompt" }).fill("Make it four");
+  await page.keyboard.press("Enter");
+  await expect(plan.locator("[data-part='decision']")).toContainText("Plan: Surprise party for Sam's 40th:");
+  await expect(plan.locator("[data-part='decision']")).toContainText("Make it four");
+});

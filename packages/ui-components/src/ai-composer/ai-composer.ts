@@ -56,6 +56,8 @@ export type ComposerQuote = {
   from?: "user" | "assistant";
   /** Where they came from, for your app: `<ai-chat>` uses the message's index. */
   id?: string;
+  /** For words from a card, which one, like "Plan: Surprise party". Shown above the words. */
+  source?: string;
 };
 
 /** Every word the composer shows or announces. Override any of them through `strings`. */
@@ -1235,9 +1237,18 @@ export class AiComposerElement extends BaseElement {
       ...this.#quotes.map((quote, index) => {
         const item = document.createElement("li");
         item.dataset.part = "quote";
+        const words = document.createElement("span");
+        words.dataset.part = "quote-words";
+        if (quote.source) {
+          const source = document.createElement("span");
+          source.dataset.part = "quote-source";
+          source.textContent = quote.source;
+          words.append(source);
+        }
         const text = document.createElement("span");
         text.dataset.part = "quote-text";
         text.textContent = quote.text;
+        words.append(text);
         const remove = document.createElement("button");
         remove.type = "button";
         remove.dataset.part = "quote-remove";
@@ -1251,7 +1262,7 @@ export class AiComposerElement extends BaseElement {
           this.#emit("quoteschange", { value: this.quotes });
           this.focus();
         });
-        item.append(text, remove);
+        item.append(words, remove);
         return item;
       }),
     );

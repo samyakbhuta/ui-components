@@ -155,9 +155,19 @@
     line-height: 1.4;
   }
 
-  ai-composer [data-part="quote-text"] {
+  ai-composer [data-part="quote-words"] {
     flex: 1;
     min-width: 0;
+  }
+
+  ai-composer [data-part="quote-source"] {
+    display: block;
+    color: var(--_ai-composer-color);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  ai-composer [data-part="quote-text"] {
     display: -webkit-box;
     overflow: hidden;
     -webkit-box-orient: vertical;
