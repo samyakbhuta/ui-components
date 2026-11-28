@@ -41,7 +41,7 @@ Questions written inside work too:
 - **A single choice picked by tap or click moves on by itself** after a moment, so a quick answer takes one tap. Choices picked with the arrow keys don't, so keyboard users stay in control. Other, checkboxes and the last question wait for Continue or Send.
 - **Send** on the last question sends every answer. If one is still unanswered, it goes there instead and says so.
 
-The questions' own `questionanswer` and `questionskip` events stay inside the set; listen for `questionsanswer`.
+The questions' own `answerchange` events stay inside the set: it catches them on the way down and cancels them. Listen for `questionsanswer`.
 
 In [`<ai-chat>`](../ai-chat/README.md), a model yields `{ type: "questions", questions: [...] }` and gets `{ answers }` back. Typing in the message box answers the question showing.
 

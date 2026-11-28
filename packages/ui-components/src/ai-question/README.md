@@ -2,6 +2,8 @@
 
 A question the model asks, with choices to pick from. Use radio buttons for one choice, or checkboxes for several with `multiple`. `other` adds a last choice with a text box for an answer of one's own. It's the "ask the user" step of an agent: put it in a reply, and send the answer on as the next message.
 
+It's built as a ui-sdk primitive, `question` (in `question.ts`), rendered as custom elements with ui-sdk's `createParts`. So it reports its answer like ui-sdk's own components report changes, with a reason and a source.
+
 ```ts
 import "@samyakbhuta/ui-components/ai-question"; // registers <ai-question> and loads its CSS
 ```
@@ -20,8 +22,9 @@ import "@samyakbhuta/ui-components/ai-question"; // registers <ai-question> and 
 ```ts
 const question = document.querySelector("ai-question")!;
 question.options = ["Paris", "Rome", { value: "Lisbon", description: "The cheapest flights this month" }];
-question.addEventListener("questionanswer", (event) => {
-  sendToModel(event.detail.labels.join(", ")); // "Rome", or what was typed for Other
+question.addEventListener("answerchange", (event) => {
+  const answer = event.detail.value; // { value, labels, other }, or { skipped: true }
+  sendToModel("skipped" in answer ? "Skipped" : answer.labels.join(", ")); // "Rome", or what was typed for Other
 });
 ```
 
@@ -71,27 +74,29 @@ Once sent, the question shows "Answered: Rome" and moves focus there, since Send
 | `question`, `multiple`, `other`, `max`, `skippable`, `disabled` | | The same as the attributes. |
 | `value` | `string \| string[] \| null` | What's chosen so far: a value, or a list with `multiple`. A typed answer stands in for Other. Set it to choose from script. |
 | `otherText` | `string` | What's typed in the Other box. |
-| `answer` | `QuestionAnswer \| null` | The answer once sent, `{ skipped: true }` once skipped, or `null`. Set it to show a saved answer, like when a chat opens again. `null` makes the question answerable again. |
+| `answer` | `QuestionAnswer \| null` | The answer once sent, `{ skipped: true }` once skipped, or `null`. Set it to show a saved answer, like when a chat opens again. `null` makes the question answerable again. Setting it doesn't fire `answerchange`. |
+| `defaultAnswer` | `QuestionAnswer \| null` | The answer it starts with, read once when it's created. |
 | `strings` | `Partial<QuestionStrings>` | Words to replace; see below. |
 
 ## Methods
 
+Its methods are on `api`, like ui-sdk's elements:
+
 | Method | What it does |
 | --- | --- |
-| `submit()` | Sends the answer, as pressing Send does. Returns `false` when nothing was sent: there was no valid answer, it was already answered, or a listener cancelled the event. |
-| `skip()` | Skips the question, as pressing Skip does. Returns `false` when a listener cancelled it. |
-| `reset()` | Makes the question answerable again, keeping what was chosen. |
+| `api.submit()` | Sends the answer, as pressing Send does. Returns `false` when nothing was sent: there was no valid answer, it was already answered, or a listener cancelled the change. |
+| `api.skip()` | Skips the question, as pressing Skip does. Returns `false` when a listener cancelled it. |
+| `api.reset()` | Makes the question answerable again, keeping what was chosen, without firing `answerchange`. |
 
 ## Events
 
-Both events bubble and are cancelable: `preventDefault()` leaves the question open.
-
 | Event | `detail` | When |
 | --- | --- | --- |
-| `questionanswer` | `{ value, labels, other }` | Send was pressed, or Enter in the Other box. `value` is the chosen value, or the chosen values in the order the choices appear with `multiple`; a typed answer stands in for Other, last. `labels` are the same in words, for showing or sending as text. `other` is what was typed, or `null`. |
-| `questionskip` | `null` | Skip was pressed. |
+| `answerchange` | `{ value, reason, source }` | The question was answered or skipped. `value` is `{ value, labels, other }` for an answer, or `{ skipped: true }`. In an answer, `value` is the chosen value, or the chosen values in the order the choices appear with `multiple`, with a typed answer standing in for Other, last. `labels` are the same in words, for showing or sending as text, and `other` is what was typed, or `null`. `reason` says what asked: `"press"` for Send, `"enter-key"` for Enter in the Other box, `"skip-press"` for Skip, `"imperative"` for `api.submit()` and `api.skip()`. `source` says how: `"mouse"`, `"keyboard"`, `"agent"` and so on. Cancelable: `preventDefault()` leaves the question open. |
 
-The events fire before the question shows as answered. To save it with its answer, wait a tick: `queueMicrotask(save)`.
+Like ui-sdk's change events, it doesn't bubble: listen on the element, or on an element around it with `{ capture: true }`. [`<ai-questions>`](../ai-questions/README.md) catches its questions' answers that way, and cancels them, so it can send them all together.
+
+The event fires before the question shows as answered. To save it with its answer, wait a tick: `queueMicrotask(save)`.
 
 ## From a tool call
 
@@ -106,7 +111,10 @@ function askUser(call: { question: string; options: string[]; multiple?: boolean
     question.multiple = call.multiple ?? false;
     question.other = call.allowOther ?? true;
     question.slot = "footer";
-    question.addEventListener("questionanswer", (event) => resolve(event.detail.labels.join(", ")));
+    question.addEventListener("answerchange", (event) => {
+      const answer = event.detail.value!;
+      resolve("skipped" in answer ? "Skipped" : answer.labels.join(", "));
+    });
     reply.append(question); // the <ai-message> that's streaming the reply
   });
 }
@@ -136,8 +144,8 @@ The question, the choices and what people type are set as text, never parsed as 
 - **Keyboard:** Tab moves into the group, and the arrow keys choose a radio. Space checks a checkbox, and Tab moves on to the Other box, Send and Skip.
 - Choices over the `max` are disabled, so they leave the tab order until a choice is unchecked.
 - The Other box has its own accessible name, "Your own answer".
-- After sending, focus moves to the answer line, and a status region announces it.
-- ui-sdk's agent bridge can choose and send: `{ ref: "Which city should the trip start in?", action: "setValue", args: ["Rome"] }`, then `{ ref: "Send answer", action: "press" }`.
+- After sending, focus moves to the answer line (ui-sdk's focus recovery), and ui-sdk's shared live region announces it.
+- ui-sdk's agent bridge can choose and send: `{ ref: "Which city should the trip start in?", action: "setValue", args: ["Rome"] }`, then `{ ref: "Send answer", action: "press" }`. The radio or checkbox group is what it sees by the question's name; the `question` primitive itself stays out of the agent's view, so the name isn't shared by two components.
 
 ## Styling
 
@@ -155,14 +163,15 @@ Set its custom properties on `ai-question` itself, or once on an element around 
 - `--ai-question-accent-text`
 - `--ai-question-radius`
 
-**Parts:** `[data-part="body"]`, `status` (the waiting line), `status-dot`, `status-text`, `legend`, `hint`, `options`, `option`, `choice` (the label around a control and its text), `label`, `description`, `other`, `other-input`, `actions`, `send`, `skip`, `answer` and `announcement`. `ai-question[answered]` styles an answered question, and `ai-question:not([answered])` one that's waiting.
+**Parts:** `[data-part="body"]`, `status` (the waiting line), `status-dot`, `status-text`, `legend`, `hint`, `options`, `option`, `choice` (the label around a control and its text), `label`, `description`, `other`, `other-input`, `actions`, `send`, `skip` and `answer`. The primitive's parts also carry ui-sdk's `data-slot`: `question` on the element, and `question-status`, `question-hint`, `question-other`, `question-actions` and `question-answer`. `ai-question[answered]` styles an answered question, and `ai-question:not([answered])` one that's waiting.
 
 ## Tests
 
 `ai-question.test.ts`:
 - one and several choices, `max`, Other with typing and Enter;
 - cancelling, Skip, restoring a saved answer and `reset()`;
-- translation, attempts to inject HTML, and agent use.
+- translation, attempts to inject HTML, and agent use;
+- what each answer reports, that restoring and `reset()` report nothing, and the primitive on its own: server rendering, and its parts coming and going.
 
 The browser tests in `e2e/question.spec.ts` cover:
 - keyboard use and focus;

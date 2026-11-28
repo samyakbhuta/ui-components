@@ -1,10 +1,11 @@
 import { within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
-import { settle } from "@ui-sdk/core/testing";
+import { checkServer, mount as mountPrimitive, settle } from "@ui-sdk/core/testing";
 import { createAgent } from "@ui-sdk/web/agent";
 import { afterEach, expect, test, vi } from "vitest";
 import "./ai-question.ts";
 import type { AiQuestionElement, QuestionAnswerDetail } from "./ai-question.ts";
+import { question as questionPrimitive } from "./question.ts";
 
 afterEach(() => document.body.replaceChildren());
 
@@ -14,7 +15,10 @@ async function mount(markup: string, setup?: (question: AiQuestionElement) => vo
   setup?.(question);
   await settle();
   const answers: QuestionAnswerDetail[] = [];
-  question.addEventListener("questionanswer", (event) => answers.push(event.detail));
+  question.addEventListener("answerchange", (event) => {
+    const answer = event.detail.value;
+    if (answer && !("skipped" in answer)) answers.push(answer);
+  });
   const view = within(question);
   return {
     question,
@@ -40,7 +44,7 @@ test("one choice: radios named by the question, and Send once one is chosen", as
   expect(within(group).getAllByRole("radio")).toHaveLength(3);
   expect(view.getByRole("radio", { name: "Lisbon", description: "Cheapest flights" })).toBeTruthy();
   expect(isDisabled(send())).toBe(true);
-  expect(question.submit()).toBe(false);
+  expect(question.api.submit()).toBe(false);
 
   await user.click(view.getByRole("radio", { name: "Rome" }));
   await settle();
@@ -56,7 +60,8 @@ test("one choice: radios named by the question, and Send once one is chosen", as
   const line = question.querySelector<HTMLElement>("[data-part='answer']")!;
   expect(line.textContent).toBe("Answered: Rome");
   expect(document.activeElement).toBe(line);
-  expect(view.getByRole("status").textContent).toBe("Answered: Rome");
+  // Read out through ui-sdk's shared live region.
+  await vi.waitFor(() => expect([...document.querySelectorAll("[aria-live]")].map((region) => region.textContent).join(" ")).toContain("Answered: Rome"));
   expect(question.querySelector<HTMLElement>("[data-part='status']")!.hidden).toBe(true);
   expect(group.hasAttribute("aria-describedby")).toBe(false);
 
@@ -65,7 +70,7 @@ test("one choice: radios named by the question, and Send once one is chosen", as
   await settle();
   expect(checked(view.getByRole("radio", { name: "Rome" }))).toBe(true);
   expect(checked(view.getByRole("radio", { name: "Paris" }))).toBe(false);
-  expect(question.submit()).toBe(false);
+  expect(question.api.submit()).toBe(false);
 });
 
 test("Other: typing chooses it, Enter sends it, and an empty box can't be sent", async () => {
@@ -115,20 +120,21 @@ test("several choices: checkboxes, a hint, and max disables the rest", async () 
   expect(question.querySelector("[data-part='answer']")!.textContent).toBe("Answered: Museums, Hiking");
 });
 
-test("cancelling questionanswer keeps the question open; Skip fires questionskip", async () => {
+test("cancelling answerchange keeps the question open; Skip sends a skipped answer", async () => {
   const user = userEvent.setup();
   const { question, view } = await mount(`<ai-question question="Where?" skippable><ul><li>Paris</li><li>Rome</li></ul></ai-question>`);
   expect(view.getAllByRole("radio").map((radio) => radio.closest("label")!.textContent)).toEqual(["Paris", "Rome"]);
-  question.addEventListener("questionanswer", (event) => event.preventDefault(), { once: true });
+  question.addEventListener("answerchange", (event) => event.preventDefault(), { once: true });
   question.value = "Paris";
   await settle();
-  expect(question.submit()).toBe(false);
+  expect(question.api.submit()).toBe(false);
   expect(question.answer).toBeNull();
 
-  const skipped = vi.fn();
-  question.addEventListener("questionskip", skipped);
+  const skipped = vi.fn((event: Event) => (event as CustomEvent).detail);
+  question.addEventListener("answerchange", skipped);
   await user.click(view.getByRole("button", { name: "Skip" }));
   expect(skipped).toHaveBeenCalledOnce();
+  expect(skipped.mock.results[0].value).toMatchObject({ value: { skipped: true }, reason: "skip-press" });
   expect(question.answer).toEqual({ skipped: true });
   expect(question.querySelector("[data-part='answer']")!.textContent).toBe("Skipped");
 });
@@ -142,7 +148,7 @@ test("a saved answer shows answered, including a typed one, and reset() reopens 
   expect((view.getByRole("textbox", { name: "Your own answer" }) as HTMLInputElement).value).toBe("Porto");
   expect(view.queryByRole("button", { name: "Send answer" })).toBeNull();
 
-  question.reset();
+  question.api.reset();
   await settle();
   expect(question.hasAttribute("answered")).toBe(false);
   expect(isDisabled(view.getByRole("button", { name: "Send answer" }))).toBe(false);
@@ -173,4 +179,64 @@ test("agents can choose an answer and send it", async () => {
   });
   expect(result.ok, result.error?.message).toBe(true);
   expect(answers).toEqual([{ value: "Rome", labels: ["Rome"], other: null }]);
+});
+
+test("each answer says what asked for it and how; restoring and reset() report nothing", async () => {
+  const user = userEvent.setup();
+  const { question, view, send } = await mount(`<ai-question question="Where?" other skippable></ai-question>`, (q) => (q.options = cities));
+  const reported: string[] = [];
+  question.addEventListener("answerchange", (event) => reported.push(`${event.detail.reason} ${JSON.stringify(event.detail.value)}`));
+
+  question.answer = { value: "Rome", labels: ["Rome"], other: null };
+  await settle();
+  question.api.reset();
+  await settle();
+  expect(reported).toEqual([]);
+
+  await user.click(view.getByRole("radio", { name: "Paris" }));
+  await user.click(send());
+  question.api.reset();
+  await settle();
+  await user.type(view.getByRole("textbox", { name: "Your own answer" }), "Porto{Enter}");
+  await settle();
+  // Typing in the box moved focus to the answer line once sent, since the box stays.
+  expect(document.activeElement).toBe(question.querySelector("[data-part='answer']"));
+  question.api.reset();
+  await settle();
+  await user.click(view.getByRole("button", { name: "Skip" }));
+  expect(reported).toEqual([
+    'press {"value":"Paris","labels":["Paris"],"other":null}',
+    'enter-key {"value":"Porto","labels":["Porto"],"other":"Porto"}',
+    'skip-press {"skipped":true}',
+  ]);
+});
+
+test("the agent sees the choices by the question's name, once: the question itself stays out of view", async () => {
+  await mount(`<ai-question question="Which city?"></ai-question>`, (q) => (q.options = cities));
+  const snapshot = createAgent().snapshot();
+  expect(snapshot.filter((item) => item.label === "Which city?").map((item) => item.component)).toEqual(["radio"]);
+  expect(snapshot.some((item) => item.component === "question")).toBe(false);
+});
+
+test("the primitive renders on a server, and its parts come and go with the answer", async () => {
+  const markup = "<root><status></status><hint></hint><other><input /></other><actions></actions><answer></answer></root>";
+  checkServer(questionPrimitive, { question: "Where?", options: ["Paris", "Rome"] }, markup);
+  const view = mountPrimitive(questionPrimitive, { question: "Where?", options: ["Paris", "Rome"], skippable: true }, markup);
+  try {
+    expect(view.part("status")!.isConnected).toBe(true);
+    expect(view.part("hint")!.isConnected).toBe(false);
+    expect(view.part("other")!.isConnected).toBe(false);
+    expect(view.api.submit()).toBe(false);
+    view.api.setValue("Rome");
+    expect(view.api.submit()).toBe(true);
+    await view.settle();
+    expect(view.changes.at(-1)).toMatchObject({ key: "answer", value: { value: "Rome", labels: ["Rome"], other: null }, reason: "imperative" });
+    expect(view.part("status")!.isConnected).toBe(false);
+    expect(view.part("actions")!.isConnected).toBe(false);
+    expect(view.part("answer")!.isConnected).toBe(true);
+    expect(view.part("root")!.hasAttribute("answered")).toBe(true);
+    expect(view.announced).toContain("Answered: Rome");
+  } finally {
+    view.unmount();
+  }
 });

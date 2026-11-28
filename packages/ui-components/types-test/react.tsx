@@ -48,8 +48,7 @@ export const valid = (
       multiple
       max={2}
       options={["Paris", { value: "rome", label: "Rome", description: "Warm" }]}
-      onquestionanswer={(event) => event.detail.labels.join(", ")}
-      onquestionskip={() => {}}
+      onanswerchange={(event) => (event.detail.value && !("skipped" in event.detail.value) ? event.detail.value.labels.join(", ") : event.detail.reason)}
     />
     <ai-approval
       name="run_command"
