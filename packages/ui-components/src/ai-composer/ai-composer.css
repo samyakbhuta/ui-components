@@ -15,6 +15,9 @@
     --_ai-composer-muted: var(--ai-composer-muted, color-mix(in srgb, var(--_ai-composer-color) 68%, var(--_ai-composer-background)));
     --_ai-composer-soft: var(--ai-composer-soft, color-mix(in srgb, var(--_ai-composer-color) 8%, var(--_ai-composer-background)));
     --_ai-composer-hover: var(--ai-composer-hover, color-mix(in srgb, var(--_ai-composer-color) 10%, var(--_ai-composer-background)));
+    /* Recording red, with text on it at 4.5:1 or more in light and dark. */
+    --_ai-composer-recording: var(--ai-composer-recording, light-dark(#c62828, #ff7a70));
+    --_ai-composer-recording-text: var(--ai-composer-recording-text, light-dark(#fff, #1a0000));
     display: block;
     container-type: inline-size;
     font: var(--_ai-composer-font);
@@ -206,9 +209,35 @@
     height: 0.875rem;
   }
 
+  /* While listening: a red Stop button with a ring that pulses, like a recorder. */
   ai-composer [data-part="voice"] button[data-pressed] {
-    background: var(--_ai-composer-accent);
-    color: var(--_ai-composer-accent-text);
+    background: var(--_ai-composer-recording);
+    color: var(--_ai-composer-recording-text);
+    animation: ai-composer-recording 1.6s ease-out infinite;
+  }
+
+  ai-composer [data-part="voice"] button[data-pressed]:hover {
+    background: color-mix(in srgb, var(--_ai-composer-recording) 88%, var(--_ai-composer-color));
+  }
+
+  @keyframes ai-composer-recording {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--_ai-composer-recording) 55%, transparent);
+    }
+    100% {
+      box-shadow: 0 0 0 0.6rem color-mix(in srgb, var(--_ai-composer-recording) 0%, transparent);
+    }
+  }
+
+  /* The card says so too. */
+  ai-composer[listening] [data-part="card"] {
+    border-color: var(--_ai-composer-recording);
+    box-shadow: 0 0 0 1px var(--_ai-composer-recording);
+  }
+
+  ai-composer[listening] [data-part="status"] {
+    color: var(--_ai-composer-recording);
+    color: color-mix(in srgb, var(--_ai-composer-recording) 80%, CanvasText);
   }
 
   ai-composer [data-part="send-button"] {
@@ -319,6 +348,23 @@
   @media (prefers-reduced-motion: reduce) {
     ai-composer [data-slot="segmented-control-indicator"] {
       transition: none;
+    }
+
+    /* A still ring instead of a pulse. */
+    ai-composer [data-part="voice"] button[data-pressed] {
+      animation: none;
+      box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--_ai-composer-recording) 35%, transparent);
+    }
+  }
+
+  @media (forced-colors: active) {
+    ai-composer [data-part="voice"] button[data-pressed] {
+      background: Highlight;
+      color: HighlightText;
+    }
+
+    ai-composer[listening] [data-part="card"] {
+      border-color: Highlight;
     }
   }
 

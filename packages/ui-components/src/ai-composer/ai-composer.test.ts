@@ -7,6 +7,7 @@ import {
   type AiComposerElement,
   defaultModels,
   defaultModes,
+  defaultStrings,
   defaultThinkingLevels,
   type PromptSubmitDetail,
   type SpeechRecognizer,
@@ -382,6 +383,84 @@ test("voice input adds what's said, and a custom speech engine can be plugged in
   expect(events).toEqual(["start", "end"]);
 });
 
+test("while listening, the button is a red Stop, the box says to speak, and words show as they're heard", async () => {
+  const user = userEvent.setup();
+  let handlers: Parameters<SpeechRecognizer["start"]>[0] | undefined;
+  const { composer, prompt } = await mount("<ai-composer voice></ai-composer>", (composer) => {
+    composer.speechRecognizer = { supported: true, start: (options) => ((handlers = options), { stop: () => handlers!.onEnd() }) };
+  });
+  const voice = within(composer).getByRole("button", { name: "Voice input" });
+  const icon = voice.innerHTML;
+  await user.click(voice);
+
+  expect(composer.hasAttribute("listening")).toBe(true);
+  expect(voice.getAttribute("aria-pressed")).toBe("true");
+  expect(voice.title).toBe("Stop voice input");
+  expect(voice.innerHTML).not.toBe(icon);
+  expect(prompt.placeholder).toBe("Listening… speak now");
+
+  // Words come in as they're heard, then settle when the phrase is recognised.
+  handlers!.onInterim!("what's the");
+  expect(prompt.value).toBe("what's the");
+  handlers!.onInterim!("what's the weather");
+  expect(prompt.value).toBe("what's the weather");
+  handlers!.onText("What's the weather?");
+  handlers!.onInterim!("");
+  expect(prompt.value).toBe("What's the weather?");
+  handlers!.onInterim!("in Pune");
+  expect(prompt.value).toBe("What's the weather? in Pune");
+
+  // Typing while listening keeps what's typed, and the next words follow it.
+  await user.clear(prompt);
+  await user.type(prompt, "Forecast:");
+  handlers!.onInterim!("tomorrow");
+  expect(prompt.value).toBe("Forecast: tomorrow");
+
+  await user.click(voice);
+  await settle();
+  // Words still being heard when it stopped stay.
+  expect(prompt.value).toBe("Forecast: tomorrow");
+  expect(composer.hasAttribute("listening")).toBe(false);
+  expect(voice.title).toBe("Voice input");
+  expect(voice.innerHTML).toBe(icon);
+  expect(prompt.placeholder).toBe("Ask anything…");
+});
+
+test("when listening stops because something went wrong, it says why", async () => {
+  const user = userEvent.setup();
+  let handlers: Parameters<SpeechRecognizer["start"]>[0] | undefined;
+  const { composer } = await mount("<ai-composer voice></ai-composer>", (composer) => {
+    composer.speechRecognizer = { supported: true, start: (options) => ((handlers = options), { stop: () => handlers!.onEnd() }) };
+    composer.strings = { voiceError: (error) => (error === "no-speech" ? "Rien entendu." : "Arrêté.") };
+  });
+  const errors: string[] = [];
+  composer.addEventListener("voiceerror", (event) => errors.push(event.detail.error));
+  const status = composer.querySelector("[data-part='status']")!;
+
+  await user.click(within(composer).getByRole("button", { name: "Voice input" }));
+  handlers!.onError!("not-allowed");
+  handlers!.onEnd();
+  await settle();
+  expect(errors).toEqual(["not-allowed"]);
+  expect(status.textContent).toBe("Arrêté.");
+
+  await user.click(within(composer).getByRole("button", { name: "Voice input" }));
+  handlers!.onError!("no-speech");
+  handlers!.onEnd();
+  await settle();
+  expect(status.textContent).toBe("Rien entendu.");
+  expect(composer.hasAttribute("listening")).toBe(false);
+});
+
+test("the default words for voice errors say what to do", () => {
+  const { voiceError } = defaultStrings;
+  expect(voiceError("not-allowed")).toMatch(/^Microphone access is blocked/);
+  expect(voiceError("no-speech")).toMatch(/^Didn't hear anything/);
+  expect(voiceError("audio-capture")).toBe("No microphone was found.");
+  expect(voiceError("network")).toMatch(/internet connection/);
+  expect(voiceError("something-new")).toBe("Voice input stopped.");
+});
+
 test("the browser's speech recognition is used by default", async () => {
   const user = userEvent.setup();
   let session: { lang: string; onresult: (event: unknown) => void; onend: () => void } | undefined;
@@ -400,6 +479,43 @@ test("the browser's speech recognition is used by default", async () => {
   session!.onend();
   await settle();
   expect(host.value).toBe("hallo");
+});
+
+test("the browser's speech recognition shows words as they're heard, and reports errors but not a stop", async () => {
+  const user = userEvent.setup();
+  let session:
+    | { interimResults: boolean; onresult: (event: unknown) => void; onerror: (event: unknown) => void; onend: () => void }
+    | undefined;
+  speech.SpeechRecognition = class {
+    start() {
+      session = this as never;
+    }
+    stop() {
+      session!.onerror({ error: "aborted" });
+      session!.onend();
+    }
+  };
+  document.body.innerHTML = "<ai-composer voice></ai-composer>";
+  await settle();
+  const host = document.querySelector("ai-composer")!;
+  const errors: string[] = [];
+  host.addEventListener("voiceerror", (event) => errors.push(event.detail.error));
+  const voice = within(host).getByRole("button", { name: "Voice input" });
+  await user.click(voice);
+  expect(session!.interimResults).toBe(true);
+  session!.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: "good mor" }], { isFinal: false })] });
+  expect(host.value).toBe("good mor");
+  await user.click(voice);
+  await settle();
+  expect(errors).toEqual([]);
+  expect(host.querySelector("[data-part='status']")!.textContent).toBe("");
+
+  await user.click(voice);
+  session!.onerror({ error: "not-allowed" });
+  session!.onend();
+  await settle();
+  expect(errors).toEqual(["not-allowed"]);
+  expect(host.querySelector("[data-part='status']")!.textContent).toMatch(/^Microphone access is blocked/);
 });
 
 test("value, focus, insert, addFiles and clear work before and after the inside renders", async () => {

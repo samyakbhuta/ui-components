@@ -59,6 +59,9 @@ export type ComposerStrings = {
   voice: string;
   voiceUnsupported: string;
   listening: string;
+  listeningPlaceholder: string;
+  stopVoice: string;
+  voiceError: (error: string) => string;
   noMatches: string;
   enterHint: string;
   modEnterHint: (modifier: string) => string;
@@ -83,6 +86,18 @@ export const defaultStrings: ComposerStrings = {
   voice: "Voice input",
   voiceUnsupported: "Voice input isn't supported in this browser",
   listening: "Listening…",
+  listeningPlaceholder: "Listening… speak now",
+  stopVoice: "Stop voice input",
+  voiceError: (error) =>
+    error === "not-allowed" || error === "service-not-allowed"
+      ? "Microphone access is blocked. Allow it in your browser's site settings, then try again."
+      : error === "no-speech"
+        ? "Didn't hear anything. Try again, a little closer to the microphone."
+        : error === "audio-capture"
+          ? "No microphone was found."
+          : error === "network"
+            ? "Voice input needs an internet connection."
+            : "Voice input stopped.",
   noMatches: "No matches",
   enterHint: "Enter to send · Shift+Enter for a new line",
   modEnterHint: (modifier) => `${modifier}+Enter to send · Enter for a new line`,
@@ -145,6 +160,10 @@ export interface SpeechRecognizer {
     lang: string;
     /** Call with each finished phrase. */
     onText(text: string): void;
+    /** Optional: call with the words heard so far in the phrase being spoken, as they change. `""` clears them. */
+    onInterim?(text: string): void;
+    /** Optional: call when listening stops because something went wrong, before `onEnd`. Web Speech API codes, like `"not-allowed"` or `"no-speech"`, get their own messages. */
+    onError?(error: string): void;
     /** Call once listening stops, for any reason. */
     onEnd(): void;
   }): { stop(): void };
@@ -157,7 +176,7 @@ type WebSpeechSession = {
   lang: string;
   onresult: ((event: WebSpeechResult) => void) | null;
   onend: (() => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
   start(): void;
   stop(): void;
 };
@@ -168,18 +187,31 @@ export function webSpeechRecognizer(): SpeechRecognizer {
   const Recognition = speech.SpeechRecognition ?? speech.webkitSpeechRecognition;
   return {
     supported: Boolean(Recognition),
-    start({ lang, onText, onEnd }) {
+    start({ lang, onText, onInterim, onError, onEnd }) {
       const session = new Recognition!();
       session.continuous = true;
-      session.interimResults = false;
+      session.interimResults = Boolean(onInterim);
       session.lang = lang;
       session.onresult = (event) => {
+        let interim = "";
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) onText(event.results[i][0].transcript.trim());
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) onText(transcript.trim());
+          else interim += transcript;
         }
+        onInterim?.(interim.trim());
       };
-      session.onend = onEnd;
-      session.onerror = onEnd;
+      let ended = false;
+      const end = () => {
+        if (ended) return;
+        ended = true;
+        onEnd();
+      };
+      session.onend = end;
+      // Stopping on purpose reports "aborted"; that's not worth a message.
+      session.onerror = (event) => {
+        if (event?.error && event.error !== "aborted") onError?.(event.error);
+      };
       session.start();
       return { stop: () => session.stop() };
     },
@@ -198,6 +230,7 @@ export type ComposerEvents = {
   filereject: CustomEvent<{ value: { file: File; reasons: string[] }[] }>;
   voicestart: CustomEvent<null>;
   voiceend: CustomEvent<null>;
+  voiceerror: CustomEvent<{ error: string }>;
 };
 
 const escape = (text: string) =>
@@ -253,6 +286,7 @@ type Saved = { value?: string; mode?: string; model?: string; thinking?: string;
  * @fires filereject - Files broke accept, max-size or max-files.
  * @fires voicestart - Voice input started listening.
  * @fires voiceend - Voice input stopped listening.
+ * @fires voiceerror - Voice input stopped because something went wrong, like the microphone being blocked.
  */
 export class AiComposerElement extends BaseElement {
   static observedAttributes = [...rebuildAttributes, ...liveAttributes, "default-mode", "default-model", "default-thinking"];
@@ -903,23 +937,65 @@ export class AiComposerElement extends BaseElement {
         return;
       }
       if (!this.speechRecognizer.supported) return;
+      // What was in the box before the phrase being spoken, and that phrase's words so far.
+      let before = this.value;
+      let heard = "";
+      let failed = "";
+      const join = (start: string, words: string) => (!words ? start : start && !/\s$/.test(start) ? `${start} ${words}` : start + words);
+      const show = (value: string) => {
+        prompt.api.setValue(value);
+        this.#updateSend();
+        this.#updateCounter();
+      };
+      // Someone may type while listening: then the box as it is becomes the start.
+      const start = () => {
+        if (this.value !== join(before, heard)) {
+          before = this.value;
+          heard = "";
+        }
+        return before;
+      };
       this.#listening = this.speechRecognizer.start({
         lang: this.getAttribute("voice-lang") || this.closest("[lang]")?.getAttribute("lang") || navigator.language,
         onText: (spoken) => {
-          const current = this.value;
-          prompt.api.setValue(current && !/\s$/.test(current) ? `${current} ${spoken}` : current + spoken);
-          this.#updateSend();
+          before = join(start(), spoken);
+          heard = "";
+          show(before);
+        },
+        onInterim: (words) => {
+          const from = start();
+          heard = words;
+          show(join(from, words));
+        },
+        onError: (error) => {
+          failed = error;
         },
         onEnd: () => {
+          // Words still being heard when it stopped stay, as they are.
           voice.pressed = false;
           this.#listening = undefined;
-          this.#status("");
+          this.#setListening(false);
+          this.#status(failed ? this.#strings.voiceError(failed) : "", failed ? 8000 : undefined);
+          if (failed) this.#emit("voiceerror", { error: failed });
           this.#emit("voiceend", null);
         },
       });
+      this.#setListening(true);
       this.#status(this.#strings.listening);
       this.#emit("voicestart", null);
     });
+  }
+
+  /** Shows that the microphone is on: the `listening` attribute, the Stop icon and the box's prompt. */
+  #setListening(on: boolean) {
+    this.toggleAttribute("listening", on);
+    const button = this.querySelector<HTMLButtonElement>(":scope [data-part='voice'] button");
+    if (button) {
+      const s = this.#strings;
+      button.innerHTML = on ? this.#icons.stop : this.#icons.voice;
+      button.title = on ? s.stopVoice : this.speechRecognizer.supported ? s.voice : s.voiceUnsupported;
+    }
+    this.#sync();
   }
 
   /** ArrowUp and ArrowDown walk through sent prompts. Returns true when the key was used. */
@@ -1068,7 +1144,7 @@ export class AiComposerElement extends BaseElement {
     const textarea = this.#textarea;
     if (!textarea) return;
     const s = this.#strings;
-    textarea.placeholder = this.getAttribute("placeholder") ?? s.placeholder;
+    textarea.placeholder = this.hasAttribute("listening") ? s.listeningPlaceholder : (this.getAttribute("placeholder") ?? s.placeholder);
     const maxLength = Number(this.getAttribute("max-length"));
     if (maxLength > 0) textarea.maxLength = maxLength;
     else textarea.removeAttribute("maxlength");
@@ -1140,5 +1216,6 @@ declare global {
     filereject: CustomEvent<{ value: { file: File; reasons: string[] }[] }>;
     voicestart: CustomEvent<null>;
     voiceend: CustomEvent<null>;
+    voiceerror: CustomEvent<{ error: string }>;
   }
 }
