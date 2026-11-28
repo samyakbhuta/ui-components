@@ -66,6 +66,8 @@ thinking.strings = {
 
 The CSS sits in the `ai-thinking` cascade layer, so your unlayered rules win over it.
 
+Set its custom properties on `ai-thinking` itself, or once on an element around it, like `ai-chat` or `:root`, and every `<ai-thinking>` inside takes them.
+
 | Custom property | Default | What it changes |
 | --- | --- | --- |
 | `--ai-thinking-color` | a mix of `CanvasText` and `Canvas` | The text color. It's readable on its own; the sweep only adds a darker or brighter band. |

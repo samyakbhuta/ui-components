@@ -3,34 +3,33 @@
  */
 @layer ai-approval {
   ai-approval {
-    --ai-approval-border: color-mix(in srgb, CanvasText 22%, Canvas);
-    --ai-approval-muted: color-mix(in srgb, CanvasText 68%, Canvas);
-    --ai-approval-background: color-mix(in srgb, CanvasText 5%, Canvas);
-    --ai-approval-accent: CanvasText;
-    --ai-approval-accent-text: Canvas;
-    --ai-approval-radius: 0.75rem;
-    --ai-approval-max-height: 12rem;
-    --ai-approval-waiting: #2b5bc4;
-    --ai-approval-waiting: light-dark(#2b5bc4, #8fb0ff);
-    --ai-approval-allowed: #1f7a35;
-    --ai-approval-allowed: light-dark(#1f7a35, #7fd08f);
-    --ai-approval-denied: #b3261e;
-    --ai-approval-denied: light-dark(#b3261e, #ff8a80);
-
+    --_ai-approval-border: var(--ai-approval-border, color-mix(in srgb, CanvasText 22%, Canvas));
+    --_ai-approval-muted: var(--ai-approval-muted, color-mix(in srgb, CanvasText 68%, Canvas));
+    --_ai-approval-background: var(--ai-approval-background, color-mix(in srgb, CanvasText 5%, Canvas));
+    --_ai-approval-accent: var(--ai-approval-accent, CanvasText);
+    --_ai-approval-accent-text: var(--ai-approval-accent-text, Canvas);
+    --_ai-approval-radius: var(--ai-approval-radius, 0.75rem);
+    --_ai-approval-max-height: var(--ai-approval-max-height, 12rem);
+    --_ai-approval-waiting: var(--ai-approval-waiting, #2b5bc4);
+    --_ai-approval-waiting: var(--ai-approval-waiting, light-dark(#2b5bc4, #8fb0ff));
+    --_ai-approval-allowed: var(--ai-approval-allowed, #1f7a35);
+    --_ai-approval-allowed: var(--ai-approval-allowed, light-dark(#1f7a35, #7fd08f));
+    --_ai-approval-denied: var(--ai-approval-denied, #b3261e);
+    --_ai-approval-denied: var(--ai-approval-denied, light-dark(#b3261e, #ff8a80));
     display: block;
     box-sizing: border-box;
     width: 100%;
     max-width: 36rem;
     padding: 0.875rem 1rem;
-    border: 1px solid var(--ai-approval-border);
-    border-radius: var(--ai-approval-radius);
+    border: 1px solid var(--_ai-approval-border);
+    border-radius: var(--_ai-approval-radius);
     font-size: 0.9375rem;
   }
 
   /* While it waits for a decision: an accent border and a line saying so. */
   ai-approval:not([decided]) {
-    border-color: var(--ai-approval-waiting);
-    box-shadow: 0 0 0 1px var(--ai-approval-waiting);
+    border-color: var(--_ai-approval-waiting);
+    box-shadow: 0 0 0 1px var(--_ai-approval-waiting);
   }
 
   ai-approval [data-part="status"] {
@@ -38,7 +37,7 @@
     gap: 0.5rem;
     align-items: center;
     margin: 0 0 0.375rem;
-    color: var(--ai-approval-waiting);
+    color: var(--_ai-approval-waiting);
     font-size: 0.8125rem;
     font-weight: 600;
   }
@@ -71,25 +70,25 @@
   }
 
   ai-approval [data-part="name"] {
-    color: var(--ai-approval-muted);
+    color: var(--_ai-approval-muted);
     font-family: ui-monospace, monospace;
     font-size: 0.8125rem;
   }
 
   ai-approval [data-part="description"] {
     margin: 0.125rem 0 0;
-    color: var(--ai-approval-muted);
+    color: var(--_ai-approval-muted);
     font-size: 0.8125rem;
   }
 
   ai-approval [data-part="input"] {
     margin: 0.625rem 0 0;
-    max-height: var(--ai-approval-max-height);
+    max-height: var(--_ai-approval-max-height);
     overflow: auto;
     padding: 0.5rem 0.75rem;
-    border: 1px solid var(--ai-approval-border);
+    border: 1px solid var(--_ai-approval-border);
     border-radius: 0.5rem;
-    background: var(--ai-approval-background);
+    background: var(--_ai-approval-background);
     color: CanvasText;
     font-family: ui-monospace, monospace;
     font-size: 0.8125rem;
@@ -99,7 +98,7 @@
   }
 
   ai-approval [data-part="input"]:focus-visible {
-    outline: 2px solid var(--ai-approval-accent);
+    outline: 2px solid var(--_ai-approval-accent);
     outline-offset: 2px;
   }
 
@@ -112,7 +111,7 @@
     box-sizing: border-box;
     width: 100%;
     padding: 0.4rem 0.625rem;
-    border: 1px solid var(--ai-approval-border);
+    border: 1px solid var(--_ai-approval-border);
     border-radius: 0.5rem;
     background: Canvas;
     color: CanvasText;
@@ -121,7 +120,7 @@
   }
 
   ai-approval [data-part="reason"] input:focus-visible {
-    outline: 2px solid var(--ai-approval-accent);
+    outline: 2px solid var(--_ai-approval-accent);
     outline-offset: 1px;
   }
 
@@ -139,7 +138,7 @@
   ai-approval [data-part="actions"] button {
     min-height: 2.25rem;
     padding: 0.4rem 1rem;
-    border: 1px solid var(--ai-approval-border);
+    border: 1px solid var(--_ai-approval-border);
     border-radius: 1.25rem;
     background: none;
     color: inherit;
@@ -149,13 +148,13 @@
   }
 
   ai-approval [data-part="allow"] button {
-    border-color: var(--ai-approval-accent);
-    background: var(--ai-approval-accent);
-    color: var(--ai-approval-accent-text);
+    border-color: var(--_ai-approval-accent);
+    background: var(--_ai-approval-accent);
+    color: var(--_ai-approval-accent-text);
   }
 
   ai-approval [data-part="actions"] button:focus-visible {
-    outline: 2px solid var(--ai-approval-accent);
+    outline: 2px solid var(--_ai-approval-accent);
     outline-offset: 2px;
   }
 
@@ -169,7 +168,7 @@
     gap: 0.375rem;
     align-items: center;
     margin: 0.75rem 0 0;
-    color: var(--ai-approval-muted);
+    color: var(--_ai-approval-muted);
     font-size: 0.875rem;
     font-weight: 600;
   }
@@ -184,15 +183,15 @@
   }
 
   ai-approval [data-part="decision"]:is([data-decision="allow"], [data-decision="always"]) {
-    color: var(--ai-approval-allowed);
+    color: var(--_ai-approval-allowed);
   }
 
   ai-approval [data-part="decision"][data-decision="deny"] {
-    color: var(--ai-approval-denied);
+    color: var(--_ai-approval-denied);
   }
 
   ai-approval [data-part="decision"]:focus-visible {
-    outline: 2px solid var(--ai-approval-accent);
+    outline: 2px solid var(--_ai-approval-accent);
     outline-offset: 2px;
   }
 

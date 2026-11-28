@@ -177,6 +177,8 @@ Children with `slot="header"` go above the text, and `slot="footer"` below it, w
 
 The CSS sits in the `ai-message` cascade layer, so your unlayered rules win over it.
 
+Set its custom properties on `ai-message` itself, or once on an element around it, like `ai-chat` or `:root`, and every `<ai-message>` inside takes them.
+
 | Custom property | Default |
 | --- | --- |
 | `--ai-message-bubble` | the user bubble's background |

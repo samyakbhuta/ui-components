@@ -99,10 +99,11 @@
   }
 }
 
-/* Shows what people with Reduce motion turned on see, whatever this browser's setting. */
+/* Shows what people with Reduce motion turned on see, whatever this browser's setting. It
+   copies <ai-thinking>'s own rule, so it reads the colour the component uses. */
 .reduced-motion-preview [data-shimmer] {
   background: none;
-  color: var(--ai-thinking-color);
+  color: var(--_ai-thinking-color);
   animation: ai-thinking-fade 3s ease-in-out infinite alternate;
 }
 

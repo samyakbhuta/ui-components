@@ -143,6 +143,8 @@ The question, the choices and what people type are set as text, never parsed as 
 
 The CSS sits in the `ai-question` cascade layer.
 
+Set its custom properties on `ai-question` itself, or once on an element around it, like `ai-chat` or `:root`, and every `<ai-question>` inside takes them.
+
 **Custom properties:**
 - `--ai-question-border`
 - `--ai-question-waiting`: the "Waiting for your answer" line and the border until it's answered

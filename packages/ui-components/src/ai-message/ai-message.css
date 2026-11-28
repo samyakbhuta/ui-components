@@ -3,35 +3,33 @@
  */
 @layer ai-message {
   ai-message {
-    --ai-message-bubble: color-mix(in srgb, CanvasText 8%, Canvas);
-    --ai-message-muted: color-mix(in srgb, CanvasText 68%, Canvas);
-    --ai-message-code-background: color-mix(in srgb, CanvasText 6%, Canvas);
-    --ai-message-border: color-mix(in srgb, CanvasText 18%, Canvas);
-    --ai-message-max-width: 85%;
-    --ai-message-error: #b3261e;
-    --ai-message-error: light-dark(#b3261e, #ff8a80);
-    --ai-message-thumbnail-size: 6rem;
-
+    --_ai-message-bubble: var(--ai-message-bubble, color-mix(in srgb, CanvasText 8%, Canvas));
+    --_ai-message-muted: var(--ai-message-muted, color-mix(in srgb, CanvasText 68%, Canvas));
+    --_ai-message-code-background: var(--ai-message-code-background, color-mix(in srgb, CanvasText 6%, Canvas));
+    --_ai-message-border: var(--ai-message-border, color-mix(in srgb, CanvasText 18%, Canvas));
+    --_ai-message-max-width: var(--ai-message-max-width, 85%);
+    --_ai-message-error: var(--ai-message-error, #b3261e);
+    --_ai-message-error: var(--ai-message-error, light-dark(#b3261e, #ff8a80));
+    --_ai-message-thumbnail-size: var(--ai-message-thumbnail-size, 6rem);
     /* Syntax colours, each at least 4.5:1 against the code background in light and dark. */
-    --ai-message-syntax-comment: #5f6670;
-    --ai-message-syntax-comment: light-dark(#5f6670, #9aa1ab);
-    --ai-message-syntax-keyword: #a1259f;
-    --ai-message-syntax-keyword: light-dark(#a1259f, #d197e8);
-    --ai-message-syntax-string: #26722a;
-    --ai-message-syntax-string: light-dark(#26722a, #9bcf7d);
-    --ai-message-syntax-number: #975b00;
-    --ai-message-syntax-number: light-dark(#975b00, #e0a36a);
-    --ai-message-syntax-function: #2b5bc4;
-    --ai-message-syntax-function: light-dark(#2b5bc4, #7cb8f5);
-    --ai-message-syntax-type: #8a5a00;
-    --ai-message-syntax-type: light-dark(#8a5a00, #e8c37a);
-    --ai-message-syntax-tag: #c22c26;
-    --ai-message-syntax-tag: light-dark(#c22c26, #f08a8f);
-    --ai-message-syntax-builtin: #0f6f85;
-    --ai-message-syntax-builtin: light-dark(#0f6f85, #6ccfe0);
-    --ai-message-syntax-variable: #b0371c;
-    --ai-message-syntax-variable: light-dark(#b0371c, #f0a080);
-
+    --_ai-message-syntax-comment: var(--ai-message-syntax-comment, #5f6670);
+    --_ai-message-syntax-comment: var(--ai-message-syntax-comment, light-dark(#5f6670, #9aa1ab));
+    --_ai-message-syntax-keyword: var(--ai-message-syntax-keyword, #a1259f);
+    --_ai-message-syntax-keyword: var(--ai-message-syntax-keyword, light-dark(#a1259f, #d197e8));
+    --_ai-message-syntax-string: var(--ai-message-syntax-string, #26722a);
+    --_ai-message-syntax-string: var(--ai-message-syntax-string, light-dark(#26722a, #9bcf7d));
+    --_ai-message-syntax-number: var(--ai-message-syntax-number, #975b00);
+    --_ai-message-syntax-number: var(--ai-message-syntax-number, light-dark(#975b00, #e0a36a));
+    --_ai-message-syntax-function: var(--ai-message-syntax-function, #2b5bc4);
+    --_ai-message-syntax-function: var(--ai-message-syntax-function, light-dark(#2b5bc4, #7cb8f5));
+    --_ai-message-syntax-type: var(--ai-message-syntax-type, #8a5a00);
+    --_ai-message-syntax-type: var(--ai-message-syntax-type, light-dark(#8a5a00, #e8c37a));
+    --_ai-message-syntax-tag: var(--ai-message-syntax-tag, #c22c26);
+    --_ai-message-syntax-tag: var(--ai-message-syntax-tag, light-dark(#c22c26, #f08a8f));
+    --_ai-message-syntax-builtin: var(--ai-message-syntax-builtin, #0f6f85);
+    --_ai-message-syntax-builtin: var(--ai-message-syntax-builtin, light-dark(#0f6f85, #6ccfe0));
+    --_ai-message-syntax-variable: var(--ai-message-syntax-variable, #b0371c);
+    --_ai-message-syntax-variable: var(--ai-message-syntax-variable, light-dark(#b0371c, #f0a080));
     display: grid;
     justify-items: start;
     gap: 0.25rem;
@@ -43,7 +41,7 @@
   }
 
   ai-message [data-part="body"] {
-    max-width: var(--ai-message-max-width);
+    max-width: var(--_ai-message-max-width);
     min-width: 0;
     overflow-wrap: anywhere;
   }
@@ -55,7 +53,7 @@
   ai-message[from="user"] [data-part="body"] {
     padding: 0.5rem 0.875rem;
     border-radius: 1rem;
-    background: var(--ai-message-bubble);
+    background: var(--_ai-message-bubble);
   }
 
   ai-message[from="assistant"] [data-part="body"],
@@ -107,13 +105,13 @@
 
   ai-message blockquote {
     padding-inline-start: 0.875em;
-    border-inline-start: 3px solid var(--ai-message-border);
-    color: var(--ai-message-muted);
+    border-inline-start: 3px solid var(--_ai-message-border);
+    color: var(--_ai-message-muted);
   }
 
   ai-message hr {
     border: 0;
-    border-top: 1px solid var(--ai-message-border);
+    border-top: 1px solid var(--_ai-message-border);
   }
 
   ai-message a {
@@ -123,7 +121,7 @@
   ai-message :not(pre) > code {
     padding: 0.1em 0.35em;
     border-radius: 0.3em;
-    background: var(--ai-message-code-background);
+    background: var(--_ai-message-code-background);
     font-family: ui-monospace, monospace;
     font-size: 0.9em;
   }
@@ -132,9 +130,9 @@
 
   ai-message [data-part="code-block"] {
     overflow: hidden;
-    border: 1px solid var(--ai-message-border);
+    border: 1px solid var(--_ai-message-border);
     border-radius: 0.75rem;
-    background: var(--ai-message-code-background);
+    background: var(--_ai-message-code-background);
   }
 
   ai-message [data-part="code-header"] {
@@ -143,9 +141,9 @@
     justify-content: space-between;
     gap: 0.5rem;
     padding: 0.25rem 0.25rem 0.25rem 0.875rem;
-    border-bottom: 1px solid var(--ai-message-border);
+    border-bottom: 1px solid var(--_ai-message-border);
     font-size: 0.75rem;
-    color: var(--ai-message-muted);
+    color: var(--_ai-message-muted);
   }
 
   ai-message pre {
@@ -163,48 +161,48 @@
   /* Syntax colours */
 
   ai-message [data-token="comment"] {
-    color: var(--ai-message-syntax-comment);
+    color: var(--_ai-message-syntax-comment);
     font-style: italic;
   }
 
   ai-message [data-token="keyword"] {
-    color: var(--ai-message-syntax-keyword);
+    color: var(--_ai-message-syntax-keyword);
   }
 
   ai-message [data-token="string"],
   ai-message [data-token="inserted"] {
-    color: var(--ai-message-syntax-string);
+    color: var(--_ai-message-syntax-string);
   }
 
   ai-message :is([data-token="number"], [data-token="attribute"]) {
-    color: var(--ai-message-syntax-number);
+    color: var(--_ai-message-syntax-number);
   }
 
   ai-message :is([data-token="function"], [data-token="property"]) {
-    color: var(--ai-message-syntax-function);
+    color: var(--_ai-message-syntax-function);
   }
 
   ai-message [data-token="type"] {
-    color: var(--ai-message-syntax-type);
+    color: var(--_ai-message-syntax-type);
   }
 
   ai-message :is([data-token="tag"], [data-token="deleted"]) {
-    color: var(--ai-message-syntax-tag);
+    color: var(--_ai-message-syntax-tag);
   }
 
   ai-message [data-token="builtin"] {
-    color: var(--ai-message-syntax-builtin);
+    color: var(--_ai-message-syntax-builtin);
   }
 
   ai-message [data-token="variable"] {
-    color: var(--ai-message-syntax-variable);
+    color: var(--_ai-message-syntax-variable);
   }
 
   /* Tables */
 
   ai-message [data-part="table"] {
     overflow-x: auto;
-    border: 1px solid var(--ai-message-border);
+    border: 1px solid var(--_ai-message-border);
     border-radius: 0.5rem;
   }
 
@@ -220,7 +218,7 @@
 
   ai-message :is(th, td) {
     padding: 0.375rem 0.75rem;
-    border-bottom: 1px solid var(--ai-message-border);
+    border-bottom: 1px solid var(--_ai-message-border);
     text-align: start;
   }
 
@@ -229,7 +227,7 @@
   }
 
   ai-message th {
-    background: var(--ai-message-code-background);
+    background: var(--_ai-message-code-background);
   }
 
   /* Buttons */
@@ -243,7 +241,7 @@
     border: 0;
     border-radius: 0.5rem;
     background: none;
-    color: var(--ai-message-muted);
+    color: var(--_ai-message-muted);
     font: inherit;
     font-size: 0.75rem;
   }
@@ -292,7 +290,7 @@
 
   ai-message [data-button]:disabled {
     background: none;
-    color: var(--ai-message-muted);
+    color: var(--_ai-message-muted);
     opacity: 0.45;
   }
 
@@ -304,7 +302,7 @@
 
   ai-message [data-part="version"] {
     min-width: 2.5rem;
-    color: var(--ai-message-muted);
+    color: var(--_ai-message-muted);
     font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
     text-align: center;
@@ -317,7 +315,7 @@
     flex-wrap: wrap;
     align-items: start;
     gap: 0.5rem;
-    max-width: var(--ai-message-max-width);
+    max-width: var(--_ai-message-max-width);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -329,10 +327,10 @@
 
   ai-message [data-part="attachment"][data-kind="image"] img {
     display: block;
-    width: var(--ai-message-thumbnail-size);
-    height: var(--ai-message-thumbnail-size);
+    width: var(--_ai-message-thumbnail-size);
+    height: var(--_ai-message-thumbnail-size);
     object-fit: cover;
-    border: 1px solid var(--ai-message-border);
+    border: 1px solid var(--_ai-message-border);
     border-radius: 0.75rem;
   }
 
@@ -342,7 +340,7 @@
     gap: 0.5rem;
     max-width: 16rem;
     padding: 0.5rem 0.75rem;
-    border: 1px solid var(--ai-message-border);
+    border: 1px solid var(--_ai-message-border);
     border-radius: 0.75rem;
     font-size: 0.875rem;
   }
@@ -351,7 +349,7 @@
     display: block;
     width: 1.25rem;
     height: 1.25rem;
-    color: var(--ai-message-muted);
+    color: var(--_ai-message-muted);
   }
 
   ai-message [data-part="file-name"] {
@@ -363,7 +361,7 @@
 
   ai-message [data-part="file-size"] {
     flex: none;
-    color: var(--ai-message-muted);
+    color: var(--_ai-message-muted);
     font-size: 0.75rem;
   }
 
@@ -373,9 +371,9 @@
     display: flex;
     align-items: start;
     gap: 0.5rem;
-    max-width: var(--ai-message-max-width);
+    max-width: var(--_ai-message-max-width);
     padding: 0.5rem 0.75rem;
-    border: 1px solid var(--ai-message-error);
+    border: 1px solid var(--_ai-message-error);
     border-radius: 0.5rem;
     font-size: 0.875rem;
   }
@@ -389,7 +387,7 @@
     width: 1.125rem;
     height: 1.125rem;
     margin-top: 0.1rem;
-    color: var(--ai-message-error);
+    color: var(--_ai-message-error);
   }
 
   ai-message [data-part="attachments"][hidden] {

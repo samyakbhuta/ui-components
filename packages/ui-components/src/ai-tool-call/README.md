@@ -81,6 +81,8 @@ call.strings = {
 
 The CSS sits in the `ai-tool-call` cascade layer, so your unlayered rules win over it.
 
+Set its custom properties on `ai-tool-call` itself, or once on an element around it, like `ai-chat` or `:root`, and every `<ai-tool-call>` inside takes them.
+
 | Custom property | Default | What it changes |
 | --- | --- | --- |
 | `--ai-tool-call-color` | a mix of `CanvasText` and `Canvas` | The summary's text colour. |

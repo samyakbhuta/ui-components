@@ -3,10 +3,9 @@
  */
 @layer ai-suggestions {
   ai-suggestions {
-    --ai-suggestions-border: color-mix(in srgb, CanvasText 22%, Canvas);
-    --ai-suggestions-hover: color-mix(in srgb, CanvasText 7%, Canvas);
-    --ai-suggestions-muted: color-mix(in srgb, CanvasText 68%, Canvas);
-
+    --_ai-suggestions-border: var(--ai-suggestions-border, color-mix(in srgb, CanvasText 22%, Canvas));
+    --_ai-suggestions-hover: var(--ai-suggestions-hover, color-mix(in srgb, CanvasText 7%, Canvas));
+    --_ai-suggestions-muted: var(--ai-suggestions-muted, color-mix(in srgb, CanvasText 68%, Canvas));
     display: block;
   }
 
@@ -35,7 +34,7 @@
     max-width: 100%;
     min-height: 2.25rem;
     padding: 0.4rem 0.875rem;
-    border: 1px solid var(--ai-suggestions-border);
+    border: 1px solid var(--_ai-suggestions-border);
     border-radius: 1.25rem;
     background: none;
     color: inherit;
@@ -50,7 +49,7 @@
   }
 
   ai-suggestions [data-part="suggestion"]:hover {
-    background: var(--ai-suggestions-hover);
+    background: var(--_ai-suggestions-hover);
   }
 
   ai-suggestions [data-part="suggestion"]:focus-visible {
@@ -63,7 +62,7 @@
   }
 
   ai-suggestions [data-part="description"] {
-    color: var(--ai-suggestions-muted);
+    color: var(--_ai-suggestions-muted);
     font-size: 0.75rem;
   }
 

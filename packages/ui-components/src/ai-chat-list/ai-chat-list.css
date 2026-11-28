@@ -3,12 +3,11 @@
  */
 @layer ai-chat-list {
   ai-chat-list {
-    --ai-chat-list-muted: color-mix(in srgb, CanvasText 68%, Canvas);
-    --ai-chat-list-hover: color-mix(in srgb, CanvasText 8%, Canvas);
-    --ai-chat-list-current: color-mix(in srgb, CanvasText 12%, Canvas);
-    --ai-chat-list-status: #2b5bc4;
-    --ai-chat-list-status: light-dark(#2b5bc4, #8fb0ff);
-
+    --_ai-chat-list-muted: var(--ai-chat-list-muted, color-mix(in srgb, CanvasText 68%, Canvas));
+    --_ai-chat-list-hover: var(--ai-chat-list-hover, color-mix(in srgb, CanvasText 8%, Canvas));
+    --_ai-chat-list-current: var(--ai-chat-list-current, color-mix(in srgb, CanvasText 12%, Canvas));
+    --_ai-chat-list-status: var(--ai-chat-list-status, #2b5bc4);
+    --_ai-chat-list-status: var(--ai-chat-list-status, light-dark(#2b5bc4, #8fb0ff));
     display: block;
     font-size: 0.875rem;
   }
@@ -37,7 +36,7 @@
   }
 
   ai-chat-list [data-part="new"]:hover {
-    background: var(--ai-chat-list-hover);
+    background: var(--_ai-chat-list-hover);
   }
 
   ai-chat-list svg {
@@ -57,7 +56,7 @@
     margin: 0 0 0.25rem;
     padding: 0 0.75rem;
     font-size: 0.75rem;
-    color: var(--ai-chat-list-muted);
+    color: var(--_ai-chat-list-muted);
   }
 
   ai-chat-list [data-part="group-label"] {
@@ -80,11 +79,11 @@
   }
 
   ai-chat-list [data-part="item"]:hover {
-    background: var(--ai-chat-list-hover);
+    background: var(--_ai-chat-list-hover);
   }
 
   ai-chat-list [data-part="item"][data-current] {
-    background: var(--ai-chat-list-current);
+    background: var(--_ai-chat-list-current);
   }
 
   ai-chat-list [data-part="item"] > ui-button {
@@ -124,7 +123,7 @@
     align-items: center;
     min-width: 0;
     overflow: hidden;
-    color: var(--ai-chat-list-status);
+    color: var(--_ai-chat-list-status);
     font-size: 0.75rem;
     font-weight: 600;
     text-overflow: ellipsis;
@@ -170,12 +169,12 @@
     border: 0;
     border-radius: 0.375rem;
     background: none;
-    color: var(--ai-chat-list-muted);
+    color: var(--_ai-chat-list-muted);
   }
 
   ai-chat-list [data-part="options"]:hover,
   ai-chat-list [data-part="options"][aria-expanded="true"] {
-    background: var(--ai-chat-list-current);
+    background: var(--_ai-chat-list-current);
     color: CanvasText;
   }
 
@@ -205,7 +204,7 @@
   }
 
   ai-chat-list [data-slot="menu-item"][data-highlighted] {
-    background: var(--ai-chat-list-current);
+    background: var(--_ai-chat-list-current);
   }
 
   /* Readable on the highlighted row too: 4.5:1 or more in light and dark. */
@@ -247,7 +246,7 @@
 
   ai-chat-list [data-part="dialog-description"] {
     display: block;
-    color: var(--ai-chat-list-muted);
+    color: var(--_ai-chat-list-muted);
   }
 
   ai-chat-list [data-part="dialog-actions"] {

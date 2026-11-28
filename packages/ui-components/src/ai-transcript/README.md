@@ -55,6 +55,8 @@ transcript.strings = {
 
 The CSS sits in the `ai-transcript` cascade layer. `--ai-transcript-gap` sets the space between messages (`1.25rem`). Parts: `[data-part="jump-bar"]` (a zero-height sticky bar at the bottom), `jump` (the button) and `announcement` (visually hidden).
 
+Set its custom properties on `ai-transcript` itself, or once on an element around it, like `ai-chat` or `:root`, and every `<ai-transcript>` inside takes them.
+
 ## Accessibility
 
 - It's a region named "Conversation", and it can take focus so it scrolls from the keyboard.
