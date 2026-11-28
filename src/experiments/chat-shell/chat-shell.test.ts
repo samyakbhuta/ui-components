@@ -130,7 +130,7 @@ test("while a reply is coming, Send is Stop and Stop ends it", async () => {
   await waitFor(() => expect(composer.busy).toBe(false));
   expect(replies()[0].querySelector("ai-thinking")).toBeNull();
   expect(replies()[0].querySelector(".message-meta")!.textContent).toBe("Stopped");
-  expect(send().getAttribute("aria-label")).toBe("Send");
+  expect(send().getAttribute("aria-label")).toBe("Send message");
 });
 
 test("Retry asks again in place, and Edit puts your prompt back in the box", async () => {
@@ -208,7 +208,7 @@ test("a chat is saved after its first message, gets a link and shows in the list
   expect(heading()).toBe("Explain web components");
   expect(document.title).toBe("Explain web components · AI chat");
   expect(chatTitles()).toEqual(["Explain web components"]);
-  expect(within(list).getByRole("link", { name: "Explain web components" }).getAttribute("aria-current")).toBe("page");
+  expect(within(list).getByRole("link", { name: "Open Explain web components" }).getAttribute("aria-current")).toBe("page");
 });
 
 test("New chat starts empty, and an older chat opens again from the list with its messages", async () => {
@@ -232,7 +232,7 @@ test("New chat starts empty, and an older chat opens again from the list with it
   await idle();
   expect(chatTitles()).toEqual(["Second question", "First question"]);
 
-  await user.click(within(list).getByRole("link", { name: "First question" }));
+  await user.click(within(list).getByRole("link", { name: "Open First question" }));
   await waitFor(() => expect(heading()).toBe("First question"));
   expect(sent()).toEqual(["First question"]);
   const reply = replies()[0];
@@ -335,7 +335,7 @@ test("renaming in the list renames the chat, and deleting the open chat starts a
 
   await user.click(within(list).getByRole("button", { name: "Options for New name" }));
   await user.click(within(list).getByRole("menuitem", { name: "Delete" }));
-  await user.click(within(await waitFor(() => within(list).getByRole("alertdialog"))).getByRole("button", { name: "Delete" }));
+  await user.click(within(await waitFor(() => within(list).getByRole("alertdialog"))).getByRole("button", { name: "Delete forever" }));
   await waitFor(() => expect(heading()).toBe("New chat"));
   expect(chatTitles()).toEqual([]);
   expect(transcript.querySelectorAll("ai-message")).toHaveLength(0);
@@ -348,7 +348,7 @@ test("an agent can set the mode, model and thinking level, write a prompt and se
   const components = agent.snapshot().filter((entry) => !entry.offPage && entry.component !== "more");
   for (const entry of components) expect(entry.label, `${entry.component} ${entry.ref} has no name`).toBeTruthy();
   const labels = components.map((entry) => entry.label);
-  for (const label of ["Mode", "Prompt", "Model", "Thinking", "Attach files", "Send", "New chat"]) expect(labels).toContain(label);
+  for (const label of ["Mode", "Prompt", "Model", "Thinking", "Attach files", "Send message", "New chat"]) expect(labels).toContain(label);
   expect(labels).not.toContain("Voice input");
 
   const result = await agent.act({
@@ -357,7 +357,7 @@ test("an agent can set the mode, model and thinking level, write a prompt and se
       { ref: "Model", action: "setValue", args: ["Haiku 5.5"] },
       { ref: "Thinking", action: "setValue", args: ["High"] },
       { ref: "Prompt", action: "setValue", args: ["/summarize @README.md"] },
-      { ref: "Send", action: "press" },
+      { ref: "Send message", action: "press" },
     ],
   });
   expect(result.ok, result.error?.message).toBe(true);
@@ -472,7 +472,7 @@ test("planning a trip asks questions with choices, each answer sends, and the ch
   expect(replies()[0].querySelector("ai-suggestions")).toBeNull();
   const first = within(replies()[0]).getByRole("radiogroup", { name: "Which city should the trip start in?" });
   await user.click(within(first).getByRole("radio", { name: "Rome" }));
-  await user.click(within(replies()[0]).getByRole("button", { name: "Send" }));
+  await user.click(within(replies()[0]).getByRole("button", { name: "Send answer" }));
   await idle();
   expect(replies()[1].text).toContain("Rome it is.");
 
@@ -525,7 +525,7 @@ test("while a question waits, the box, the list and a background tab say so, and
   await user.click(screen.getByRole("button", { name: suggestions[5] }));
   await idle();
   expect(prompt.placeholder).toBe("Answer the question above, or type your answer");
-  expect(within(list).getByRole("link", { name: "Plan a weekend trip for me", description: "Needs your answer" })).toBeDefined();
+  expect(within(list).getByRole("link", { name: "Open Plan a weekend trip for me", description: "Needs your answer" })).toBeDefined();
 
   const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
   document.dispatchEvent(new Event("visibilitychange"));
@@ -552,7 +552,7 @@ test("while a question waits, the box, the list and a background tab say so, and
   expect(replies()[1].querySelector("ai-question")!.answer).toEqual({ value: ["Street art"], labels: ["Street art"], other: "Street art" });
   expect(replies()[2].text).toContain("street art");
   expect(prompt.placeholder).toBe("Ask anything…");
-  expect(within(list).getByRole("link", { name: "Plan a weekend trip for me" }).hasAttribute("aria-describedby")).toBe(false);
+  expect(within(list).getByRole("link", { name: "Open Plan a weekend trip for me" }).hasAttribute("aria-describedby")).toBe(false);
 });
 
 test("cleaning up asks for approval first; Allow once runs the command and the chat saves the decision", async () => {
@@ -566,7 +566,10 @@ test("cleaning up asks for approval first; Allow once runs the command and the c
   expect(within(document.body).getByRole("group", { name: "Run a command", description: "Waiting for your approval" })).toBe(approval);
   expect(approval.querySelector("[data-part='input']")!.textContent).toBe("rm -rf dist");
   expect(prompt.placeholder).toBe("Allow or deny above, or tell it what to do instead");
-  expect(within(list).getByRole("link", { name: "Clean up my project's build folder", description: "Needs your approval" })).toBeDefined();
+  // What's typed now denies it, so an agent's Send asks the person first.
+  const sendButton = composer.querySelector<HTMLElement>("[data-part='send']")!;
+  expect(sendButton.dataset.agentConfirm).toBe("Denies run_command, and tells it what's typed instead");
+  expect(within(list).getByRole("link", { name: "Open Clean up my project's build folder", description: "Needs your approval" })).toBeDefined();
   // Nothing has run yet.
   expect(replies()[0].querySelector("ai-tool-call")).toBeNull();
 
@@ -579,6 +582,7 @@ test("cleaning up asks for approval first; Allow once runs the command and the c
   expect(call.summary).toBe("Ran rm -rf dist");
   expect(replies()[1].text).toContain("The build folder is gone");
   expect(prompt.placeholder).toBe("Ask anything…");
+  expect(sendButton.hasAttribute("data-agent-confirm")).toBe(false);
 
   const [saved] = new ChatStore().list();
   expect(saved.messages[1].approval?.decision).toEqual({ decision: "allow", reason: null });

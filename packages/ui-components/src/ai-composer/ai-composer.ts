@@ -130,7 +130,7 @@ export type ComposerStrings = {
 export const defaultStrings: ComposerStrings = {
   prompt: "Prompt",
   placeholder: "Ask anything…",
-  send: "Send",
+  send: "Send message",
   sendDisabled: "Type a prompt or attach a file to send",
   stop: "Stop",
   attach: "Attach files",
@@ -1337,13 +1337,15 @@ export class AiComposerElement extends BaseElement {
         remove.setAttribute("aria-label", s.removeQuote(quote.text));
         remove.title = s.removeQuote(quote.text);
         remove.textContent = "×";
-        remove.disabled = this.disabled;
-        remove.addEventListener("click", () => {
+        const removeButton = document.createElement("ui-button");
+        removeButton.toggleAttribute("disabled", this.disabled);
+        removeButton.append(remove);
+        removeButton.addEventListener("action", () => {
           this.#removePart(index);
           this.#emit("quoteschange", { value: this.quotes });
           this.focus();
         });
-        item.append(words, remove);
+        item.append(words, removeButton);
         return item;
       }),
     );
@@ -1380,7 +1382,9 @@ export class AiComposerElement extends BaseElement {
         this.submit();
       }
     });
-    item.append(note);
+    const field = document.createElement("ui-textarea");
+    field.append(note);
+    item.append(field);
     return item;
   }
 
@@ -1421,9 +1425,8 @@ export class AiComposerElement extends BaseElement {
     const voice = this.querySelector<HTMLElement & { disabled: boolean }>(":scope [data-part='voice']");
     if (voice) voice.disabled = disabled || !this.speechRecognizer.supported;
     if (disabled) this.#listening?.stop();
-    for (const control of this.querySelectorAll<HTMLButtonElement | HTMLTextAreaElement>(":scope :is([data-part='quote-remove'], [data-part='note'])")) {
-      control.disabled = disabled;
-    }
+    for (const note of this.querySelectorAll<HTMLTextAreaElement>(":scope [data-part='note']")) note.disabled = disabled;
+    for (const remove of this.querySelectorAll(":scope [data-part='quote-remove']")) remove.closest("ui-button")?.toggleAttribute("disabled", disabled);
 
     const hint = this.querySelector("[data-part='hint']");
     if (hint) {

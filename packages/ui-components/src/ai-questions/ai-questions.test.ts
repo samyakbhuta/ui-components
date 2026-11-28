@@ -64,7 +64,7 @@ test("the arrows move freely; answers are kept, and Send on the last sends them 
   expect(sent).toEqual([]);
 
   await user.click(within(visible()).getByRole("radio", { name: "£20 to £50" }));
-  await user.click(within(visible()).getByRole("button", { name: "Send" }));
+  await user.click(within(visible()).getByRole("button", { name: "Send answers" }));
   expect(sent).toEqual([
     {
       answers: [
@@ -174,7 +174,7 @@ test("words can be replaced", async () => {
 
 test("agents can answer and send", async () => {
   const { set, sent } = await mount((s) => (s.questions = [gift[0]]));
-  const result = await createAgent().act({ steps: [{ ref: "Who is it for?", action: "setValue", args: ["A friend"] }, { ref: "Send", action: "press" }] });
+  const result = await createAgent().act({ steps: [{ ref: "Who is it for?", action: "setValue", args: ["A friend"] }, { ref: "Send answers", action: "press" }] });
   expect(result.ok, result.error?.message).toBe(true);
   expect(sent).toEqual([{ answers: [{ value: "A friend", labels: ["A friend"], other: null }] }]);
   expect(set.hasAttribute("answered")).toBe(true);

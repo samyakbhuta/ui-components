@@ -1,5 +1,6 @@
 import { settle } from "@ui-sdk/core/testing";
-import { expect, test } from "vitest";
+import { createAgent } from "@ui-sdk/web/agent";
+import { expect, onTestFinished, test } from "vitest";
 import "../ai-message/ai-message.ts";
 import "../ai-approval/ai-approval.ts";
 import "../ai-notice/ai-notice.ts";
@@ -330,4 +331,53 @@ test("words in a card, like a plan or a tool call, can be quoted too, saying whi
   await select(textIn(transcript.querySelector("ai-plan [data-part='summary']")!));
   quote.click();
   expect(quoted.at(-1)!.source).toBe("plan/Surprise party");
+});
+
+test("agents see Quote and the jump button while they show, and can press them", async () => {
+  const { transcript } = await mount(`<ai-transcript quotable for="box">
+    <ai-message>Custom elements are your own HTML tags.</ai-message>
+    <ai-message><ai-approval slot="footer" name="run_command"></ai-approval></ai-message>
+  </ai-transcript>`);
+  document.body.insertAdjacentHTML("beforeend", `<ai-composer id="box"></ai-composer>`);
+  await settle();
+  const composer = document.querySelector("ai-composer")!;
+  // The bridge leaves out what isn't visible; jsdom has no layout, so count `hidden` as not visible here.
+  const visible = Element.prototype.checkVisibility;
+  Element.prototype.checkVisibility = function (this: Element) {
+    return !this.closest("[hidden]");
+  };
+  onTestFinished(() => {
+    Element.prototype.checkVisibility = visible;
+  });
+  const agent = createAgent();
+  const labels = () => agent.snapshot().filter((entry) => !entry.offPage).map((entry) => entry.label);
+  expect(labels()).not.toContain("Quote");
+  expect(labels()).not.toContain("Jump to latest");
+
+  const words = transcript.querySelector("ai-message [data-part='body'] p")!.firstChild!;
+  const range = document.createRange();
+  range.setStart(words, 0);
+  range.setEnd(words, 15);
+  document.getSelection()!.removeAllRanges();
+  document.getSelection()!.addRange(range);
+  document.dispatchEvent(new Event("selectionchange"));
+  await frame();
+  expect(labels()).toContain("Quote");
+  const quoted = await agent.act({ steps: [{ ref: "Quote", action: "press" }] });
+  expect(quoted.ok, quoted.error?.message).toBe(true);
+  expect(composer.quotes.map((quote) => quote.text)).toEqual(["Custom elements"]);
+
+  // Pretend the approval is below the view: the jump button names it, and pressing it goes to its first button.
+  const card = transcript.querySelector("ai-approval")!;
+  card.getBoundingClientRect = () => ({ top: 900, bottom: 1000, left: 0, right: 100, width: 100, height: 100, x: 0, y: 900, toJSON() {} });
+  card.getClientRects = () => [card.getBoundingClientRect()] as unknown as DOMRectList;
+  transcript.scrollTo = () => {};
+  const allow = card.querySelector<HTMLButtonElement>("[data-part='allow'] button")!;
+  allow.getClientRects = () => [card.getBoundingClientRect()] as unknown as DOMRectList;
+  transcript.dispatchEvent(new Event("scroll"));
+  await settle();
+  expect(labels()).toContain("Waiting for your approval");
+  const jumped = await agent.act({ steps: [{ ref: "Waiting for your approval", action: "press" }] });
+  expect(jumped.ok, jumped.error?.message).toBe(true);
+  expect(document.activeElement).toBe(allow);
 });

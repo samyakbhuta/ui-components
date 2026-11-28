@@ -20,7 +20,7 @@ async function mount(markup: string, setup?: (question: AiQuestionElement) => vo
     question,
     answers,
     view,
-    send: () => view.getByRole("button", { name: "Send" }),
+    send: () => view.getByRole("button", { name: "Send answer" }),
   };
 }
 
@@ -52,7 +52,7 @@ test("one choice: radios named by the question, and Send once one is chosen", as
   expect(answers).toEqual([{ value: "Rome", labels: ["Rome"], other: null }]);
   expect(question.answer).toEqual(answers[0]);
   expect(question.hasAttribute("answered")).toBe(true);
-  expect(view.queryByRole("button", { name: "Send" })).toBeNull();
+  expect(view.queryByRole("button", { name: "Send answer" })).toBeNull();
   const line = question.querySelector<HTMLElement>("[data-part='answer']")!;
   expect(line.textContent).toBe("Answered: Rome");
   expect(document.activeElement).toBe(line);
@@ -140,12 +140,12 @@ test("a saved answer shows answered, including a typed one, and reset() reopens 
   });
   expect(checked(view.getByRole("radio", { name: "Other" }))).toBe(true);
   expect((view.getByRole("textbox", { name: "Your own answer" }) as HTMLInputElement).value).toBe("Porto");
-  expect(view.queryByRole("button", { name: "Send" })).toBeNull();
+  expect(view.queryByRole("button", { name: "Send answer" })).toBeNull();
 
   question.reset();
   await settle();
   expect(question.hasAttribute("answered")).toBe(false);
-  expect(isDisabled(view.getByRole("button", { name: "Send" }))).toBe(false);
+  expect(isDisabled(view.getByRole("button", { name: "Send answer" }))).toBe(false);
 });
 
 test("words can be replaced, and the question and choices are text, never HTML", async () => {
@@ -168,7 +168,7 @@ test("agents can choose an answer and send it", async () => {
   const result = await createAgent().act({
     steps: [
       { ref: "Where?", action: "setValue", args: ["Rome"] },
-      { ref: "Send", action: "press" },
+      { ref: "Send answer", action: "press" },
     ],
   });
   expect(result.ok, result.error?.message).toBe(true);

@@ -76,11 +76,13 @@ list.strings = {
 | `label` | `Chats`: the navigation's name |
 | `newChat`, `empty`, `untitled` | `New chat`, `No chats yet`, `New chat` (for a chat without a title) |
 | `today`, `yesterday`, `previous7Days`, `previous30Days`, `older` | the group names |
+| `openChat(title)` | `Open Trip ideas`: a chat's accessible name. Its visible text is the title alone |
 | `options(title)` | `Options for Trip ideas`: the menu button's name |
 | `rename`, `export`, `delete` | `Rename`, `Export as Markdown`, `Delete` |
 | `renameLabel` | `Chat name`: the rename field's name |
 | `deleteChat`, `deleteTitle(title)`, `deleteDescription` | the dialog's question and explanation |
-| `cancel`, `confirmDelete` | `Cancel`, `Delete` |
+| `cancel`, `confirmDelete` | `Cancel`, `Delete forever` |
+| `deleteConfirm(title)` | `Deletes “Trip ideas” and its messages from this browser`: what the person is asked when an agent confirms Delete |
 | `deleted(title)` | `Deleted “Trip ideas”`: what screen readers hear |
 
 ## Styling
@@ -95,9 +97,9 @@ Long titles shorten with an ellipsis; the full title is in the tooltip. With a m
 
 - It's a navigation landmark named "Chats". Each day's chats are a list named by its group label.
 - The open chat is marked `aria-current="page"` (or `"true"` for buttons).
-- Each options button is named for its chat ("Options for Trip ideas"), and the menu is a ui-sdk Menu with arrow keys and typeahead.
+- Each chat is named with a verb ("Open Trip ideas") and each options button for its chat ("Options for Trip ideas"), so the two never share a name. The menu is a ui-sdk Menu with arrow keys and typeahead.
 - The delete question is a modal alert dialog that traps focus, so it can't be dismissed by accident.
-- AI agents can press New chat, open a chat, and use each chat's menu, because they're ui-sdk Buttons and Menus. When a chat's title also appears in "Options for …", the agent bridge asks for the chat's ref, so agents pick the right one.
+- AI agents can press New chat, open a chat (`{ ref: "Open Trip ideas", action: "press" }`), and use each chat's menu, because they're ui-sdk Buttons, Menus and Inputs. A name an agent sets in the rename field is saved at once, since it can't press Enter. Delete forever carries `data-agent-confirm`, so the bridge asks the person before an agent deletes a chat, and refuses the step without one.
 
 ## Files
 

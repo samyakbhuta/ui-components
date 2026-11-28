@@ -88,8 +88,12 @@ The event fires before the element shows the decision. To save it with the decis
 | `acceptWith(label)` | `Accept and use ${label}` |
 | `feedbackLabel` | `What should change?`: the Revise box's accessible name |
 | `feedbackPlaceholder` | `Tell it what to change in the plan` |
-| `send`, `cancel` | `Send`, `Cancel`: the Revise box's buttons |
+| `send`, `cancel` | `Send changes`, `Cancel`: the Revise box's buttons |
 | `decided(detail, label)` | `Accepted`, `Accepted, using ${label}`, `Rejected`, or `Asked for changes: “${feedback}”` |
+| `acceptConfirm` | `Accepts the plan, so the agent goes ahead with it`: what the person is asked when an agent presses Accept |
+| `acceptWithConfirm(label)` | `Accepts the plan and switches to ${label}, so the agent goes ahead with it`: the same for each Accept and use button |
+| `rejectConfirm` | `Rejects the plan, so the agent stops`: what the person is asked when an agent presses Reject |
+| `reviseConfirm(feedback)` | `Asks for changes to the plan: “${feedback}”`: what the person is asked when an agent sends changes from the Revise box |
 
 ## Safety
 
@@ -102,7 +106,7 @@ The heading, the summary, the plan and what people type are all set as text, nev
 - The element is a group named by its heading and, while waiting, described by "Waiting for your review".
 - After deciding, focus moves to the decision line, and a status region announces it.
 - The decision isn't told by colour alone: the line says it in words.
-- ui-sdk's agent bridge can press the buttons: `{ ref: "Accept", action: "press" }`.
+- ui-sdk's agent bridge can press the buttons, like `{ ref: "Reject", action: "press" }`, but an agent decides nothing here on its own. Accept, each Accept and use, Reject and the Revise box's Send changes carry `data-agent-confirm`, so the bridge asks the person first (through `createAgent`'s `allow`, with the sentence from `strings`), and refuses the step without one. Revise… only opens the box, so it needs no one. To let agents make a choice alone, answer yes for it in your `allow`, or set its sentence to `""`, which takes the mark off: `plan.strings = { rejectConfirm: "" }`.
 
 ## Styling
 

@@ -1,5 +1,6 @@
 import "@ui-sdk/web/button";
 import "@ui-sdk/web/input";
+import { needsPerson } from "../agent.ts";
 import { showValue } from "../format.ts";
 import { adoptStyles, BaseElement, define } from "../styles.ts";
 import styles from "./ai-approval.css?inline";
@@ -30,6 +31,12 @@ export type ApprovalStrings = {
   reasonPlaceholder: string;
   /** The line shown, and announced, once decided. With a reason, it says the person suggested something else. */
   decided: (decision: ApprovalDecision, reason: string | null) => string;
+  /** What an agent pressing Allow once would do, asked of the person first (`data-agent-confirm`). */
+  allowConfirm: (name: string) => string;
+  /** What an agent pressing Always allow would do, asked of the person first. */
+  alwaysConfirm: (name: string) => string;
+  /** What an agent pressing Deny would do, with what's typed in the reason box, asked of the person first. */
+  denyConfirm: (name: string, reason: string) => string;
 };
 
 export const defaultApprovalStrings: ApprovalStrings = {
@@ -43,6 +50,9 @@ export const defaultApprovalStrings: ApprovalStrings = {
   reasonPlaceholder: "Optional: tell it what to do instead",
   decided: (decision, reason) =>
     decision === "allow" ? "Allowed once" : decision === "always" ? "Always allowed" : reason ? `Denied. Instead, you suggested: “${reason}”` : "Denied",
+  allowConfirm: (name) => (name ? `Allows ${name} to run, this once` : "Allows this action, this once"),
+  alwaysConfirm: (name) => (name ? `Always allows ${name}, without asking again` : "Always allows this action, without asking again"),
+  denyConfirm: (name, reason) => (reason ? `Denies ${name || "this action"}, and tells it instead: “${reason}”` : `Denies ${name || "this action"}, so it won't run`),
 };
 
 /** The events this element fires, by name. */
@@ -226,6 +236,7 @@ export class AiApprovalElement extends BaseElement {
     box.autocomplete = "off";
     box.addEventListener("input", () => {
       this.#reasonText = box.value;
+      this.#sync();
     });
     box.addEventListener("keydown", (event) => {
       // Enter with something typed denies with it, as "do this instead".
@@ -314,6 +325,9 @@ export class AiApprovalElement extends BaseElement {
       wrapper.querySelector("button")!.textContent = s[choice];
       wrapper.toggleAttribute("disabled", disabled);
       if (choice === "always") wrapper.hidden = !this.always;
+      // An agent decides nothing here on its own: the bridge asks the person first. An empty sentence lets it.
+      const typed = this.reason ? this.#reasonText.trim() : "";
+      needsPerson(wrapper, choice === "deny" ? s.denyConfirm(this.name, typed) : (choice === "allow" ? s.allowConfirm : s.alwaysConfirm)(this.name));
     }
 
     const line = part("decision");

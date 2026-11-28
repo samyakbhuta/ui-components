@@ -120,7 +120,7 @@ function askUser(call: { question: string; options: string[]; multiple?: boolean
 | `other` | `Other` |
 | `otherPlaceholder` | `Type your own answer` |
 | `otherLabel` | `Your own answer`: the text box's accessible name |
-| `send` | `Send` |
+| `send` | `Send answer` |
 | `skip` | `Skip` |
 | `multipleHint(max)` | `Choose all that apply.`, or `Choose up to ${max}.` |
 | `answered(labels)` | `Answered: ${labels.join(", ")}` |
@@ -137,7 +137,7 @@ The question, the choices and what people type are set as text, never parsed as 
 - Choices over the `max` are disabled, so they leave the tab order until a choice is unchecked.
 - The Other box has its own accessible name, "Your own answer".
 - After sending, focus moves to the answer line, and a status region announces it.
-- ui-sdk's agent bridge can choose and send: `{ ref: "Which city should the trip start in?", action: "setValue", args: ["Rome"] }`, then `{ ref: "Send", action: "press" }`.
+- ui-sdk's agent bridge can choose and send: `{ ref: "Which city should the trip start in?", action: "setValue", args: ["Rome"] }`, then `{ ref: "Send answer", action: "press" }`.
 
 ## Styling
 

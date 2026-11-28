@@ -256,7 +256,7 @@ composer.strings = {
 | --- | --- |
 | `prompt` | `Prompt`. The `label` attribute wins over it. |
 | `placeholder` | `Ask anything…`. The `placeholder` attribute wins over it. |
-| `send`, `stop` | `Send`, `Stop` |
+| `send`, `stop` | `Send message`, `Stop` |
 | `sendDisabled` | `Type a prompt or attach a file to send`: Send's tooltip while there's nothing to send |
 | `attach`, `attachments` | `Attach files`, `Attachments` |
 | `mode`, `model`, `thinking` | `Mode`, `Model`, `Thinking` |
@@ -305,7 +305,7 @@ Input methods for Chinese, Japanese and Korean are left alone: Enter that confir
 
 ## AI agents
 
-ui-sdk's agent bridge (`createAgent` from `@ui-sdk/web/agent`) sees the prompt, Send, Attach files, Mode, Model and Thinking by name. Agents can set values (`setValue`) and press buttons (`press`). Voice input and the suggestion list are hidden from agents (`data-agent-hidden`): agents type `/command` and `@reference` straight into the prompt.
+ui-sdk's agent bridge (`createAgent` from `@ui-sdk/web/agent`) sees the prompt, Send message, Attach files, Mode, Model and Thinking by name, and each quote's Remove button and the text boxes between quotes. Agents can set values (`setValue`) and press buttons (`press`). Voice input and the suggestion list are hidden from agents (`data-agent-hidden`): agents type `/command` and `@reference` straight into the prompt.
 
 With two composers on a page, controls with the same name report the composer's `label` as their `section`, like `"Reply"`. Use their `ref` from the snapshot to act on the right one.
 

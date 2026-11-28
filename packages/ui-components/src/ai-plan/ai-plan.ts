@@ -1,5 +1,6 @@
 import "@ui-sdk/web/button";
 import "@ui-sdk/web/input";
+import { needsPerson } from "../agent.ts";
 import { renderMarkdown } from "../ai-message/markdown.ts";
 import { adoptStyles, BaseElement, define } from "../styles.ts";
 import styles from "./ai-plan.css?inline";
@@ -44,6 +45,14 @@ export type PlanStrings = {
   cancel: string;
   /** The line shown, and announced, once decided. `label` is the chosen mode's label, if any. */
   decided: (detail: PlanDecisionDetail, label: string | null) => string;
+  /** What an agent pressing Accept would do, asked of the person first (`data-agent-confirm`). */
+  acceptConfirm: string;
+  /** What an agent pressing one of `accepts` would do, asked of the person first. */
+  acceptWithConfirm: (label: string) => string;
+  /** What an agent pressing Reject would do, asked of the person first. */
+  rejectConfirm: string;
+  /** What an agent sending changes from the Revise box would do, with what's typed, asked of the person first. */
+  reviseConfirm: (feedback: string) => string;
 };
 
 export const defaultPlanStrings: PlanStrings = {
@@ -57,7 +66,7 @@ export const defaultPlanStrings: PlanStrings = {
   revise: "Revise…",
   feedbackLabel: "What should change?",
   feedbackPlaceholder: "Tell it what to change in the plan",
-  send: "Send",
+  send: "Send changes",
   cancel: "Cancel",
   decided: ({ decision, mode, feedback }, label) =>
     decision === "accept"
@@ -69,6 +78,10 @@ export const defaultPlanStrings: PlanStrings = {
         : feedback
           ? `Asked for changes: “${feedback}”`
           : "Asked for changes",
+  acceptConfirm: "Accepts the plan, so the agent goes ahead with it",
+  acceptWithConfirm: (label) => `Accepts the plan and switches to ${label}, so the agent goes ahead with it`,
+  rejectConfirm: "Rejects the plan, so the agent stops",
+  reviseConfirm: (feedback) => (feedback ? `Asks for changes to the plan: “${feedback}”` : "Asks for changes to the plan"),
 };
 
 /** The events this element fires, by name. */
@@ -347,6 +360,7 @@ export class AiPlanElement extends BaseElement {
     for (const option of this.#accepts) {
       const wrapper = this.#button("accept-with", () => this.decide("accept", { mode: option.value }));
       wrapper.dataset.mode = option.value;
+      needsPerson(wrapper, this.#strings.acceptWithConfirm(option.label));
       wrapper.querySelector("button")!.textContent = this.#strings.acceptWith(option.label);
       primary.append(wrapper);
     }
@@ -409,6 +423,11 @@ export class AiPlanElement extends BaseElement {
     this.#part("actions").hidden = decided || revising;
     const labels: Record<string, string> = { reject: s.reject, "revise-button": s.revise, accept: s.accept };
     for (const [part, label] of Object.entries(labels)) this.#part(part).querySelector("button")!.textContent = label;
+    // An agent decides nothing here on its own: the bridge asks the person first. An empty sentence lets it.
+    // Revise… only opens the box, so it stays free; Send changes is what decides.
+    needsPerson(this.#part("accept"), s.acceptConfirm);
+    needsPerson(this.#part("reject"), s.rejectConfirm);
+    needsPerson(this.#part("send"), s.reviseConfirm(this.#feedbackText.trim()));
     for (const wrapper of this.querySelectorAll<HTMLElement>("[data-part='actions'] ui-button")) wrapper.toggleAttribute("disabled", disabled);
     // The first "Accept and use …" is the main action when there is one, otherwise Accept.
     this.toggleAttribute("data-accept-with", this.#accepts.length > 0);

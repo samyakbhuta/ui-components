@@ -1,6 +1,7 @@
 import { waitFor, within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { settle } from "@ui-sdk/core/testing";
+import { createAgent } from "@ui-sdk/web/agent";
 import { afterEach, expect, test, vi } from "vitest";
 import "./ai-chat.ts";
 import type { AiChatElement, ChatAnswer, ChatChunk, ChatMessage, ChatRequest } from "./ai-chat.ts";
@@ -165,7 +166,7 @@ test("a question waits for the answer, which comes back into the model; the repl
 
   const user = userEvent.setup();
   await user.click(view.getByRole("radio", { name: "Rome" }));
-  await user.click(within(chat.querySelector("ai-question")!).getByRole("button", { name: "Send" }));
+  await user.click(within(chat.querySelector("ai-question")!).getByRole("button", { name: "Send answer" }));
   await idle();
   expect(answers).toEqual([{ value: "Rome", labels: ["Rome"], other: null }]);
   expect(replies().map((reply) => reply.text)).toEqual(["First, a question.", "Great, Rome."]);
@@ -245,7 +246,7 @@ test("a saved conversation shows again, and an unanswered question asks the mode
 
   const user = userEvent.setup();
   await user.click(view.getByRole("radio", { name: "Rome" }));
-  await user.click(within(chat.querySelector("ai-question")!).getByRole("button", { name: "Send" }));
+  await user.click(within(chat.querySelector("ai-question")!).getByRole("button", { name: "Send answer" }));
   await idle();
   expect(seen[0].at(-1)!.question!.answer).toEqual({ value: "Rome", labels: ["Rome"], other: null });
   expect(replies().at(-1)!.text).toBe("Rome it is.");
@@ -661,4 +662,106 @@ test("a quote sent while a card waits goes into the typed answer, as > lines, so
   await idle();
   expect(answers[0]).toEqual({ decision: "deny", reason: "> run_command:\n> rm -rf dist\n\nOnly the old builds" });
   expect(chat.composer.quotes).toEqual([]);
+});
+
+test("an agent can use the whole chat: every control is named, it can ask and answer, and an approval needs the person", async () => {
+  const answers: unknown[] = [];
+  const { chat, idle, waiting } = await mount("<ai-chat></ai-chat>", (c) => {
+    c.model = async function* () {
+      answers.push(yield { type: "question", question: "Which city?", options: ["Paris", "Rome"] } as ChatChunk);
+      answers.push(yield { type: "approval", name: "book_hotel", label: "Book a hotel" } as ChatChunk);
+      yield "Done.";
+    };
+  });
+  let approve = false;
+  const agent = createAgent({ allow: (step) => !step.confirm || approve });
+  const components = () => agent.snapshot().filter((entry) => !entry.offPage && entry.component !== "more");
+  for (const entry of components()) expect(entry.label, `${entry.component} ${entry.ref} has no name`).toBeTruthy();
+  expect(components().map((entry) => entry.label)).toEqual(expect.arrayContaining(["Prompt", "Send message"]));
+
+  const asked = await agent.act({
+    steps: [
+      { ref: "Prompt", action: "setValue", args: ["Plan a trip"] },
+      { ref: "Send message", action: "press" },
+    ],
+  });
+  expect(asked.ok, asked.error?.message).toBe(true);
+  await waiting();
+  for (const entry of components()) expect(entry.label, `${entry.component} ${entry.ref} has no name`).toBeTruthy();
+
+  const answered = await agent.act({
+    steps: [
+      { ref: "Which city?", action: "setValue", args: ["Rome"] },
+      { ref: "Send answer", action: "press" },
+    ],
+  });
+  expect(answered.ok, answered.error?.message).toBe(true);
+  await waitFor(() => expect(chat.querySelector("ai-approval")).toBeTruthy());
+  await waiting();
+
+  expect((await agent.act({ steps: [{ ref: "Allow once", action: "press" }] })).ok).toBe(false);
+  expect(chat.waiting).toBe(true);
+  approve = true;
+  const allowed = await agent.act({ steps: [{ ref: "Allow once", action: "press" }] });
+  expect(allowed.ok, allowed.error?.message).toBe(true);
+  await idle();
+  expect(answers).toEqual([
+    { value: "Rome", labels: ["Rome"], other: null },
+    { decision: "allow", reason: null },
+  ]);
+});
+
+test("while an approval or a plan waits, an agent's typed answer decides it, so Send asks the person first", async () => {
+  const answers: unknown[] = [];
+  const { chat, idle, waiting } = await mount("<ai-chat></ai-chat>", (c) => {
+    c.model = async function* () {
+      answers.push(yield { type: "approval", name: "run_command", input: "rm -rf dist", reason: true } as ChatChunk);
+      answers.push(yield { type: "plan", plan: "1. Tidy up." } as ChatChunk);
+      yield "Done.";
+    };
+  });
+  const sendButton = chat.querySelector<HTMLElement>("ai-composer [data-part='send']")!;
+  expect(sendButton.hasAttribute("data-agent-confirm")).toBe(false);
+  await send(chat, "Clean up");
+  await waiting();
+  expect(sendButton.dataset.agentConfirm).toBe("Denies run_command, and tells it what's typed instead");
+
+  const asked: string[] = [];
+  let approve = false;
+  const agent = createAgent({
+    allow: (step) => {
+      if (step.confirm) asked.push(step.confirm);
+      return !step.confirm || approve;
+    },
+  });
+  const type = (text: string) =>
+    agent.act({
+      steps: [
+        { ref: "Prompt", action: "setValue", args: [text] },
+        { ref: "Send message", action: "press" },
+      ],
+    });
+  expect((await type("Back it up first")).ok).toBe(false);
+  expect(chat.waiting).toBe(true);
+  approve = true;
+  const denied = await type("Back it up first");
+  expect(denied.ok, denied.error?.message).toBe(true);
+  await waitFor(() => expect(answers).toEqual([{ decision: "deny", reason: "Back it up first" }]));
+
+  await waiting();
+  expect(sendButton.dataset.agentConfirm).toBe("Asks for changes to the plan, as typed");
+  approve = false;
+  expect((await type("Keep the cache")).ok).toBe(false);
+  approve = true;
+  expect((await type("Keep the cache")).ok).toBe(true);
+  await idle();
+  expect(answers.at(-1)).toEqual({ decision: "revise", mode: null, feedback: "Keep the cache" });
+  expect(asked).toEqual([
+    "Denies run_command, and tells it what's typed instead",
+    "Denies run_command, and tells it what's typed instead",
+    "Asks for changes to the plan, as typed",
+    "Asks for changes to the plan, as typed",
+  ]);
+  // Nothing waits, so sending is free again.
+  expect(sendButton.hasAttribute("data-agent-confirm")).toBe(false);
 });

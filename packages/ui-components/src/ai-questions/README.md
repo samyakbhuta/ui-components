@@ -90,7 +90,7 @@ Until it's sent:
 | `position(index, count)` | `1 of 3` |
 | `previous`, `next` | `Previous question`, `Next question`: the arrows' names |
 | `nextQuestion` | `Continue`: each question's own button before the last |
-| `send` | `Send`: the last question's button |
+| `send` | `Send answers`: the last question's button |
 | `unanswered(index)` | `Question 1 still needs an answer.` |
 | `summary` | `Your answers`: the summary's heading |
 | `skipped` | `Skipped` |

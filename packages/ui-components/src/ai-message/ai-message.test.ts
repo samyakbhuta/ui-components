@@ -564,3 +564,20 @@ test("a quote with `at` sits between the message's words, where it was written",
   expect(opened).toHaveBeenCalledWith(1);
   message.remove();
 });
+
+test("an agent can open an image and step to the next one", async () => {
+  const { message } = await mount(`<ai-message from="user">Which is better?</ai-message>`, (m) => {
+    m.attachments = [
+      { name: "front.png", type: "image/png", url: "https://example.com/front.png" },
+      { name: "back.png", type: "image/png", url: "https://example.com/back.png" },
+    ];
+  });
+  const agent = createAgent();
+  const opened = await agent.act({ steps: [{ ref: "View front.png", action: "press" }] });
+  expect(opened.ok, opened.error?.message).toBe(true);
+  const viewer = await vi.waitFor(() => within(message).getByRole("dialog", { name: "front.png" }));
+  const stepped = await agent.act({ steps: [{ ref: "Next image", action: "press" }] });
+  expect(stepped.ok, stepped.error?.message).toBe(true);
+  expect((within(viewer).getByRole("img") as HTMLImageElement).src).toBe("https://example.com/back.png");
+  message.remove();
+});

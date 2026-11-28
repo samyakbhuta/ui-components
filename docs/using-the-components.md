@@ -377,7 +377,7 @@ const agent = createAgent();
 await agent.act({
   steps: [
     { ref: "Prompt", action: "setValue", args: ["Summarize this page"] },
-    { ref: "Send", action: "press" },
+    { ref: "Send message", action: "press" },
   ],
 });
 ```

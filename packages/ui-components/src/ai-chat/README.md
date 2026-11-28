@@ -234,6 +234,8 @@ An `<ai-composer>` or `<ai-transcript>` written inside is used instead of a new 
 | `answerPlaceholder` | `Answer the question above, or type your answer` |
 | `approvalPlaceholder` | `Allow or deny above, or tell it what to do instead` |
 | `planPlaceholder` | `Accept or reject the plan above, or say what to change` |
+| `approvalSendConfirm(name)` | `Denies ${name}, and tells it what's typed instead`: while an approval waits, what's typed denies it, so an agent pressing Send message asks the person first. `""` lets it |
+| `planSendConfirm` | `Asks for changes to the plan, as typed`: the same while a plan waits |
 | `locked(resetsAt)` | `Sending is paused until 3:00 PM.`, or `Sending is paused. See the notice above.` without a reset time: under the box while a notice locks it |
 
 The parts the chat makes have words of their own. Give them in `strings` too, under the part's name, and the chat passes them on to every one it shows, including those already on the page:
@@ -278,6 +280,7 @@ Replies render with `<ai-message>`'s Markdown renderer, which never parses text 
   - It stays in the message box while you chat.
   - A question, an approval or a plan doesn't take it. People move to the card, or type their answer.
 - Everything inside is a ui-sdk part, so keyboard use, ARIA and ui-sdk's agent bridge work as they do for each component.
+- An agent decides nothing on an approval or a plan by itself: each choice asks the person first, and so does Send message while one waits, since what's typed then decides it.
 
 ## Styling
 

@@ -1,3 +1,4 @@
+import "@ui-sdk/web/button";
 import { adoptStyles, BaseElement, define } from "../styles.ts";
 import styles from "./ai-transcript.css?inline";
 
@@ -200,7 +201,9 @@ export class AiTranscriptElement extends BaseElement {
       jump.type = "button";
       jump.dataset.part = "jump";
       jump.hidden = true;
-      jump.addEventListener("click", () => {
+      const jumpButton = document.createElement("ui-button");
+      jumpButton.append(jump);
+      jumpButton.addEventListener("action", () => {
         // The card the button named, even if focusing the button scrolled a little since.
         const card = this.#pointsTo;
         if (card?.isConnected && card.matches(waitingCards)) return this.#goTo(card);
@@ -234,8 +237,11 @@ export class AiTranscriptElement extends BaseElement {
         );
       }
       quote.addEventListener("mousedown", (event) => event.preventDefault());
-      quote.addEventListener("click", () => this.#quoteSelection());
-      this.#jumpBar.append(jump, quote);
+      // ui-sdk Buttons, so agents see them too.
+      const quoteButton = document.createElement("ui-button");
+      quoteButton.append(quote);
+      quoteButton.addEventListener("action", () => this.#quoteSelection());
+      this.#jumpBar.append(jumpButton, quoteButton);
       this.#updateJump();
       this.#announcement.dataset.part = "announcement";
       this.#announcement.setAttribute("role", "status");

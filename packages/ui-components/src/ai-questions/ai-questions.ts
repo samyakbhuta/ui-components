@@ -50,7 +50,7 @@ export const defaultQuestionsStrings: QuestionsStrings = {
   previous: "Previous question",
   next: "Next question",
   nextQuestion: "Continue",
-  send: "Send",
+  send: "Send answers",
   unanswered: (index) => `Question ${index} still needs an answer.`,
   summary: "Your answers",
   skipped: "Skipped",
