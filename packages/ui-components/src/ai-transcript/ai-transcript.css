@@ -132,6 +132,12 @@
     cursor: pointer;
   }
 
+  /* On a touch screen: at the bottom of the conversation, like Jump to latest, clear of the phone's own menu. */
+  ai-transcript [data-part="quote-button"][data-docked] {
+    height: 2.25rem;
+    padding: 0 1.125rem;
+  }
+
   ai-transcript [data-part="quote-button"]:hover {
     background: color-mix(in srgb, CanvasText 85%, Canvas);
   }

@@ -173,3 +173,34 @@ test("on the docs page, the box can take quotes as > lines instead", async ({ pa
   await expect(section.getByRole("textbox", { name: "Prompt" })).toHaveValue("> Custom elements\n\n");
   await expect(section.locator(".event-log")).toHaveText('messagequote {"text":"Custom elements","message":"<ai-message>","from":"assistant"}');
 });
+
+test.describe("on a touch screen", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 760 } });
+
+  test("Quote docks at the bottom of the conversation, clear of the phone's own menu, and a tap quotes", async ({ page }) => {
+    await page.goto("/experiments/chat-shell.html");
+    await skipThinking(page);
+    await ask(page, "Write a haiku about web components");
+    const firstLine = page.locator("ai-message:not([from='user'])").first().locator("[data-part='body'] p").first();
+    // A touch on the words, then the selection the phone makes.
+    const box = (await firstLine.boundingBox())!;
+    await page.touchscreen.tap(box.x + 10, box.y + 8);
+    await selectWords(firstLine, 0, 17);
+
+    const pill = quoteButton(page);
+    await expect(pill).toHaveText("Quote selection");
+    await expect(pill).toHaveAttribute("data-docked", "");
+    // At the bottom of the conversation, well away from the words and the menu above them.
+    const transcript = (await page.locator("ai-transcript").boundingBox())!;
+    const placed = (await pill.boundingBox())!;
+    expect(placed.y + placed.height).toBeLessThanOrEqual(transcript.y + transcript.height);
+    expect(placed.y + placed.height).toBeGreaterThan(transcript.y + transcript.height - 40);
+    expect(placed.y).toBeGreaterThan(box.y + box.height + 40);
+    await expect(page.locator("ai-transcript [data-part='jump']")).toBeHidden();
+
+    await page.touchscreen.tap(placed.x + placed.width / 2, placed.y + placed.height / 2);
+    await expect(page.locator("ai-composer [data-part='quote-text']")).toHaveText(["Custom tags bloom"]);
+    await expect(pill).toBeHidden();
+    expect(await sidewaysOverflow(page)).toBe(0);
+  });
+});

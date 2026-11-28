@@ -44,7 +44,7 @@ The element is the scroll container, so give it a height, or put it in a grid or
 | `aria-label` | Names the conversation. It defaults to `strings.label`. |
 | `following` (read-only) | `true` while it follows new content. |
 | `waiting` (read-only) | The newest card still waiting on the person (a question, an approval, a plan, or a notice that isn't `info`), or `null`. |
-| `strings` | Words to replace: `label` (`Conversation`), `jump` (`Jump to latest`), `quote` (`Quote`), `jumpWaiting(kind)`, the button while a card below waits, with `kind` being `answer`, `approval`, `review` or `notice` (`Waiting for your answer`, `Waiting for your approval`, `Waiting for your review`, `Sending is paused`), `reply(text)`, what's read out for a finished reply, `waiting(question)`, read after it for each [`<ai-question>`](../ai-question/README.md) in the reply still waiting for an answer (`${question} Waiting for your answer.`), `approval(label)`, the same for each [`<ai-approval>`](../ai-approval/README.md) still waiting for a decision (`${label} Waiting for your approval.`), `plan(heading)`, the same for each [`<ai-plan>`](../ai-plan/README.md) (`${heading} Waiting for your review.`), `questions(first, count)`, for each [`<ai-questions>`](../ai-questions/README.md) set (`${count} questions, starting with: ${first} Waiting for your answers.`), and `notice(heading, text, resets)`, for each [`<ai-notice>`](../ai-notice/README.md) that still applies (each part, as a sentence). |
+| `strings` | Words to replace: `label` (`Conversation`), `jump` (`Jump to latest`), `quote` (`Quote`), `quoteSelection` (`Quote selection`, on a touch screen), `jumpWaiting(kind)`, the button while a card below waits, with `kind` being `answer`, `approval`, `review` or `notice` (`Waiting for your answer`, `Waiting for your approval`, `Waiting for your review`, `Sending is paused`), `reply(text)`, what's read out for a finished reply, `waiting(question)`, read after it for each [`<ai-question>`](../ai-question/README.md) in the reply still waiting for an answer (`${question} Waiting for your answer.`), `approval(label)`, the same for each [`<ai-approval>`](../ai-approval/README.md) still waiting for a decision (`${label} Waiting for your approval.`), `plan(heading)`, the same for each [`<ai-plan>`](../ai-plan/README.md) (`${heading} Waiting for your review.`), `questions(first, count)`, for each [`<ai-questions>`](../ai-questions/README.md) set (`${count} questions, starting with: ${first} Waiting for your answers.`), and `notice(heading, text, resets)`, for each [`<ai-notice>`](../ai-notice/README.md) that still applies (each part, as a sentence). |
 | `scrollToLatest({ smooth })` | Scrolls to the newest message and follows again. |
 
 | Event | `detail` | When |
@@ -61,7 +61,7 @@ transcript.strings = {
 
 ## Quoting
 
-With `quotable`, selecting words in one message, by mouse, touch or keyboard, shows a **Quote** button just above them (below, when there's no room above). Pressing it fires `messagequote`, adds the words to the composer named by `for`, and clears the selection. Escape hides it. Only words inside one message's text count, not across messages or in its buttons.
+With `quotable`, selecting words in one message, by mouse, touch or keyboard, shows a **Quote** button just above them (below, when there's no room above). On a touch screen, where the phone draws its own Copy and Translate menu over the selection, it shows as a **Quote selection** pill at the bottom of the conversation instead, in Jump to latest's place, and the selection is kept even if the tap clears it. Pressing it fires `messagequote`, adds the words to the composer named by `for`, and clears the selection. Escape hides it. Only words inside one message's text count, not across messages or in its buttons.
 
 ```html
 <ai-transcript quotable for="box">…</ai-transcript>
@@ -72,7 +72,7 @@ With `quotable`, selecting words in one message, by mouse, touch or keyboard, sh
 
 ## Styling
 
-The CSS sits in the `ai-transcript` cascade layer. `--ai-transcript-gap` sets the space between messages (`1.25rem`), and `--ai-transcript-waiting` the button's colour while something waits (blue, at least 4.5:1 in light and dark). Parts: `[data-part="jump-bar"]` (a zero-height sticky bar at the bottom), `jump` (the button, with `data-waiting` while it points to a waiting card), `jump-dot`, `jump-label`, `quote-button` (the floating Quote button) and `announcement` (visually hidden).
+The CSS sits in the `ai-transcript` cascade layer. `--ai-transcript-gap` sets the space between messages (`1.25rem`), and `--ai-transcript-waiting` the button's colour while something waits (blue, at least 4.5:1 in light and dark). Parts: `[data-part="jump-bar"]` (a zero-height sticky bar at the bottom), `jump` (the button, with `data-waiting` while it points to a waiting card), `jump-dot`, `jump-label`, `quote-button` (the floating Quote button, with `data-docked` on a touch screen) and `announcement` (visually hidden).
 
 Set its custom properties on `ai-transcript` itself, or once on an element around it, like `ai-chat` or `:root`, and every `<ai-transcript>` inside takes them.
 

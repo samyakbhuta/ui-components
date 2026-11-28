@@ -8,6 +8,8 @@ export type TranscriptStrings = {
   jump: string;
   /** The button over selected words in a message, with `quotable`. */
   quote: string;
+  /** The same button on a touch screen, at the bottom of the conversation, clear of the phone's own menu. */
+  quoteSelection: string;
   /** What screen readers hear when a reply finishes. Return "" to say nothing. */
   reply: (text: string) => string;
   /** Read after the reply for each `<ai-question>` in it still waiting for an answer. */
@@ -65,6 +67,7 @@ export const defaultTranscriptStrings: TranscriptStrings = {
   label: "Conversation",
   jump: "Jump to latest",
   quote: "Quote",
+  quoteSelection: "Quote selection",
   reply: (text) => text,
   waiting: (question) => `${question} Waiting for your answer.`,
   approval: (label) => `${label} Waiting for your approval.`,
@@ -99,6 +102,11 @@ export class AiTranscriptElement extends BaseElement {
   #jump = document.createElement("button");
   #quote = document.createElement("button");
   #quoteFrame = 0;
+  /** How the last selection was made: by touch, the Quote button docks at the bottom. */
+  #touch = false;
+  /** The selection the Quote button was shown for, kept while it's pressed: a tap can clear the selection first. */
+  #lastSelected: { text: string; message: Message } | null = null;
+  #pressing = false;
   /** The waiting card the jump button names, if it does. */
   #pointsTo: HTMLElement | null = null;
   #jumpBar = document.createElement("div");
@@ -112,7 +120,7 @@ export class AiTranscriptElement extends BaseElement {
     this.#strings = { ...defaultTranscriptStrings, ...value };
     this.#label();
     this.#updateJump();
-    this.#quote.textContent = this.#strings.quote;
+    this.#quote.textContent = this.#quote.hasAttribute("data-docked") ? this.#strings.quoteSelection : this.#strings.quote;
   }
 
   /** Whether selecting words in a message offers a Quote button. The same as the `quotable` attribute. */
@@ -176,7 +184,20 @@ export class AiTranscriptElement extends BaseElement {
       quote.dataset.part = "quote-button";
       quote.hidden = true;
       // Pressing it mustn't clear the selection it quotes.
-      quote.addEventListener("pointerdown", (event) => event.preventDefault());
+      quote.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        this.#pressing = true;
+      });
+      // A press that ends without a click, like a drag away, lets go after a moment.
+      for (const type of ["pointercancel", "pointerup"]) {
+        quote.addEventListener(type, () =>
+          setTimeout(() => {
+            if (!this.#pressing) return;
+            this.#pressing = false;
+            this.#onSelection();
+          }, 400),
+        );
+      }
       quote.addEventListener("mousedown", (event) => event.preventDefault());
       quote.addEventListener("click", () => this.#quoteSelection());
       this.#jumpBar.append(jump, quote);
@@ -203,6 +224,7 @@ export class AiTranscriptElement extends BaseElement {
     this.#quote.textContent = this.#strings.quote;
     document.addEventListener("selectionchange", this.#onSelection);
     document.addEventListener("keydown", this.#onKey);
+    document.addEventListener("pointerdown", this.#onPointer, true);
     requestAnimationFrame(() => this.scrollToLatest());
   }
 
@@ -211,6 +233,7 @@ export class AiTranscriptElement extends BaseElement {
     this.#mutations.disconnect();
     document.removeEventListener("selectionchange", this.#onSelection);
     document.removeEventListener("keydown", this.#onKey);
+    document.removeEventListener("pointerdown", this.#onPointer, true);
     cancelAnimationFrame(this.#quoteFrame);
   }
 
@@ -230,15 +253,31 @@ export class AiTranscriptElement extends BaseElement {
 
   /** Escape hides Quote, wherever focus is: after selecting with a mouse, it's usually on the page. */
   #onKey = (event: KeyboardEvent) => {
-    if (event.key === "Escape" && !this.#quote.hidden) this.#quote.hidden = true;
+    if (event.key === "Escape" && !this.#quote.hidden) {
+      this.#quote.hidden = true;
+      this.#updateJump();
+    }
+  };
+
+  #onPointer = (event: PointerEvent) => {
+    if (event.target !== this.#quote) this.#touch = event.pointerType === "touch" || event.pointerType === "pen";
   };
 
   #onSelection = () => {
     cancelAnimationFrame(this.#quoteFrame);
     this.#quoteFrame = requestAnimationFrame(() => {
       const selected = this.#selected();
+      // Pressing the button can clear the selection before the click: keep it up until then.
+      if (!selected && this.#pressing) return;
+      this.#lastSelected = selected ? { text: selected.text, message: selected.message } : null;
+      // On a touch screen the phone draws its own menu over the selection, so the button docks
+      // at the bottom of the conversation instead, where Jump to latest goes.
+      const docked = Boolean(selected) && (this.#touch || window.matchMedia?.("(hover: none)").matches === true);
+      this.#quote.toggleAttribute("data-docked", docked);
+      this.#quote.textContent = docked ? this.#strings.quoteSelection : this.#strings.quote;
       this.#quote.hidden = !selected;
       if (selected) this.#placeQuote();
+      this.#updateJump();
     });
   };
 
@@ -246,6 +285,15 @@ export class AiTranscriptElement extends BaseElement {
   #placeQuote() {
     const selected = this.#selected();
     if (!selected) return void (this.#quote.hidden = true);
+    if (this.#quote.hasAttribute("data-docked")) {
+      // Centred at the bottom edge of the conversation, however long it is.
+      const view = this.getBoundingClientRect();
+      const button = this.#quote.getBoundingClientRect();
+      this.#quote.style.visibility = "";
+      this.#quote.style.top = `${Math.round(view.bottom - button.height - 12)}px`;
+      this.#quote.style.left = `${Math.round(view.left + (view.width - button.width) / 2)}px`;
+      return;
+    }
     const range = selected.range;
     // Some environments, like jsdom, can't measure a range; leave it where it is there.
     if (typeof range.getClientRects !== "function") return;
@@ -266,8 +314,13 @@ export class AiTranscriptElement extends BaseElement {
 
   /** Fires `messagequote` with the selected words; unless cancelled, quotes them into the composer named by `for`. */
   #quoteSelection() {
-    const selected = this.#selected();
+    this.#pressing = false;
+    const current = this.#selected();
+    const kept = this.#lastSelected?.message.isConnected ? this.#lastSelected : null;
+    const selected = current ?? kept;
+    this.#lastSelected = null;
     this.#quote.hidden = true;
+    this.#updateJump();
     if (!selected) return;
     const detail: MessageQuoteDetail = {
       text: selected.text,
@@ -332,7 +385,9 @@ export class AiTranscriptElement extends BaseElement {
     if (card || !this.#jump.matches(":focus") || !this.#pointsTo?.matches(waitingCards)) this.#pointsTo = card;
     if (!card && this.#pointsTo) return;
     const jump = this.#jump;
-    const hidden = !card && (this.#stuck || this.#distance() <= nearBottom);
+    // A docked Quote button takes Jump to latest's place while it shows.
+    const quoting = !this.#quote.hidden && this.#quote.hasAttribute("data-docked");
+    const hidden = quoting || (!card && (this.#stuck || this.#distance() <= nearBottom));
     // Only touch what changed: the observer watches `hidden`.
     if (jump.hidden !== hidden) jump.hidden = hidden;
     if (jump.hasAttribute("data-waiting") !== Boolean(card)) jump.toggleAttribute("data-waiting", Boolean(card));
