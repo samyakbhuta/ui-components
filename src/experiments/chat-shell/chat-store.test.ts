@@ -147,11 +147,11 @@ test("the export includes tool calls, ratings, errors and the other versions of 
 });
 
 test("a plan exports as its heading, the plan quoted, and the decision", () => {
-  const plan = { heading: "Split it up", summary: "Two steps.", plan: "1. Move.\n\n2. Test.", accepts: [{ value: "auto", label: "auto mode" }] };
+  const plan = { heading: "Surprise party", summary: "Two steps.", plan: "1. Invite.\n\n2. Celebrate.", accepts: [{ value: "auto", label: "auto mode" }] };
   const exported = (decision?: { decision: "accept" | "reject" | "revise"; mode: string | null; feedback: string | null }) =>
     chatToMarkdown({ ...chat, messages: [{ from: "assistant", text: "Here's my plan.", plan: { ...plan, decision } }] }, { exportedAt: new Date(2026, 10, 26), locale: "en-GB" });
   expect(exported({ decision: "accept", mode: "auto", feedback: null })).toContain(
-    ["**Split it up** · Two steps.", "", "> 1. Move.", ">", "> 2. Test.", "", "*Accepted, using auto mode.*"].join("\n"),
+    ["**Surprise party** · Two steps.", "", "> 1. Invite.", ">", "> 2. Celebrate.", "", "*Accepted, using auto mode.*"].join("\n"),
   );
   expect(exported({ decision: "revise", mode: null, feedback: "Smaller" })).toContain("*Asked for changes: “Smaller”*");
   expect(exported()).toContain("*Not decided.*");

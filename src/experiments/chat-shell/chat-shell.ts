@@ -78,41 +78,42 @@ export const suggestions = [
   "What are web components? Cite your sources",
   "Plan a weekend trip for me",
   "Clean up my project's build folder",
-  "Refactor the chat shell into modules",
+  "Plan a surprise birthday party",
 ];
 
-/** Asking to refactor makes the pretend agent propose a plan first, with <ai-plan>. */
-const refactoring = (text: string) => /\brefactor/i.test(text);
+/** Asking for a party makes the pretend agent propose a plan first, with <ai-plan>. */
+const throwingParty = (text: string) => /\bparty\b/i.test(text);
 
-/** The plan the pretend agent proposes for the refactor. */
-export const refactorPlan: StoredPlan = {
-  heading: "Split the chat shell into modules",
-  summary: "Four steps. Nothing is deleted.",
+/** The plan the pretend agent proposes for the party. */
+export const partyPlan: StoredPlan = {
+  heading: "Surprise party for Sam's 40th",
+  summary: "Five steps, about three weeks. Nothing is booked yet.",
   plan: [
     "## Steps",
     "",
-    "1. Move the saved-chat code into `chat-store.ts`.",
-    "2. Move the sidebar wiring into `sidebar.ts`.",
-    "3. Keep `chat-shell.ts` for the layout only.",
-    "4. Run the tests after each step.",
+    "1. Pick a date: the Saturday after Sam's birthday.",
+    "2. Make a guest list, and send invites by message.",
+    "3. Book the back room at a local restaurant.",
+    "4. Order a cake and some decorations.",
+    "5. Keep it secret: a cover story for the evening.",
     "",
-    "## Not changing",
+    "## Not doing",
     "",
-    "- What's saved in `localStorage`.",
-    "- Anything you can see.",
+    "- Spending more than the budget you set.",
+    "- Telling Sam.",
   ].join("\n"),
   accepts: [{ value: "auto", label: "auto mode" }],
 };
 
-/** What the pretend agent says at each step of the refactor. */
-export function refactorReply(step: NonNullable<StoredScript["refactor"]>, mode?: string, feedback?: string) {
-  if (step === "ask") return "That's a bigger change, so here's my plan first. Open it to read the steps.";
+/** What the pretend agent says at each step of the party plan. */
+export function partyReply(step: NonNullable<StoredScript["party"]>, mode?: string, feedback?: string) {
+  if (step === "ask") return "Lovely idea! Here's how I'd plan it. Open the plan to read the steps.";
   if (step === "accepted")
     return mode === "auto"
-      ? "Starting in **Auto** mode, so I'll go through all four steps without stopping. A real agent would start editing now."
-      : "Starting on step 1. I'll check with you after each step. A real agent would start editing now.";
-  if (step === "rejected") return "OK, I'll leave the chat shell as it is.";
-  return `Got it: *${(feedback ?? "").replace(/[*_\\`]/g, "\\$&")}*. A real agent would rework the plan around that and propose it again.`;
+      ? "Starting in **Auto** mode, so I'll go through all five steps and only check back if something needs you. First up: the guest list."
+      : "Starting with the guest list. I'll check with you after each step.";
+  if (step === "rejected") return "OK, no party plans for now.";
+  return `Got it: *${(feedback ?? "").replace(/[*_\\`]/g, "\\$&")}*. A real assistant would rework the plan around that and show it to you again.`;
 }
 
 /** Asking to clean up makes the pretend agent ask before it deletes anything, with <ai-approval>. */
@@ -811,8 +812,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
         ? tripReply(script.trip, detail.text, firstAnswer() ?? "Lisbon")
         : script?.cleanup
           ? cleanupReply(preapproved ? "allowed" : script.cleanup, script.reason)
-          : script?.refactor
-            ? refactorReply(script.refactor, script.mode, script.reason)
+          : script?.party
+            ? partyReply(script.party, script.mode, script.reason)
             : pretendReply(detail);
       const end = failing(detail.text) ? Math.floor(text.length / 3) : text.length;
       for (let index = 0; index < end; index += 6) {
@@ -826,8 +827,8 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
           ? questionFor(tripQuestions[script.trip])
           : script?.cleanup === "ask" && !preapproved
             ? approvalFor(cleanupApproval)
-            : script?.refactor === "ask"
-              ? planFor(refactorPlan)
+            : script?.party === "ask"
+              ? planFor(partyPlan)
               : undefined;
         if (asking) {
           // A question or an approval takes the place of follow-ups until it's settled.
@@ -879,7 +880,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     // With a plan open, what's typed asks for changes.
     if (request?.localName === "ai-plan") {
       (request as HTMLElementTagNameMap["ai-plan"]).decision = { decision: "revise", mode: null, feedback: detail.text };
-      return send(detail, { refactor: "revised", reason: detail.text });
+      return send(detail, { party: "revised", reason: detail.text });
     }
     // With a question open, what's typed answers it, as if chosen or typed into Other.
     if (request) {
@@ -888,7 +889,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       const step = Number(asking.dataset.step);
       return send(detail, step ? { trip: step + 1 } : undefined);
     }
-    send(detail, planning(detail.text) ? { trip: 1 } : cleaning(detail.text) ? { cleanup: "ask" } : refactoring(detail.text) ? { refactor: "ask" } : undefined);
+    send(detail, planning(detail.text) ? { trip: 1 } : cleaning(detail.text) ? { cleanup: "ask" } : throwingParty(detail.text) ? { party: "ask" } : undefined);
   });
 
   document.addEventListener("visibilitychange", showTitle, { signal: page.signal });
@@ -958,10 +959,10 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       if (!detail) return save();
       const script: StoredScript =
         decision === "accept"
-          ? { refactor: "accepted", mode: mode ?? undefined }
+          ? { party: "accepted", mode: mode ?? undefined }
           : decision === "reject"
-            ? { refactor: "rejected" }
-            : { refactor: "revised", reason: feedback ?? undefined };
+            ? { party: "rejected" }
+            : { party: "revised", reason: feedback ?? undefined };
       startReply(detail, undefined, script);
     });
   });

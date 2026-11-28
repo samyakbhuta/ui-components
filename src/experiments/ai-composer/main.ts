@@ -148,17 +148,17 @@ const pretendChatModel: ChatModel = async function* ({ messages, signal }) {
     yield* stream(`**${name}** it is. Saturday: a long walk and lunch. Sunday: a museum, then the train home.`);
     return;
   }
-  if (/refactor/i.test(asked)) {
-    yield* stream("Here's how I'd go about it. ");
+  if (/\bparty\b/i.test(asked)) {
+    yield* stream("Lovely idea! Here's how I'd plan it. ");
     const decision = yield {
       type: "plan",
-      heading: "Split the chat shell into modules",
-      summary: "Four steps. Nothing is deleted.",
-      plan: "## Steps\n\n1. Move the saved-chat code into `chat-store.ts`.\n2. Move the sidebar wiring into `sidebar.ts`.\n3. Keep `chat-shell.ts` for the layout only.\n4. Run the tests after each step.\n\n## Not changing\n\n- What's saved in `localStorage`.\n- Any behaviour you can see.",
+      heading: "Surprise party for Sam's 40th",
+      summary: "Five steps, about three weeks. Nothing is booked yet.",
+      plan: "## Steps\n\n1. Pick a date: the Saturday after Sam's birthday.\n2. Make a guest list, and send invites by message.\n3. Book the back room at a local restaurant.\n4. Order a cake and some decorations.\n5. Keep it secret: a cover story for the evening.\n\n## Not doing\n\n- Spending more than the budget you set.\n- Telling Sam.",
       accepts: [{ value: "auto", label: "auto mode" }],
     };
     if (decision && "decision" in decision && decision.decision === "reject") {
-      yield* stream("OK, I'll leave it as it is.");
+      yield* stream("OK, no party plans for now.");
       return;
     }
     if (decision && "decision" in decision && decision.decision === "revise") {
@@ -166,7 +166,7 @@ const pretendChatModel: ChatModel = async function* ({ messages, signal }) {
       return;
     }
     const mode = decision && "decision" in decision && decision.mode ? ` in ${decision.mode} mode` : "";
-    yield* stream(`Starting on step 1${mode}.`);
+    yield* stream(`Starting with the guest list${mode}.`);
     return;
   }
   if (/clean|delete/i.test(asked)) {
@@ -597,9 +597,9 @@ approval.decision = savedDecision // shows a saved decision, like when a chat op
     title: "<ai-plan>",
     intro:
       "An agent proposes a plan before it starts. Open plan shows it in place, as Markdown. People Accept it, Accept and switch mode, Reject it, or Revise it by saying what to change.",
-    html: `<ai-plan class="sample-plan" heading="Split the chat shell into modules" summary="Four steps. Nothing is deleted."></ai-plan>
+    html: `<ai-plan class="sample-plan" heading="Surprise party for Sam's 40th" summary="Five steps, about three weeks. Nothing is booked yet."></ai-plan>
 <button type="button" class="reset-demo">Reset demo</button>`,
-    script: `plan.plan = "## Steps\\n\\n1. Move the saved-chat code into chat-store.ts.\\n…"
+    script: `plan.plan = "## Steps\\n\\n1. Pick a date: the Saturday after Sam's birthday.\\n…"
 plan.accepts = [{ value: "auto", label: "auto mode" }] // adds "Accept and use auto mode"
 plan.addEventListener("plandecision", (event) => {
   const { decision, mode, feedback } = event.detail // "accept", "reject" or "revise"
@@ -607,7 +607,7 @@ plan.addEventListener("plandecision", (event) => {
     setup: (root) => {
       const plan = root.querySelector<HTMLElementTagNameMap["ai-plan"]>(".sample-plan")!;
       plan.plan =
-        "## Steps\n\n1. Move the saved-chat code into `chat-store.ts`.\n2. Move the sidebar wiring into `sidebar.ts`.\n3. Keep `chat-shell.ts` for the layout only.\n4. Run the tests after each step.\n\n## Not changing\n\n- What's saved in `localStorage`.\n- Any behaviour you can see.";
+        "## Steps\n\n1. Pick a date: the Saturday after Sam's birthday.\n2. Make a guest list, and send invites by message.\n3. Book the back room at a local restaurant.\n4. Order a cake and some decorations.\n5. Keep it secret: a cover story for the evening.\n\n## Not doing\n\n- Spending more than the budget you set.\n- Telling Sam.";
       plan.accepts = [{ value: "auto", label: "auto mode" }];
       resetDemo(root, "ai-plan[decided]", ["plandecision"], () => {
         plan.decision = null;
@@ -620,11 +620,11 @@ plan.addEventListener("plandecision", (event) => {
     id: "chat",
     title: "<ai-chat>",
     intro:
-      "A whole chat in one tag: give it a model that streams a reply, and it runs the conversation. This pretend model shows each kind of chunk: thinking, a tool call, text, sources and follow-ups; a question that waits for your answer (ask for a trip); an approval that waits for your decision (ask it to clean up); and a plan to accept, reject or revise (ask it to refactor). Stop and Retry work too.",
+      "A whole chat in one tag: give it a model that streams a reply, and it runs the conversation. This pretend model shows each kind of chunk: thinking, a tool call, text, sources and follow-ups; a question that waits for your answer (ask for a trip); an approval that waits for your decision (ask it to clean up); and a plan to accept, reject or revise (ask it to plan a surprise party). Stop and Retry work too.",
     html: `<ai-chat class="sample-chat" style="height: 34rem">
   <p slot="empty">Ask anything, or try a suggestion.</p>
 </ai-chat>`,
-    script: `chat.suggestions = ["What are custom elements?", "Plan a weekend trip", "Clean up my build folder", "Refactor the chat shell"]
+    script: `chat.suggestions = ["What are custom elements?", "Plan a weekend trip", "Clean up my build folder", "Plan a surprise birthday party"]
 chat.model = async function* ({ messages, signal }) {
   yield { type: "thinking", text: "Looking it up." }
   yield { type: "tool", id: "1", name: "web_search", input: { query } }
@@ -633,11 +633,11 @@ chat.model = async function* ({ messages, signal }) {
   yield { type: "sources", sources }
   const city = yield { type: "question", question: "Which city?", options: ["Paris", "Rome"] }
   const decision = yield { type: "approval", name: "run_command", input: "rm -rf dist" }
-  const review = yield { type: "plan", heading: "Split into modules", plan, accepts: [{ value: "auto", label: "auto mode" }] }
+  const review = yield { type: "plan", heading: "Surprise party", plan, accepts: [{ value: "auto", label: "auto mode" }] }
 }`,
     setup: (root) => {
       const chat = root.querySelector<HTMLElementTagNameMap["ai-chat"]>(".sample-chat")!;
-      chat.suggestions = ["What are custom elements?", "Plan a weekend trip", "Clean up my build folder", "Refactor the chat shell"];
+      chat.suggestions = ["What are custom elements?", "Plan a weekend trip", "Clean up my build folder", "Plan a surprise birthday party"];
       chat.model = pretendChatModel;
     },
   },

@@ -59,11 +59,11 @@ export type StoredPlan = {
   decision?: { decision: "accept" | "reject" | "revise"; mode: string | null; feedback: string | null };
 };
 
-/** A step of one of the pretend model's scripted conversations: the trip planner, the cleanup, or the refactor. */
+/** A step of one of the pretend model's scripted conversations: the trip planner, the cleanup, or the party. */
 export type StoredScript = {
   trip?: number;
   cleanup?: "ask" | "allowed" | "denied";
-  refactor?: "ask" | "accepted" | "rejected" | "revised";
+  party?: "ask" | "accepted" | "rejected" | "revised";
   /** What was typed: with Deny, what to do instead; with Revise, what to change. */
   reason?: string;
   /** The mode a plan was accepted with. */

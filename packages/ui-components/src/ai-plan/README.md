@@ -13,12 +13,12 @@ import "@samyakbhuta/ui-components/ai-plan"; // registers <ai-plan> and loads it
 ```
 
 ```html
-<ai-plan heading="Clean up the build folder" summary="Three steps. One deletes files."></ai-plan>
+<ai-plan heading="Surprise party for Sam's 40th" summary="Five steps. Nothing is booked yet."></ai-plan>
 ```
 
 ```ts
 const plan = document.querySelector("ai-plan")!;
-plan.plan = "1. Check what's in `dist/`.\n2. Delete it.\n3. Rebuild."; // Markdown, shown when opened
+plan.plan = "1. Pick a date.\n2. Send the invites.\n3. Book a room.\n4. Order a cake.\n5. Keep it secret."; // Markdown, shown when opened
 plan.accepts = [{ value: "auto", label: "auto mode" }]; // adds "Accept and use auto mode"
 plan.addEventListener("plandecision", (event) => {
   const { decision, mode, feedback } = event.detail; // "accept", "reject" or "revise"
@@ -29,7 +29,7 @@ plan.addEventListener("plandecision", (event) => {
 
 **Open plan** shows the full plan inside the card, as Markdown, and **Close plan** hides it again. With `href`, Open plan is a link to your app's own page for the plan instead.
 
-Once decided, the buttons go and a line shows what was chosen: "Accepted", "Accepted, using auto mode", "Rejected", or "Asked for changes: “Keep the cache”". The plan can still be opened. Focus moves to that line, since the buttons are gone, and screen readers hear it too.
+Once decided, the buttons go and a line shows what was chosen: "Accepted", "Accepted, using auto mode", "Rejected", or "Asked for changes: “Make it a picnic instead”". The plan can still be opened. Focus moves to that line, since the buttons are gone, and screen readers hear it too.
 
 ## Telling people the agent is waiting on them
 
