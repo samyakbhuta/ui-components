@@ -537,3 +537,20 @@ test("quotes show above the message as text; one with an id is a button that fir
   expect(list.hidden).toBe(true);
   message.remove();
 });
+
+test("a quote with `at` sits between the message's words, where it was written", async () => {
+  const { message, body } = await mount(`<ai-message from="user"></ai-message>`, (m) => {
+    m.text = "About the first.\n\nAnd this one?";
+    m.quotes = [
+      { text: "First quote", id: "1" },
+      { text: "Second quote", id: "2", at: "About the first.".length },
+    ];
+  });
+  expect(message.querySelector(":scope > [data-part='quotes']")!.textContent).toBe("Quoted: First quote");
+  expect([...body().children].map((child) => child.textContent)).toEqual(["About the first.", "Quoted: Second quote", "And this one?"]);
+  const opened = vi.fn();
+  message.addEventListener("quoteopen", (event) => opened(event.detail.index));
+  within(body() as HTMLElement).getByRole<HTMLButtonElement>("button", { name: "Quoted: Second quote" }).click();
+  expect(opened).toHaveBeenCalledWith(1);
+  message.remove();
+});

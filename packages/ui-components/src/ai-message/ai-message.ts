@@ -28,7 +28,14 @@ export type MessageAttachmentOpenDetail = { attachment: MessageAttachment; index
 export type MessageVersionDetail = { version: number; versions: number };
 
 /** Words this message quotes from earlier in the conversation. With an `id`, the quote is a button that fires `quoteopen`. */
-export type MessageQuote = { text: string; from?: "user" | "assistant"; id?: string; source?: string };
+export type MessageQuote = {
+  text: string;
+  from?: "user" | "assistant";
+  id?: string;
+  source?: string;
+  /** Where it sits in the message's text: how many characters come before. Absent or 0: above the message. */
+  at?: number;
+};
 
 /** What `quoteopen` carries in `event.detail`: the quote pressed, and where it is in `quotes`. */
 export type MessageQuoteOpenDetail = { quote: MessageQuote; index: number };
@@ -362,7 +369,9 @@ export class AiMessageElement extends BaseElement {
   }
   set quotes(value: MessageQuote[]) {
     this.#quotes = (value ?? []).filter((quote) => quote?.text).map((quote) => ({ ...quote }));
-    if (this.#rendered) this.#renderQuotes();
+    if (!this.#rendered) return;
+    this.#renderQuotes();
+    this.#renderBody(true);
   }
 
   /** Files shown with the message, like the ones sent with a prompt. Images show as thumbnails. */
@@ -566,41 +575,49 @@ export class AiMessageElement extends BaseElement {
   #renderQuotes() {
     const list = this.querySelector<HTMLElement>(":scope > [data-part='quotes']");
     if (!list) return;
+    // Quotes between the words go in the text; the rest sit above it.
+    const above = this.#quotes.flatMap((quote, index) => (this.#inText(quote) ? [] : [this.#quoteElement(quote, index)]));
+    list.hidden = above.length === 0;
+    list.replaceChildren(...above);
+  }
+
+  /** Whether a quote goes between the message's words, rather than above them. */
+  #inText(quote: MessageQuote) {
+    return (quote.at ?? 0) > 0;
+  }
+
+  /** One quote: a button that fires `quoteopen` when it has an `id`, else a quote block. Text only. */
+  #quoteElement(quote: MessageQuote, index: number) {
     const s = this.#strings;
-    list.hidden = this.#quotes.length === 0;
-    list.replaceChildren(
-      ...this.#quotes.map((quote, index) => {
-        const linked = quote.id !== undefined && quote.id !== "";
-        const item = document.createElement(linked ? "button" : "blockquote");
-        item.dataset.part = "quote";
-        if (quote.from) item.dataset.from = quote.from;
-        const label = document.createElement("span");
-        label.dataset.part = "visually-hidden";
-        label.textContent = `${s.quoted} `;
-        const text = document.createElement("span");
-        text.dataset.part = "quote-text";
-        text.textContent = quote.text;
-        item.append(label);
-        // For words from a card, which one, like "Plan: Surprise party".
-        if (quote.source) {
-          const source = document.createElement("span");
-          source.dataset.part = "quote-source";
-          source.textContent = quote.source;
-          item.append(source);
-        }
-        item.append(text);
-        if (item instanceof HTMLButtonElement) {
-          item.type = "button";
-          item.setAttribute("aria-label", [s.quoted, quote.source && `${quote.source}:`, quote.text].filter(Boolean).join(" "));
-          item.title = s.goToQuote;
-          item.addEventListener("click", () => {
-            const detail: MessageQuoteOpenDetail = { quote: this.#quotes[index], index };
-            this.dispatchEvent(new CustomEvent("quoteopen", { detail, bubbles: true, composed: true, cancelable: true }));
-          });
-        }
-        return item;
-      }),
-    );
+    const linked = quote.id !== undefined && quote.id !== "";
+    const item = document.createElement(linked ? "button" : "blockquote");
+    item.dataset.part = "quote";
+    if (quote.from) item.dataset.from = quote.from;
+    const label = document.createElement("span");
+    label.dataset.part = "visually-hidden";
+    label.textContent = `${s.quoted} `;
+    const text = document.createElement("span");
+    text.dataset.part = "quote-text";
+    text.textContent = quote.text;
+    item.append(label);
+    // For words from a card, which one, like "Plan: Surprise party".
+    if (quote.source) {
+      const source = document.createElement("span");
+      source.dataset.part = "quote-source";
+      source.textContent = quote.source;
+      item.append(source);
+    }
+    item.append(text);
+    if (item instanceof HTMLButtonElement) {
+      item.type = "button";
+      item.setAttribute("aria-label", [s.quoted, quote.source && `${quote.source}:`, quote.text].filter(Boolean).join(" "));
+      item.title = s.goToQuote;
+      item.addEventListener("click", () => {
+        const detail: MessageQuoteOpenDetail = { quote: this.#quotes[index], index };
+        this.dispatchEvent(new CustomEvent("quoteopen", { detail, bubbles: true, composed: true, cancelable: true }));
+      });
+    }
+    return item;
   }
 
   #errorText() {
@@ -798,14 +815,29 @@ export class AiMessageElement extends BaseElement {
     if (!body) return;
     cancelAnimationFrame(this.#frame);
     this.#frame = 0;
-    const blocks: MarkdownBlock[] =
+    const render = (source: string): MarkdownBlock[] =>
       this.format === "markdown"
-        ? renderMarkdown(this.#source, {
+        ? renderMarkdown(source, {
             copyLabel: this.#strings.copyCode,
             copyName: this.#strings.copyCodeName,
             highlight: this.#highlighter,
           })
-        : renderPlainText(this.#source);
+        : renderPlainText(source);
+    // Quotes between the words: the text in pieces, with each quote where it was written.
+    const between = this.#quotes.map((quote, index) => ({ quote, index })).filter(({ quote }) => this.#inText(quote));
+    if (between.length) {
+      body.replaceChildren();
+      let position = 0;
+      for (const { quote, index } of between.sort((a, b) => a.quote.at! - b.quote.at!)) {
+        const at = Math.min(Math.max(quote.at!, position), this.#source.length);
+        for (const block of render(this.#source.slice(position, at).trim())) body.append(block.node);
+        body.append(this.#quoteElement(quote, index));
+        position = at;
+      }
+      for (const block of render(this.#source.slice(position).trim())) body.append(block.node);
+      return;
+    }
+    const blocks = render(this.#source);
     const current = [...body.children] as Rendered[];
     let keep = 0;
     if (!force) {

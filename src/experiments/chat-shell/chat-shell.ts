@@ -22,6 +22,7 @@ import {
   defaultModes,
   defaultThinkingLevels,
   type PromptSubmitDetail,
+  quotesToMarkdown,
 } from "@samyakbhuta/ui-components/ai-composer";
 import type { AiMessageElement } from "@samyakbhuta/ui-components/ai-message";
 import {
@@ -322,13 +323,11 @@ export function pretendReply(detail: PromptSubmitDetail) {
   const quotes = detail.quotes ?? [];
   if (quotes.length) {
     return [
-      quotes.length === 1 ? "You quoted:" : `You quoted ${quotes.length} passages:`,
+      "You wrote, with your quotes in place:",
       "",
-      ...quotes.flatMap((quote) => [
-        [...(quote.source ? [`**${quote.source}**`] : []), ...quote.text.split("\n")].map((line) => `> ${line}`).join("\n"),
-        "",
-      ]),
-      detail.text ? `A real model would answer *${detail.text}* about it.` : "A real model would explain it.",
+      quotesToMarkdown(detail.text, quotes),
+      "",
+      "A real model would answer that, about the words you quoted.",
       "",
       `— pretend **${model}**`,
     ].join("\n");

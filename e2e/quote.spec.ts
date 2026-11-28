@@ -83,7 +83,7 @@ test.describe("in the chat shell", () => {
     const bubble = (await mine.locator(":scope > [data-part='body']").boundingBox())!;
     expect(quoteBox.y + quoteBox.height).toBeLessThanOrEqual(bubble.y + 1);
     expect(await sentQuote.evaluate((element) => getComputedStyle(element).position)).toBe("static");
-    await expect(page.locator("ai-message:not([from='user'])").last()).toContainText("You quoted:");
+    await expect(page.locator("ai-message:not([from='user'])").last()).toContainText("You wrote, with your quotes in place:");
 
     // Pressing the quote goes back to the reply it came from.
     await page.locator("ai-transcript").evaluate((element) => (element.scrollTop = element.scrollHeight));
@@ -233,4 +233,44 @@ test("in <ai-chat>, words in a plan card can be quoted, labelled with the plan @
   await page.keyboard.press("Enter");
   await expect(plan.locator("[data-part='decision']")).toContainText("Plan: Surprise party for Sam's 40th:");
   await expect(plan.locator("[data-part='decision']")).toContainText("Make it four");
+});
+
+test("writing between quotes keeps them in order, in the box and in the sent message", async ({ page }) => {
+  await page.goto("/experiments/chat-shell.html");
+  await skipThinking(page);
+  await ask(page, "Write a haiku about web components");
+  const lines = page.locator("ai-message:not([from='user'])").first().locator("[data-part='body'] p");
+  const box = page.getByRole("textbox", { name: "Prompt" });
+
+  await selectWords(lines.first(), 0, 17);
+  await quoteButton(page).click();
+  await box.pressSequentially("Why bloom?");
+  await selectWords(lines.first(), 0, 11);
+  await quoteButton(page).click();
+
+  // The words written stay above the second quote; the box is empty and focused for more.
+  const items = page.locator("ai-composer [data-part='quotes'] > li");
+  await expect(items).toHaveCount(3);
+  await expect(items.nth(0)).toHaveAttribute("data-part", "quote");
+  await expect(items.nth(1).getByRole("textbox", { name: "Text before quote 2" })).toHaveValue("Why bloom?");
+  await expect(items.nth(2)).toHaveAttribute("data-part", "quote");
+  await expect(box).toHaveValue("");
+  await expect(box).toBeFocused();
+  await box.pressSequentially("And tags?");
+  await expect(box).toHaveValue("And tags?");
+
+  await page.keyboard.press("Enter");
+  await waitForReply(page);
+  // Sent in the same order: the first quote above, then the words, the second quote, the words.
+  const mine = page.locator("ai-message[from='user']").last();
+  await expect(mine.locator(":scope > [data-part='quotes']")).toHaveText("Quoted: Custom tags bloom");
+  await expect(mine.locator(":scope > [data-part='body'] > *")).toHaveText(["Why bloom?", "Quoted: Custom tags", "And tags?"]);
+
+  // Kept after a reload.
+  await page.reload();
+  await expect(page.locator("ai-message[from='user']").last().locator(":scope > [data-part='body'] > *")).toHaveText([
+    "Why bloom?",
+    "Quoted: Custom tags",
+    "And tags?",
+  ]);
 });

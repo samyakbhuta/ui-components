@@ -11,7 +11,7 @@ import "../ai-thinking/ai-thinking.ts";
 import "../ai-tool-call/ai-tool-call.ts";
 import "../ai-transcript/ai-transcript.ts";
 import type { AiApprovalElement, ApprovalDecisionDetail, ApprovalStrings } from "../ai-approval/ai-approval.ts";
-import type { AiComposerElement, PromptSubmitDetail } from "../ai-composer/ai-composer.ts";
+import { type AiComposerElement, type PromptSubmitDetail, quotesToMarkdown } from "../ai-composer/ai-composer.ts";
 import type { AiMessageElement, MessageAttachment, MessageFeedback, MessageStrings } from "../ai-message/ai-message.ts";
 import type { AiNoticeElement, NoticeAction, NoticeStrings, NoticeTone } from "../ai-notice/ai-notice.ts";
 import type { AiPlanElement, PlanAcceptOption, PlanDecisionDetail, PlanStrings } from "../ai-plan/ai-plan.ts";
@@ -479,13 +479,8 @@ export class AiChatElement extends BaseElement {
     // With a question or an approval open, what's typed answers it.
     if (this.#waitingOn && this.#answer) {
       const card = this.#waitingOn;
-      // An answer has no room for quote cards, so they go into its text, as > lines.
-      if (prompt.quotes?.length) {
-        const quoted = prompt.quotes.map((quote) =>
-          [...(quote.source ? [`${quote.source}:`] : []), ...quote.text.split("\n")].map((line) => `> ${line}`.trimEnd()).join("\n"),
-        );
-        prompt = { ...prompt, text: [...quoted, prompt.text].filter(Boolean).join("\n\n"), quotes: [] };
-      }
+      // An answer has no room for quote cards, so they go into its text, as > lines, where they were.
+      if (prompt.quotes?.length) prompt = { ...prompt, text: quotesToMarkdown(prompt.text, prompt.quotes), quotes: [] };
       if (card instanceof HTMLElement && card.localName === "ai-question") {
         const question = card as AiQuestionElement;
         const answer = typedAnswer(this.#questionOf(question), prompt.text);

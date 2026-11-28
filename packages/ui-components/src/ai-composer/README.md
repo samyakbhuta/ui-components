@@ -124,7 +124,7 @@ Every attribute can change at any time, and what people have typed, attached and
 | `attachments`, `busy`, `disabled` | `boolean` | The same as the attributes. |
 | `voice` | `boolean \| "hide"` | The same as the attribute. `false` turns it off. |
 | `quoteStyle` | `"card" \| "markdown"` | The same as `quote-style`. |
-| `quotes` | `ComposerQuote[]` | The quote cards above the text, as `{ text, from?, id?, source? }`. `source` says which card the words came from, like "Plan: Surprise party", and shows above them. Set it to restore them, or `[]` to clear them. |
+| `quotes` | `ComposerQuote[]` | The quote cards, in order, as `{ text, from?, id?, source?, at? }`. Set `value` first and then `quotes`, and quotes with `at` go back between the words. `source` says which card the words came from, like "Plan: Surprise party", and shows above them. Set it to restore them, or `[]` to clear them. |
 | `pasteAsFile` | `boolean \| number` | The same as `paste-as-file`: `true` for the default of 2,000 characters, or a number. `false` turns it off. |
 
 `ComposerOption` is `{ value, label, description?, disabled? }`. A `description` shows under the label in the Model and Thinking menus, and as a tooltip on a mode. A `disabled` option shows but can't be chosen.
@@ -167,7 +167,7 @@ type PromptSubmitDetail = {
   files: File[];
   command?: string; // the /command at the start, when it's one of `commands`
   references: { value: string; label: string }[]; // the @references still in the text
-  quotes?: { text: string; from?: "user" | "assistant"; id?: string }[]; // the quote cards; always set, [] when none
+  quotes?: { text: string; from?: "user" | "assistant"; id?: string; source?: string; at?: number }[]; // the quote cards, in order; always set, [] when none
 };
 ```
 
@@ -180,6 +180,8 @@ composer.addQuote({ text: "Custom elements are your own HTML tags.", from: "assi
 ```
 
 - **`quote-style="card"`** (the default): each quote is a card above the text, a few lines long, with × to remove it. Several can be added. They're sent in `promptsubmit`'s `quotes`, apart from the text, so your app decides how the model sees them, and a quote alone can be sent.
+  - **Writing between quotes:** quote, write about it, then quote again, and what you wrote stays above the new card, with the box empty under it for more. So the box reads in order: quote, words, quote, words. The words between are text boxes of their own, which can still be changed; Backspace in an empty one removes it. Removing a card joins the words on either side.
+  - **Sent:** `text` is all the words, in order, with a blank line between parts, and each quote's `at` says how many characters of `text` come before it (absent when it comes first). `quotesToMarkdown(text, quotes)`, exported from this module, puts them back together as `> ` lines, for a model's prompt or an export. To restore a draft or Edit a message, set `value` to the text and then `quotes`.
 - **`quote-style="markdown"`**: the quote goes into the text at the caret as `> ` lines, on a line of its own, and is sent as part of `text`. People can edit it like any other text.
 
 Either way, focus moves to the box, ready to ask, and screen readers hear "Quote added".
@@ -230,7 +232,7 @@ Set its custom properties on `ai-composer` itself, or once on an element around 
 }
 ```
 
-For anything else, target the parts by `data-part`: `card`, `attachments`, `attachment`, `quotes`, `quote`, `quote-source`, `quote-text`, `quote-remove`, `prompt` (the `ui-textarea`), `bar`, `start`, `end`, `attach`, `mode`, `model`, `thinking`, `voice`, `send`, `send-button`, `popup`, `option-description`, `footer`, `status` and `hint`. ui-sdk's own `data-slot` and state attributes, like `[data-checked]` and `[data-highlighted]`, work too. The send button gets `data-busy` while it's Stop, and the card gets `data-dragging` while files are dragged over it.
+For anything else, target the parts by `data-part`: `card`, `attachments`, `attachment`, `quotes`, `quote`, `quote-source`, `quote-text`, `quote-remove`, `quote-note` and `note` (words written between quotes), `prompt` (the `ui-textarea`), `bar`, `start`, `end`, `attach`, `mode`, `model`, `thinking`, `voice`, `send`, `send-button`, `popup`, `option-description`, `footer`, `status` and `hint`. ui-sdk's own `data-slot` and state attributes, like `[data-checked]` and `[data-highlighted]`, work too. The send button gets `data-busy` while it's Stop, and the card gets `data-dragging` while files are dragged over it.
 
 The composer is a size container: below `34rem` wide it hides the hint and the "Model" prefix. It lays out right to left under `dir="rtl"`.
 
@@ -272,6 +274,7 @@ composer.strings = {
 | `quotes` | `Quoted`: the name of the list of quote cards |
 | `removeQuote(text)` | `Remove quote: …`: a quote card's × button |
 | `quoteAdded` | `Quote added`: announced when a quote is added |
+| `quoteNote(n)` | `Text before quote 2`: the name of words written between quotes |
 
 The labels of the modes, models and thinking levels come from your own lists.
 

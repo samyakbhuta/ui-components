@@ -177,6 +177,15 @@
     overflow-wrap: anywhere;
   }
 
+  /* What was written between quotes: part of the prompt, so it looks like the main text. */
+  ai-composer [data-part="note"] {
+    display: block;
+    min-height: calc(1.5em + 0.5rem);
+    max-height: none;
+    field-sizing: content;
+    resize: none;
+  }
+
   ai-composer [data-part="quote-remove"] {
     flex: none;
     padding: 0 0.4rem;

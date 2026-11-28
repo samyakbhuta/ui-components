@@ -178,10 +178,12 @@ Selecting words anywhere in a message, its cards included, shows a **Quote** but
 Your model gets the quotes on the last message:
 
 ```ts
+import { quotesToMarkdown } from "@samyakbhuta/ui-components/ai-composer";
+
 chat.model = async function* ({ messages }) {
   const asked = messages.at(-1);
-  const quoted = (asked.quotes ?? []).map((quote) => `> ${quote.text}`).join("\n\n");
-  yield* streamFromYourServer(quoted ? `${quoted}\n\n${asked.text}` : asked.text);
+  // The text, with each quote where it was written, as > lines.
+  yield* streamFromYourServer(quotesToMarkdown(asked.text, asked.quotes));
 };
 ```
 
@@ -202,7 +204,7 @@ chat.messages = JSON.parse(localStorage.getItem("chat") ?? "[]");
 Each `ChatMessage` is `{ role, text, createdAt }`, plus what the reply held:
 - `createdAt`: when it was sent, or when the reply started, as an ISO time. Each message shows it as "5 minutes ago" on hover or focus (see [`<ai-message>`'s Time and model](../ai-message/README.md#time-and-model));
 - `model`: on a reply, the label of the model that wrote it;
-- `quotes`: on a message of yours, the words it quoted, as `{ text, from, id, source? }`, with `source` naming the card for words from one, like "Plan: Surprise party", where `id` is the quoted message's index in `messages`. The model gets them too, apart from `text`, so you decide how to put them in its prompt;
+- `quotes`: on a message of yours, the words it quoted, as `{ text, from, id, source?, at? }`, with `at` saying where in `text` each sits when people wrote between quotes, with `source` naming the card for words from one, like "Plan: Surprise party", where `id` is the quoted message's index in `messages`. The model gets them too, apart from `text`, so you decide how to put them in its prompt;
 - `error`, `stopped` and `feedback`;
 - `thinking`, `tools` and `sources`;
 - a `question` with its `answer`, a set of `questions` with its `answers`, an `approval` with its `decision`, or a `plan` with its `decision`.

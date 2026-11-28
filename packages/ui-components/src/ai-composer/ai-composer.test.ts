@@ -10,6 +10,7 @@ import {
   defaultStrings,
   defaultThinkingLevels,
   type PromptSubmitDetail,
+  quotesToMarkdown,
   type SpeechRecognizer,
 } from "./ai-composer.ts";
 
@@ -766,5 +767,46 @@ test("quote words can be translated", async () => {
   const list = within(composer).getByRole("list", { name: "Citations" });
   within(list).getByRole("button", { name: "Retirer Bonjour" });
   expect(composer.querySelector("[data-part='status']")!.textContent).toBe("Citation ajoutée");
+  composer.remove();
+});
+
+test("writing between quotes keeps the order: text so far stays above the next quote, and the sent quotes say where they sit", async () => {
+  const user = userEvent.setup();
+  const { composer, sent, prompt } = await mount();
+  composer.addQuote({ text: "First quote", id: "1" });
+  await user.type(prompt, "About that.");
+  composer.addQuote({ text: "Second quote", id: "2" });
+  // What was written moved above the second card, and the main box is empty, ready for more.
+  const list = composer.querySelector<HTMLElement>("[data-part='quotes']")!;
+  const parts = () => [...list.children].map((item) => (item as HTMLElement).dataset.part);
+  expect(parts()).toEqual(["quote", "quote-note", "quote"]);
+  const note = within(composer).getByRole<HTMLTextAreaElement>("textbox", { name: "Text before quote 2" });
+  expect(note.value).toBe("About that.");
+  expect(prompt.value).toBe("");
+  expect(document.activeElement).toBe(prompt);
+
+  // The text between can still be changed.
+  await user.clear(note);
+  await user.type(note, "About the first.");
+  // (user-event remembers what it typed in the main box; insert() stands in for typing there again.)
+  composer.insert("And this one?");
+  composer.submit();
+  expect(sent[0].text).toBe("About the first.\n\nAnd this one?");
+  expect(sent[0].quotes).toEqual([
+    { text: "First quote", id: "1" },
+    { text: "Second quote", id: "2", at: "About the first.".length },
+  ]);
+  expect(quotesToMarkdown(sent[0].text, sent[0].quotes)).toBe("> First quote\n\nAbout the first.\n\n> Second quote\n\nAnd this one?");
+
+  // Setting the text and the quotes again, as Edit does, puts them back in that order.
+  composer.value = sent[0].text;
+  composer.quotes = sent[0].quotes!;
+  expect(parts()).toEqual(["quote", "quote-note", "quote"]);
+  expect(prompt.value).toBe("And this one?");
+
+  // Removing the second card joins the text on either side of it.
+  await user.click(within(list).getByRole("button", { name: "Remove quote: Second quote" }));
+  expect(parts()).toEqual(["quote"]);
+  expect(prompt.value).toBe("About the first.\n\nAnd this one?");
   composer.remove();
 });
