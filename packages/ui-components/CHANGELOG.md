@@ -1,11 +1,8 @@
 # Changelog
 
-## Unreleased
-
-- New `<ai-chat>`: a whole chat in one tag. Give it a `model` that streams a reply, as an async generator or a promise, and it runs the conversation: your messages and the replies, Stop (through an `AbortSignal`), Retry, errors and `chaterror`, starters and follow-ups. A model can also yield thinking, tool calls and their results, and sources. When it yields a question or an approval, the chat waits for the person, and their answer or decision comes back as the value of that `yield`; typing in the box answers too. `messages` saves and restores the conversation as plain data, `chatchange` says when to save, and `alwaysAllowed` keeps the tools chosen with Always allow.
-
 ## 0.1.0-beta.4 (2026-11-28)
 
+- New `<ai-chat>`: a whole chat in one tag. Give it a `model` that streams a reply, as an async generator or a promise, and it runs the conversation: your messages and the replies, Stop (through an `AbortSignal`), Retry, errors and `chaterror`, starters and follow-ups. A model can also yield thinking, tool calls and their results, and sources. When it yields a question or an approval, the chat waits for the person, and their answer or decision comes back as the value of that `yield`; typing in the box answers too. `messages` saves and restores the conversation as plain data, `chatchange` says when to save, and `alwaysAllowed` keeps the tools chosen with Always allow.
 - Editor support. VS Code can complete each tag, its attributes and their values, and show their docs on hover, with one setting: `"html.customData": ["./node_modules/@samyakbhuta/ui-components/dist/vscode.html-custom-data.json"]`. JetBrains IDEs read the new `web-types` file on their own, which also lists each element's events. Both are generated from the code, the types and the READMEs at build time.
 - `<ai-transcript>` lists `announce` in `observedAttributes`, so editors and frameworks know about it, and `announce="none"` is typed.
 - New `<ai-question>`: a question the model asks, with choices to pick from. Radio buttons offer one choice, and `multiple` gives checkboxes, with `max` to cap how many. `other` adds a last choice with a text box for an answer of one's own, and `skippable` adds Skip. Once answered, it shows the answer and keeps the choices readable. `answer` restores a saved one. It fires `questionanswer` and `questionskip`.
