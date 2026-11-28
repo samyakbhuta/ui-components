@@ -10,6 +10,7 @@ import {
   defaultStrings,
   defaultThinkingLevels,
   type PromptSubmitDetail,
+  quotesToMarkdown,
   type SpeechRecognizer,
 } from "./ai-composer.ts";
 
@@ -132,7 +133,7 @@ test("Send fires promptsubmit with the settings and empties the box", async () =
   await user.click(send());
 
   expect(sent).toEqual([
-    { text: "Explain web components", mode: "auto", model: "opus-5.5", thinking: "off", files: [], command: undefined, references: [] },
+    { text: "Explain web components", mode: "auto", model: "opus-5.5", thinking: "off", files: [], command: undefined, references: [], quotes: [] },
   ]);
   expect(prompt.value).toBe("");
   expect(document.activeElement).toBe(prompt);
@@ -695,4 +696,117 @@ test("code can change Mode, Model and Thinking while the composer is disabled", 
   expect([composer.model, composer.mode, composer.thinking]).toEqual(["haiku-5.5", "plan", "high"]);
   // Still disabled for people.
   expect(composer.querySelector<HTMLElement & { disabled: boolean }>("[data-part='model']")!.disabled).toBe(true);
+});
+
+test("quotes show as cards above the text, can be removed, and are sent with the prompt", async () => {
+  const user = userEvent.setup();
+  const { composer, sent, prompt, send } = await mount();
+  const changes: number[] = [];
+  composer.addEventListener("quoteschange", (event) => changes.push(event.detail.value.length));
+  const list = composer.querySelector<HTMLElement>("[data-part='quotes']")!;
+  expect(list.hidden).toBe(true);
+  expect(send().closest("ui-button")!.hasAttribute("disabled")).toBe(true);
+
+  expect(composer.addQuote({ text: "Custom tags bloom\n\n", from: "assistant", id: "1" })).toBe(true);
+  expect(composer.addQuote("<b>shadow roots</b>")).toBe(true);
+  expect(composer.addQuote("   ")).toBe(false);
+  expect(list.hidden).toBe(false);
+  expect(within(composer).getByRole("list", { name: "Quoted" })).toBe(list);
+  expect(within(list).getAllByRole("listitem").map((item) => item.querySelector("[data-part='quote-text']")!.textContent)).toEqual([
+    "Custom tags bloom",
+    "<b>shadow roots</b>",
+  ]);
+  expect(list.querySelector("b")).toBeNull();
+  // Focus goes to the box, ready to ask about it, and screen readers hear it was added.
+  expect(document.activeElement).toBe(prompt);
+  expect(composer.querySelector("[data-part='status']")!.textContent).toBe("Quote added");
+  // A quote alone can be sent.
+  expect(send().closest("ui-button")!.hasAttribute("disabled")).toBe(false);
+
+  await user.click(within(list).getByRole("button", { name: "Remove quote: <b>shadow roots</b>" }));
+  expect(composer.quotes).toEqual([{ text: "Custom tags bloom", from: "assistant", id: "1" }]);
+  expect(document.activeElement).toBe(prompt);
+
+  await user.type(prompt, "What does this mean?");
+  await user.keyboard("{Enter}");
+  expect(sent[0].text).toBe("What does this mean?");
+  expect(sent[0].quotes).toEqual([{ text: "Custom tags bloom", from: "assistant", id: "1" }]);
+  // Sending empties them.
+  expect(composer.quotes).toEqual([]);
+  expect(list.hidden).toBe(true);
+  expect(changes).toEqual([1, 2, 1, 0]);
+
+  // While disabled, nothing is added and cards can't be removed.
+  composer.quotes = [{ text: "Kept" }];
+  composer.disabled = true;
+  await settle();
+  expect(composer.addQuote("No")).toBe(false);
+  expect(within(list).getByRole("button", { name: "Remove quote: Kept" })).toHaveProperty("disabled", true);
+  composer.remove();
+});
+
+test('quote-style="markdown" puts the quote in the text, as > lines, on a line of its own', async () => {
+  const { composer, sent, prompt } = await mount(`<ai-composer quote-style="markdown"></ai-composer>`);
+  composer.addQuote("First line\nSecond line");
+  expect(prompt.value).toBe("> First line\n> Second line\n\n");
+  expect(composer.quotes).toEqual([]);
+  composer.insert("Why?");
+  composer.addQuote({ text: "Another" });
+  expect(prompt.value).toBe("> First line\n> Second line\n\nWhy?\n\n> Another\n\n");
+  composer.submit();
+  expect(sent[0].text).toBe("> First line\n> Second line\n\nWhy?\n\n> Another");
+  expect(sent[0].quotes).toEqual([]);
+  composer.remove();
+});
+
+test("quote words can be translated", async () => {
+  const { composer } = await mount("<ai-composer></ai-composer>", (c) => {
+    c.strings = { quotes: "Citations", removeQuote: (text) => `Retirer ${text}`, quoteAdded: "Citation ajoutée" };
+  });
+  composer.addQuote("Bonjour");
+  const list = within(composer).getByRole("list", { name: "Citations" });
+  within(list).getByRole("button", { name: "Retirer Bonjour" });
+  expect(composer.querySelector("[data-part='status']")!.textContent).toBe("Citation ajoutée");
+  composer.remove();
+});
+
+test("writing between quotes keeps the order: text so far stays above the next quote, and the sent quotes say where they sit", async () => {
+  const user = userEvent.setup();
+  const { composer, sent, prompt } = await mount();
+  composer.addQuote({ text: "First quote", id: "1" });
+  await user.type(prompt, "About that.");
+  composer.addQuote({ text: "Second quote", id: "2" });
+  // What was written moved above the second card, and the main box is empty, ready for more.
+  const list = composer.querySelector<HTMLElement>("[data-part='quotes']")!;
+  const parts = () => [...list.children].map((item) => (item as HTMLElement).dataset.part);
+  expect(parts()).toEqual(["quote", "quote-note", "quote"]);
+  const note = within(composer).getByRole<HTMLTextAreaElement>("textbox", { name: "Text before quote 2" });
+  expect(note.value).toBe("About that.");
+  expect(prompt.value).toBe("");
+  expect(document.activeElement).toBe(prompt);
+
+  // The text between can still be changed.
+  await user.clear(note);
+  await user.type(note, "About the first.");
+  // (user-event remembers what it typed in the main box; insert() stands in for typing there again.)
+  composer.insert("And this one?");
+  composer.submit();
+  expect(sent[0].text).toBe("About the first.\n\nAnd this one?");
+  expect(sent[0].quotes).toEqual([
+    { text: "First quote", id: "1" },
+    { text: "Second quote", id: "2", at: "About the first.".length },
+  ]);
+  expect(quotesToMarkdown(sent[0].text, sent[0].quotes)).toBe("> First quote\n\nAbout the first.\n\n> Second quote\n\nAnd this one?");
+
+  // Setting the text and the quotes again, as Edit does, puts them back in that order.
+  composer.value = sent[0].text;
+  composer.quotes = sent[0].quotes!;
+  expect(parts()).toEqual(["quote", "quote-note", "quote"]);
+  expect(prompt.value).toBe("And this one?");
+
+  // Removing the second card joins the text on either side of it.
+  await user.click(within(list).getByRole("button", { name: "Remove quote: Second quote" }));
+  expect(parts()).toEqual(["quote"]);
+  expect(prompt.value).toBe("About the first.\n\nAnd this one?");
+  composer.remove();
 });

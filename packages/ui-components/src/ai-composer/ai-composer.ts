@@ -42,7 +42,54 @@ export type PromptSubmitDetail = {
   command?: string;
   /** The `@` references still in the prompt. */
   references: ComposerReference[];
+  /**
+   * What was quoted with `quote-style="card"`, in order; the composer always sets it, [] when none.
+   * With `markdown`, quotes are in `text` instead.
+   */
+  quotes?: ComposerQuote[];
 };
+
+/** Words quoted from the conversation into the prompt. */
+export type ComposerQuote = {
+  text: string;
+  /** Who wrote the words quoted. */
+  from?: "user" | "assistant";
+  /** Where they came from, for your app: `<ai-chat>` uses the message's index. */
+  id?: string;
+  /** For words from a card, which one, like "Plan: Surprise party". Shown above the words. */
+  source?: string;
+  /**
+   * Where the quote sits in the sent `text`: how many characters of it come before. Absent (or 0)
+   * means before all of it. Set when people write between quotes.
+   */
+  at?: number;
+};
+
+/** A quote as `> ` lines, after its card's label, which reads well as Markdown or as plain text. */
+const quoteBlock = (quote: ComposerQuote) =>
+  [...(quote.source ? [`${quote.source}:`] : []), ...quote.text.split("\n")].map((line) => `> ${line}`.trimEnd()).join("\n");
+
+/**
+ * The text with its quotes in place, as Markdown `> ` blocks: for a model's prompt, an export, or
+ * anywhere the quotes can't be shown as cards.
+ */
+export function quotesToMarkdown(text: string, quotes: ComposerQuote[] = []): string {
+  const pieces: string[] = [];
+  let position = 0;
+  for (const quote of [...quotes].sort((a, b) => (a.at ?? 0) - (b.at ?? 0))) {
+    const at = Math.min(Math.max(quote.at ?? 0, position), text.length);
+    const before = text.slice(position, at).trim();
+    if (before) pieces.push(before);
+    pieces.push(quoteBlock(quote));
+    position = at;
+  }
+  const rest = text.slice(position).trim();
+  if (rest) pieces.push(rest);
+  return pieces.join("\n\n");
+}
+
+/** What the box holds above the main text: quote cards, and what was written between them. */
+type QuotePart = { kind: "quote"; quote: ComposerQuote } | { kind: "text"; text: string };
 
 /** Every word the composer shows or announces. Override any of them through `strings`. */
 export type ComposerStrings = {
@@ -70,6 +117,14 @@ export type ComposerStrings = {
   pastedFileName: string;
   counter: (length: number, max: number) => string;
   limitReached: string;
+  /** The list of quote cards. */
+  quotes: string;
+  /** A quote card's remove button. */
+  removeQuote: (text: string) => string;
+  /** Said when a quote is added. */
+  quoteAdded: string;
+  /** The name of the text written before a quote card, when there's text between quotes. */
+  quoteNote: (quote: number) => string;
 };
 
 export const defaultStrings: ComposerStrings = {
@@ -118,6 +173,10 @@ export const defaultStrings: ComposerStrings = {
   pastedFileName: "Pasted text.txt",
   counter: (length, max) => `${length.toLocaleString()} / ${max.toLocaleString()}`,
   limitReached: "Character limit reached",
+  quotes: "Quoted",
+  removeQuote: (text) => `Remove quote: ${text.length > 40 ? `${text.slice(0, 40)}…` : text}`,
+  quoteAdded: "Quote added",
+  quoteNote: (quote) => `Text before quote ${quote}`,
 };
 
 /** SVG markup for each icon. Icons are decorative: buttons are named by `strings`. */
@@ -231,6 +290,7 @@ export type ComposerEvents = {
   voicestart: CustomEvent<null>;
   voiceend: CustomEvent<null>;
   voiceerror: CustomEvent<{ error: string }>;
+  quoteschange: CustomEvent<{ value: ComposerQuote[] }>;
 };
 
 const escape = (text: string) =>
@@ -261,6 +321,7 @@ const liveAttributes = [
   "history",
   "persist",
   "paste-as-file",
+  "quote-style",
 ];
 
 /** The most prompts `history` keeps. */
@@ -287,6 +348,7 @@ type Saved = { value?: string; mode?: string; model?: string; thinking?: string;
  * @fires voicestart - Voice input started listening.
  * @fires voiceend - Voice input stopped listening.
  * @fires voiceerror - Voice input stopped because something went wrong, like the microphone being blocked.
+ * @fires quoteschange - A quote card was added or removed.
  */
 export class AiComposerElement extends BaseElement {
   static observedAttributes = [...rebuildAttributes, ...liveAttributes, "default-mode", "default-model", "default-thinking"];
@@ -321,6 +383,8 @@ export class AiComposerElement extends BaseElement {
   #namedGroup = false;
   #listening?: { stop(): void };
   #statusTimer?: ReturnType<typeof setTimeout>;
+  /** The quote cards, and the text written between them, in order; the main text box comes after. */
+  #parts: QuotePart[] = [];
 
   // ---- Options -------------------------------------------------------------------------------
 
@@ -502,9 +566,99 @@ export class AiComposerElement extends BaseElement {
     else this.#pending.focused = true;
   }
 
-  /** Empties the prompt and removes the attachments. */
+  /** How `addQuote()` adds a quote: `card` (the default), a card above the text; or `markdown`, `> ` lines in the text. */
+  get quoteStyle(): "card" | "markdown" {
+    return this.getAttribute("quote-style") === "markdown" ? "markdown" : "card";
+  }
+  set quoteStyle(value: "card" | "markdown") {
+    this.setAttribute("quote-style", value);
+  }
+
+  /**
+   * The quote cards, in order. Set it to restore them, or to [] to clear them. A quote with `at`
+   * goes back between the words of `value` at that point, so set `value` first.
+   */
+  get quotes(): ComposerQuote[] {
+    return this.#composed().quotes;
+  }
+  set quotes(value: ComposerQuote[]) {
+    const quotes = (value ?? []).filter((quote) => quote?.text?.trim()).map((quote) => ({ ...quote }));
+    const text = [...this.#parts.flatMap((part) => (part.kind === "text" ? [part.text] : [])), this.value].map((piece) => piece.trim()).filter(Boolean).join("\n\n");
+    const parts: QuotePart[] = [];
+    let position = 0;
+    for (const quote of quotes.sort((a, b) => (a.at ?? 0) - (b.at ?? 0))) {
+      const at = Math.min(Math.max(quote.at ?? 0, position), text.length);
+      const before = text.slice(position, at).trim();
+      if (before) parts.push({ kind: "text", text: before });
+      delete quote.at;
+      parts.push({ kind: "quote", quote });
+      position = at;
+    }
+    this.#parts = parts;
+    const rest = text.slice(position).trim();
+    if (rest !== this.value) this.value = rest;
+    this.#renderQuotes();
+    this.#emit("quoteschange", { value: this.quotes });
+  }
+
+  /** All the text, written before, between and after the quotes, and each quote with where it sits in it. */
+  #composed(): { text: string; quotes: ComposerQuote[] } {
+    let text = "";
+    const quotes: ComposerQuote[] = [];
+    const add = (piece: string) => {
+      const trimmed = piece.trim();
+      if (trimmed) text = text ? `${text}\n\n${trimmed}` : trimmed;
+    };
+    for (const part of this.#parts) {
+      if (part.kind === "text") add(part.text);
+      else quotes.push(text.length ? { ...part.quote, at: text.length } : { ...part.quote });
+    }
+    add(this.value);
+    return { text, quotes };
+  }
+
+  /**
+   * Quotes words from the conversation into the prompt, and puts the caret after it, ready to ask
+   * about them. With `quote-style="card"` it's a card above the text, sent in `quotes`; with
+   * `markdown`, `> ` lines at the caret. Returns false while disabled, or for empty text.
+   */
+  addQuote(quote: ComposerQuote | string): boolean {
+    const item = typeof quote === "string" ? { text: quote } : { ...quote };
+    item.text = item.text?.replace(/\s+$/, "").replace(/^\s*\n/, "") ?? "";
+    if (!item.text.trim() || this.disabled) return false;
+    if (this.quoteStyle === "markdown") {
+      const block = `${item.text.split("\n").map((line) => `> ${line}`.trimEnd()).join("\n")}\n\n`;
+      const textarea = this.#textarea;
+      const before = textarea ? textarea.value.slice(0, textarea.selectionStart ?? textarea.value.length) : (this.#pending.value ?? "");
+      // On a line of its own, after a blank line when there's text before.
+      const lead = !before ? "" : before.endsWith("\n\n") ? "" : before.endsWith("\n") ? "\n" : "\n\n";
+      this.insert(lead + block);
+    } else {
+      // What's written so far stays above the new quote; a fresh line opens under it.
+      const written = this.value;
+      if (written.trim()) {
+        this.#parts.push({ kind: "text", text: written.replace(/\s+$/, "") });
+        if (this.#rendered) this.#prompt!.api.clear();
+        else this.#pending.value = "";
+      }
+      delete item.at;
+      this.#parts.push({ kind: "quote", quote: item });
+      this.#renderQuotes();
+      this.#emit("quoteschange", { value: this.quotes });
+    }
+    this.#status(this.#strings.quoteAdded, 3000);
+    this.focus();
+    return true;
+  }
+
+  /** Empties the prompt and removes the attachments and quotes. */
   clear() {
     this.#picked.clear();
+    if (this.#parts.length) {
+      this.#parts = [];
+      this.#renderQuotes();
+      this.#emit("quoteschange", { value: [] });
+    }
     if (!this.#rendered) {
       this.#pending.value = "";
       this.#pending.files = [];
@@ -521,9 +675,9 @@ export class AiComposerElement extends BaseElement {
    */
   submit(): boolean {
     if (!this.#rendered || this.disabled || this.busy) return false;
-    const text = this.value.trim();
+    const { text, quotes } = this.#composed();
     const files = this.files;
-    if (!text && files.length === 0) return false;
+    if (!text && files.length === 0 && quotes.length === 0) return false;
     this.#listening?.stop();
 
     const command = text.match(/^\/(\S+)/)?.[1];
@@ -543,6 +697,7 @@ export class AiComposerElement extends BaseElement {
       files,
       command: command && commands.includes(command) ? command : undefined,
       references,
+      quotes,
     };
     const sent = this.#emit("promptsubmit", detail, true);
     if (sent) {
@@ -753,6 +908,7 @@ export class AiComposerElement extends BaseElement {
             </ui-file-input-list>`
           : ""
       }
+      <ul data-part="quotes" aria-label="${escape(s.quotes)}" hidden></ul>
       <ui-textarea data-part="prompt" auto-resize>
         <textarea id="${id}-prompt" rows="1" aria-label="${escape(label)}"></textarea>
       </ui-textarea>
@@ -820,6 +976,7 @@ export class AiComposerElement extends BaseElement {
     if (restore.value) this.#prompt!.api.setValue(restore.value);
     if (restore.files?.length && this.#fileInput) this.#fileInput.api.addFiles(restore.files);
     this.#updateTriggers();
+    this.#renderQuotes();
     this.#sync();
     if (restore.focused) this.#textarea!.focus();
   }
@@ -1144,6 +1301,106 @@ export class AiComposerElement extends BaseElement {
     menu.triggers = triggers;
   }
 
+  /**
+   * The quote cards above the main text, each with a remove button, and what was written between
+   * them as text boxes of their own. Text only, never HTML.
+   */
+  #renderQuotes() {
+    const list = this.querySelector<HTMLElement>(":scope [data-part='quotes']");
+    if (!list) return;
+    const s = this.#strings;
+    list.setAttribute("aria-label", s.quotes);
+    list.hidden = this.#parts.length === 0;
+    let quoteNumber = 0;
+    list.replaceChildren(
+      ...this.#parts.map((part, index) => {
+        if (part.kind === "text") return this.#noteItem(part, index, quoteNumber + 1);
+        quoteNumber++;
+        const quote = part.quote;
+        const item = document.createElement("li");
+        item.dataset.part = "quote";
+        const words = document.createElement("span");
+        words.dataset.part = "quote-words";
+        if (quote.source) {
+          const source = document.createElement("span");
+          source.dataset.part = "quote-source";
+          source.textContent = quote.source;
+          words.append(source);
+        }
+        const text = document.createElement("span");
+        text.dataset.part = "quote-text";
+        text.textContent = quote.text;
+        words.append(text);
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.dataset.part = "quote-remove";
+        remove.setAttribute("aria-label", s.removeQuote(quote.text));
+        remove.title = s.removeQuote(quote.text);
+        remove.textContent = "×";
+        remove.disabled = this.disabled;
+        remove.addEventListener("click", () => {
+          this.#removePart(index);
+          this.#emit("quoteschange", { value: this.quotes });
+          this.focus();
+        });
+        item.append(words, remove);
+        return item;
+      }),
+    );
+    this.#updateSend();
+  }
+
+  /** Text written before a quote card: a text box of its own, which grows with its words. */
+  #noteItem(part: QuotePart & { kind: "text" }, index: number, beforeQuote: number) {
+    const item = document.createElement("li");
+    item.dataset.part = "quote-note";
+    const note = document.createElement("textarea");
+    note.dataset.part = "note";
+    note.rows = 1;
+    note.value = part.text;
+    note.disabled = this.disabled;
+    note.setAttribute("aria-label", this.#strings.quoteNote(beforeQuote));
+    note.addEventListener("input", () => {
+      part.text = note.value;
+      this.#updateSend();
+    });
+    note.addEventListener("keydown", (event) => {
+      // Emptied, Backspace removes it and goes on to the main text.
+      if (event.key === "Backspace" && !note.value) {
+        event.preventDefault();
+        this.#parts.splice(index, 1);
+        this.#renderQuotes();
+        this.focus();
+        return;
+      }
+      if (event.key !== "Enter" || event.isComposing) return;
+      const modEnter = this.getAttribute("submit-on") === "mod-enter";
+      if (modEnter ? event.metaKey || event.ctrlKey : !event.shiftKey) {
+        event.preventDefault();
+        this.submit();
+      }
+    });
+    item.append(note);
+    return item;
+  }
+
+  /** Removes a quote card, joining the text on either side of it. */
+  #removePart(index: number) {
+    this.#parts.splice(index, 1);
+    const before = this.#parts[index - 1];
+    const after = this.#parts[index];
+    if (before?.kind === "text" && after?.kind === "text") {
+      before.text = `${before.text.trim()}\n\n${after.text.trim()}`;
+      this.#parts.splice(index, 1);
+    } else if (before?.kind === "text" && !after) {
+      // The last card: what was above it joins the main text.
+      this.#parts.pop();
+      const main = this.value.trim();
+      this.value = main ? `${before.text.trim()}\n\n${main}` : before.text.trim();
+    }
+    this.#renderQuotes();
+  }
+
   /** Applies the attributes that don't need a rebuild. */
   #sync() {
     const textarea = this.#textarea;
@@ -1164,6 +1421,9 @@ export class AiComposerElement extends BaseElement {
     const voice = this.querySelector<HTMLElement & { disabled: boolean }>(":scope [data-part='voice']");
     if (voice) voice.disabled = disabled || !this.speechRecognizer.supported;
     if (disabled) this.#listening?.stop();
+    for (const control of this.querySelectorAll<HTMLButtonElement | HTMLTextAreaElement>(":scope :is([data-part='quote-remove'], [data-part='note'])")) {
+      control.disabled = disabled;
+    }
 
     const hint = this.querySelector("[data-part='hint']");
     if (hint) {
@@ -1180,7 +1440,7 @@ export class AiComposerElement extends BaseElement {
     const button = send?.querySelector("button");
     if (!send || !button) return;
     const busy = this.busy;
-    const empty = !this.value.trim() && this.files.length === 0;
+    const empty = !this.value.trim() && this.files.length === 0 && this.#parts.length === 0;
     send.disabled = this.disabled || (!busy && empty);
     const name = busy ? this.#strings.stop : this.#strings.send;
     if (button.getAttribute("aria-label") !== name) {
@@ -1222,5 +1482,6 @@ declare global {
     voicestart: CustomEvent<null>;
     voiceend: CustomEvent<null>;
     voiceerror: CustomEvent<{ error: string }>;
+    quoteschange: CustomEvent<{ value: ComposerQuote[] }>;
   }
 }

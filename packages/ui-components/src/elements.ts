@@ -13,6 +13,7 @@ import type {
   ComposerEvents,
   ComposerIcons,
   ComposerOption,
+  ComposerQuote,
   ComposerReferences,
   ComposerStrings,
   SpeechRecognizer,
@@ -25,6 +26,7 @@ import type {
   MessageEvents,
   MessageFeedback,
   MessageIcons,
+  MessageQuote,
   MessageStrings,
 } from "./ai-message/ai-message.ts";
 import type { AiSourcesElement, Source, SourcesEvents, SourcesStrings } from "./ai-sources/ai-sources.ts";
@@ -37,7 +39,7 @@ import type { AiQuestionElement, QuestionAnswer, QuestionEvents, QuestionOption,
 import type { AiSuggestionsElement, Suggestion, SuggestionsEvents, SuggestionsStrings } from "./ai-suggestions/ai-suggestions.ts";
 import type { AiThinkingElement, ThinkingStatus, ThinkingStrings } from "./ai-thinking/ai-thinking.ts";
 import type { AiToolCallElement, ToolCallStatus, ToolCallStrings } from "./ai-tool-call/ai-tool-call.ts";
-import type { AiTranscriptElement, TranscriptStrings } from "./ai-transcript/ai-transcript.ts";
+import type { AiTranscriptElement, TranscriptEvents, TranscriptStrings } from "./ai-transcript/ai-transcript.ts";
 
 /** A number written as an attribute, which frameworks may pass as a string. */
 type NumberAttribute = number | `${number}`;
@@ -61,6 +63,9 @@ export interface AiComposerProps {
   attachments?: boolean;
   voice?: boolean | "hide";
   pasteAsFile?: boolean | number;
+  /** How quotes are added: cards above the text, or `> ` lines in it. */
+  quoteStyle?: "card" | "markdown";
+  quotes?: ComposerQuote[];
   busy?: boolean;
   disabled?: boolean;
   // Attributes
@@ -99,13 +104,18 @@ export interface AiMessageProps {
   strings?: Partial<MessageStrings>;
   highlighter?: Highlighter | null;
   icons?: Partial<MessageIcons>;
+  quotes?: MessageQuote[];
 }
 
 export interface AiTranscriptProps {
   strings?: Partial<TranscriptStrings>;
+  /** Selecting words in a message offers a Quote button. */
+  quotable?: boolean;
   // Attributes
   /** "none" stops reading finished replies out. */
   announce?: "none";
+  /** The id of the `<ai-composer>` that Quote adds to. */
+  for?: string;
 }
 
 export interface AiThinkingProps {
@@ -228,7 +238,7 @@ export interface AiChatListProps {
 export interface CustomElements {
   "ai-composer": { element: AiComposerElement; props: AiComposerProps; events: ComposerEvents };
   "ai-message": { element: AiMessageElement; props: AiMessageProps; events: MessageEvents };
-  "ai-transcript": { element: AiTranscriptElement; props: AiTranscriptProps; events: {} };
+  "ai-transcript": { element: AiTranscriptElement; props: AiTranscriptProps; events: TranscriptEvents };
   "ai-thinking": { element: AiThinkingElement; props: AiThinkingProps; events: {} };
   "ai-tool-call": { element: AiToolCallElement; props: AiToolCallProps; events: {} };
   "ai-sources": { element: AiSourcesElement; props: AiSourcesProps; events: SourcesEvents };

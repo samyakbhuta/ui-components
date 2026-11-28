@@ -115,6 +115,50 @@
     display: none;
   }
 
+  /* Floats over the selected words, placed by the element. */
+  ai-transcript [data-part="quote-button"] {
+    position: fixed;
+    z-index: 10;
+    height: 2rem;
+    padding: 0 0.875rem;
+    border: 1px solid color-mix(in srgb, CanvasText 30%, Canvas);
+    border-radius: 999px;
+    background: CanvasText;
+    color: Canvas;
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    box-shadow: 0 4px 16px color-mix(in srgb, CanvasText 18%, transparent);
+    cursor: pointer;
+  }
+
+  /* On a touch screen: at the bottom of the conversation, like Jump to latest, clear of the phone's own menu. */
+  ai-transcript [data-part="quote-button"][data-docked] {
+    height: 2.25rem;
+    padding: 0 1.125rem;
+  }
+
+  ai-transcript [data-part="quote-button"]:hover {
+    background: color-mix(in srgb, CanvasText 85%, Canvas);
+  }
+
+  ai-transcript [data-part="quote-button"]:focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 2px;
+  }
+
+  ai-transcript [data-part="quote-button"][hidden] {
+    display: none;
+  }
+
+  @media (forced-colors: active) {
+    ai-transcript [data-part="quote-button"] {
+      border-color: ButtonText;
+      background: ButtonFace;
+      color: ButtonText;
+    }
+  }
+
   ai-transcript > [data-part="announcement"] {
     position: absolute;
     width: 1px;

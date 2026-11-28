@@ -1,3 +1,5 @@
+import { quotesToMarkdown } from "@samyakbhuta/ui-components/ai-composer";
+
 /**
  * Saved chats for the chat shell: kept in this browser's localStorage, and exported as Markdown.
  */
@@ -19,6 +21,8 @@ export type StoredMessage = {
   meta?: string;
   /** When it was sent, or the reply started, as an ISO time. */
   createdAt?: string;
+  /** Words a message of yours quoted, with the index of the message they came from as `id`. */
+  quotes?: { text: string; from?: "user" | "assistant"; id?: string; source?: string }[];
   /** The model that wrote a reply, as its label. */
   model?: string;
   prompt?: StoredPrompt;
@@ -231,7 +235,8 @@ export function chatToMarkdown(chat: StoredChat, { exportedAt = new Date(), loca
     if (message.tools?.length) {
       parts.push("", ...message.tools.map((tool) => (tool.error !== undefined ? `- \`${tool.name}\` failed: ${tool.error || "no reason given"}` : `- ${tool.summary || `Ran \`${tool.name}\``}`)));
     }
-    parts.push("", message.text.trim() || "*(no text)*");
+    // Quotes where they were written, between the words.
+    parts.push("", quotesToMarkdown(message.text, message.quotes).trim() || "*(no text)*");
     if (message.error !== undefined) parts.push("", `> **Error:** ${message.error || "Something went wrong."}`);
     if (message.question) parts.push("", ...questionToMarkdown(message.question));
     if (message.approval) parts.push("", ...approvalToMarkdown(message.approval));

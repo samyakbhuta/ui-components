@@ -22,6 +22,7 @@ import {
   defaultModes,
   defaultThinkingLevels,
   type PromptSubmitDetail,
+  quotesToMarkdown,
 } from "@samyakbhuta/ui-components/ai-composer";
 import type { AiMessageElement } from "@samyakbhuta/ui-components/ai-message";
 import {
@@ -319,6 +320,18 @@ const icons = {
 export function pretendReply(detail: PromptSubmitDetail) {
   const model = labelOf(defaultModels, detail.model);
   const mode = labelOf(defaultModes, detail.mode);
+  const quotes = detail.quotes ?? [];
+  if (quotes.length) {
+    return [
+      "You wrote, with your quotes in place:",
+      "",
+      quotesToMarkdown(detail.text, quotes),
+      "",
+      "A real model would answer that, about the words you quoted.",
+      "",
+      `— pretend **${model}**`,
+    ].join("\n");
+  }
   if (citing(detail.text)) {
     return [
       "Web components are a set of browser features for making your own reusable HTML elements [1].",
@@ -416,7 +429,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
             </ui-button>
           </div>
         </header>
-        <ai-transcript class="transcript">
+        <ai-transcript class="transcript" quotable for="chat-composer">
           <div slot="empty" class="transcript-empty">
             <h2>What can I help with?</h2>
             <p>Type <kbd>/</kbd> for commands or <kbd>@</kbd> to reference a file. Drop or paste files to attach them, and press <kbd>↑</kbd> for earlier prompts.</p>
@@ -542,6 +555,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
           text: message.text,
           meta: message.querySelector(".message-meta")?.textContent ?? undefined,
           createdAt: message.getAttribute("time") ?? undefined,
+          quotes: message.quotes.length ? message.quotes : undefined,
           model: message.model || undefined,
           prompt: prompts.get(message),
           thinking: thinking
@@ -839,6 +853,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
       if (stored.from === "user") {
         const message = userMessage(stored.text, stored.meta ?? "", stored.prompt);
         if (stored.createdAt) message.time = stored.createdAt;
+        if (stored.quotes) message.quotes = stored.quotes;
         lastPrompt = stored.prompt ? detailFrom(stored.text, stored.prompt) : undefined;
         transcript.append(message);
       } else {
@@ -1080,6 +1095,7 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
     };
     const sent = userMessage(detail.text, line, prompt, detail.files);
     sent.time = new Date();
+    if (detail.quotes?.length) sent.quotes = detail.quotes;
     transcript.append(sent);
     save();
     startReply(detail, undefined, script);
@@ -1088,6 +1104,23 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   /** An answer to the trip planner's question goes in as your next message, with the composer's settings. */
   const answerWith = (text: string, step: number) =>
     send({ text, mode: composer.mode, model: composer.model, thinking: composer.thinking, references: [], files: [] }, { trip: step + 1 });
+
+  // Quote: the words go into the box as a card, with the message they came from, so the quote can take you back.
+  transcript.addEventListener("messagequote", (event) => {
+    event.preventDefault();
+    const index = messages().indexOf(event.detail.message as AiMessageElement);
+    const { text, from, source } = event.detail;
+    composer.addQuote({ text, from, ...(source ? { source } : {}), id: String(index) });
+  });
+  transcript.addEventListener("quoteopen", (event) => {
+    const quoted = messages()[Number(event.detail.quote.id)];
+    if (!quoted) return;
+    quoted.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    quoted.tabIndex = -1;
+    quoted.focus({ preventScroll: true });
+    quoted.setAttribute("data-highlighted", "");
+    setTimeout(() => quoted.removeAttribute("data-highlighted"), 2000);
+  });
 
   transcript.addEventListener("questionanswer", (event) => {
     if (composer.busy) return event.preventDefault();

@@ -103,6 +103,9 @@ function logEvents(root: HTMLElement) {
     "noticeaction",
     "noticeexpire",
     "noticedismiss",
+    "messagequote",
+    "quoteschange",
+    "quoteopen",
     "chatchange",
     "chaterror",
   ];
@@ -112,7 +115,7 @@ function logEvents(root: HTMLElement) {
       // A whole conversation is too long to show; its size says enough.
       if (type === "chatchange") return void (log.textContent = `chatchange {"messages": ${detail.messages.length} messages}`);
       const shown = JSON.stringify(detail, (key, value) =>
-        value instanceof File ? `File(${value.name})` : key === "value" && Array.isArray(value) && value[0]?.file ? value.map((entry: { file: File; reasons: string[] }) => `${entry.file.name}: ${entry.reasons}`) : value,
+        value instanceof File ? `File(${value.name})` : value instanceof HTMLElement ? `<${value.localName}>` : key === "value" && Array.isArray(value) && value[0]?.file ? value.map((entry: { file: File; reasons: string[] }) => `${entry.file.name}: ${entry.reasons}`) : value,
       );
       log.textContent = `${type} ${shown ?? ""}`;
     });
@@ -431,6 +434,31 @@ reply.addEventListener("messageaction", (event) => {
     },
   },
   {
+    id: "quotes",
+    title: "Quoting",
+    intro:
+      "Select words in the reply, then press Quote: they go into the box, ready to ask about. Quote more than once to add several. Switch the box to Markdown to get > lines in the text instead of cards. The event shows below.",
+    html: `<ai-transcript quotable for="quote-box" style="max-height: 16rem">
+  <ai-message>Custom elements let you define **your own HTML tags**, like \`<ai-message>\`. The browser upgrades each one when its class is registered.</ai-message>
+</ai-transcript>
+<ai-composer id="quote-box"></ai-composer>
+<label><input type="checkbox" class="markdown-style"> Markdown quotes</label>`,
+    script: `<ai-transcript quotable for="quote-box">…</ai-transcript>
+<ai-composer id="quote-box"></ai-composer>
+
+composer.quoteStyle = "markdown" // > lines in the text, instead of cards
+composer.addEventListener("promptsubmit", (event) => {
+  send(event.detail.text, event.detail.quotes) // quotes: [{ text, from }]
+})`,
+    setup: (root) => {
+      const composer = root.querySelector<HTMLElementTagNameMap["ai-composer"]>("ai-composer")!;
+      root.querySelector<HTMLInputElement>(".markdown-style")!.addEventListener("change", (event) => {
+        composer.quoteStyle = (event.target as HTMLInputElement).checked ? "markdown" : "card";
+      });
+      composer.addEventListener("promptsubmit", (event) => event.preventDefault());
+    },
+  },
+  {
     id: "message-states",
     title: "Attachments, errors, feedback and versions",
     intro:
@@ -736,7 +764,7 @@ notice.addEventListener("noticeaction", (event) => {
     id: "chat",
     title: "<ai-chat>",
     intro:
-      "A whole chat in one tag: give it a model that streams a reply, and it runs the conversation. This pretend model shows each kind of chunk: thinking, a tool call, text, sources and follow-ups; a question that waits for your answer (ask for a trip); an approval that waits for your decision (ask it to clean up); and a plan to accept, reject or revise (ask it to plan a surprise party); and several questions at once (ask for help picking a gift). Ask it to show the usage limit to see the message box lock until it resets, or until you pick a way round it. Stop and Retry work too.",
+      "A whole chat in one tag: give it a model that streams a reply, and it runs the conversation. This pretend model shows each kind of chunk: thinking, a tool call, text, sources and follow-ups; a question that waits for your answer (ask for a trip); an approval that waits for your decision (ask it to clean up); and a plan to accept, reject or revise (ask it to plan a surprise party); and several questions at once (ask for help picking a gift). Ask it to show the usage limit to see the message box lock until it resets, or until you pick a way round it. Select words in a reply and press Quote to ask about them. Stop and Retry work too.",
     html: `<ai-chat class="sample-chat" style="height: 34rem">
   <p slot="empty">Ask anything, or try a suggestion.</p>
 </ai-chat>`,

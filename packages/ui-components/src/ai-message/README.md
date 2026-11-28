@@ -54,6 +54,7 @@ reply.done(); // renders what's left and fires messagecomplete
 | --- | --- |
 | `text` | The message's source. Setting it replaces the message. |
 | `from`, `format`, `streaming`, `actions`, `error`, `feedback`, `versions`, `version`, `model` | The same as the attributes. `actions` is an array of `copy`, `retry`, `edit` and `feedback`, and also takes the attribute's words as a string; `error` and `feedback` are `null` when unset. |
+| `quotes` | Words quoted from earlier in the conversation, shown in the message, each a line or two: `{ text, from?, id?, source?, at? }[]`. `source`, for words from a card like a plan, shows above the words. `at` is how many characters of `text` come before the quote, so it sits where it was written, between the words; without it, before them. Every quote looks alike, wherever it sits. A quote with an `id` is a button that fires `quoteopen`; without one, it's a quote block. Text only. |
 | `time` | The same as the attribute, as a `Date`, or `null`. Also takes an ISO string or milliseconds. |
 | `attachments` | Files shown above the text: `File` objects, like the ones `<ai-composer>` sends, or `{ name, type?, size?, url? }`. Images show as thumbnails that open full size; other files show their name and size, and open in a new tab when they have a `url`. |
 | `strings` | Words to replace; see below. |
@@ -71,6 +72,7 @@ reply.done(); // renders what's left and fires messagecomplete
 | `messagecomplete` | `null` | Streaming ended. It bubbles, so a transcript can listen once for every message. |
 | `messagefeedback` | `{ feedback, text }` | Good response or Bad response was pressed. `feedback` is `"good"`, `"bad"`, or `null` when it was pressed again to clear it. `preventDefault()` keeps the rating as it was. |
 | `messageversion` | `{ version, versions }` | Previous or Next was pressed. Set `text` to that version's reply. `preventDefault()` stays on the current one. |
+| `quoteopen` | `{ quote, index }` | A quote with an `id` was pressed. [`<ai-chat>`](../ai-chat/README.md) scrolls to the quoted message; elsewhere, it's yours to handle. Cancelable. |
 | `attachmentopen` | `{ attachment, index, kind }` | An image (`kind: "image"`) or a file link (`kind: "file"`) was clicked, before it opens. `preventDefault()` stops it opening; see [Showing attachments your own way](#showing-attachments-your-own-way). |
 
 ```ts
@@ -238,6 +240,8 @@ chat.strings = { message: { closeViewer: "Fermer", previousImage: "Image précé
 | `previousImage`, `nextImage` | `Previous image`, `Next image`: the image viewer's arrows, said by screen readers |
 | `imagePosition(index, count)` | `2 of 3`: shown between the image viewer's arrows |
 | `closeViewer` | `Close`: the image viewer's close button, said by screen readers |
+| `quoted` | `Quoted:`: said before each quote, for screen readers |
+| `goToQuote` | `Show where this was said`: a quote button's tooltip |
 | `time(at, now, lang)` | `5 minutes ago`: how long ago it was sent. The default, `timeAgo`, is exported, and uses `Intl.RelativeTimeFormat` in `lang`, the page's language |
 | `fullTime(at, lang)` | `Saturday, November 28, 2026 at 3:04 PM`: the time's tooltip |
 
@@ -271,7 +275,7 @@ Set its custom properties on `ai-message` itself, or once on an element around i
 | `--ai-message-error` | the error's border and icon, at least 3:1 in light and dark |
 | `--ai-message-thumbnail-size` | `6rem`: the size of image attachments |
 
-Parts: `[data-part="body"]`, `attachments`, `attachment` (with `data-kind="image"` or `"file"`), `attachment-open` (an image's button), `file-link`, `file-name`, `file-size`, the viewer's `viewer`, `viewer-backdrop`, `viewer-content`, `viewer-header`, `viewer-title`, `viewer-position`, `viewer-close`, `viewer-stage`, `viewer-image`, `viewer-previous` and `viewer-next`, `error`, `meta` (the line with `model` and `time`), `actions`, `versions`, `version`, `feedback`, `code-block`, `code-header`, `code-language`, `code-copy` and `table`. Buttons show `data-copied` for a moment after copying, and the message has `data-error` while it shows an error.
+Parts: `[data-part="body"]`, `quotes`, `quote` (with `data-from`), `quote-source`, `quote-text`, `attachments`, `attachment` (with `data-kind="image"` or `"file"`), `attachment-open` (an image's button), `file-link`, `file-name`, `file-size`, the viewer's `viewer`, `viewer-backdrop`, `viewer-content`, `viewer-header`, `viewer-title`, `viewer-position`, `viewer-close`, `viewer-stage`, `viewer-image`, `viewer-previous` and `viewer-next`, `error`, `meta` (the line with `model` and `time`), `actions`, `versions`, `version`, `feedback`, `code-block`, `code-header`, `code-language`, `code-copy` and `table`. Buttons show `data-copied` for a moment after copying, and the message has `data-error` while it shows an error.
 
 ## Accessibility
 
@@ -282,6 +286,7 @@ Parts: `[data-part="body"]`, `attachments`, `attachment` (with `data-kind="image
 - Attachments are a list named "Attachments". Each image is a button named "View" and its file name, and a file with an address is a link named "Open" and its file name "in a new tab".
 - The image viewer is a modal dialog named by the file name. Focus starts on Close and stays inside until it closes, then returns to the thumbnail of the image last shown. The image's alternative text is its file name. "2 of 3" is read out as it changes. The arrows are named "Previous image" and "Next image", are disabled at either end, and move focus to the other one there. In right-to-left text, Left and Right swap, and so do the arrows' icons.
 - The time is a `<time>` element, so screen readers read "5 minutes ago" with the message, even while it's faded out. It isn't part of what [`<ai-transcript>`](../ai-transcript/README.md) reads out when a reply finishes. With Reduce motion on, it appears without fading. In Windows high contrast mode it always shows.
+- Each quote starts with "Quoted:" for screen readers. One that can take you to where it was said is a button, named "Quoted:" and its words.
 - While streaming, the message is `aria-busy`. The caret is drawn in CSS, so it isn't read out, and it doesn't blink with Reduce motion turned on.
 - AI agents can press Copy, Retry, Edit, Previous and Next, and set Good response or Bad response with `setPressed`, through ui-sdk's agent bridge.
 
