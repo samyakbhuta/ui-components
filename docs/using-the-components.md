@@ -31,6 +31,8 @@ npm install @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/co
 
 The `beta` tag always points at the newest beta. A release only moves `latest` when the owner moves it by hand, so `latest` can lag behind for a while.
 
+To start from a working project instead, run `npx degit samyakbhuta/ui-components/examples/quick-start my-chat`, or press **Open in StackBlitz** on [the site](https://uisdk-components.netlify.app) to try it in your browser. For a plain HTML file with nothing to install, import the package from esm.sh: `import "https://esm.sh/@samyakbhuta/ui-components@beta"`, and pin a version before you ship.
+
 To try a change that isn't released yet, run `npm run build:package` in this repo, then `npm pack` in `packages/ui-components/`, and install the `.tgz` file it prints instead.
 
 ### 2. Let the page follow light and dark mode

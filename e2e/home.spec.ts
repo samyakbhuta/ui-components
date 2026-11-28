@@ -1,11 +1,16 @@
 import { contrastRatio, expect, sidewaysOverflow, test } from "./fixtures";
 
+// The front page asks jsDelivr for the newest version; answer for it, so tests don't need the network.
+test.beforeEach(async ({ page }) => {
+  await page.route("https://data.jsdelivr.com/**", (route) => route.fulfill({ json: { version: "0.1.0-beta.9" } }));
+});
+
 test("the front page says what the package is, and leads to the chat demo and the docs page", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveTitle("AI chat components");
   await expect(page.getByRole("heading", { level: 1, name: "AI chat components" })).toBeVisible();
   // npm shows first, until another package manager is chosen.
-  await expect(page.locator(".home-install:visible")).toHaveText(
+  await expect(page.locator(".home-install-tabs .home-install:visible")).toHaveText(
     "npm install @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18",
   );
 

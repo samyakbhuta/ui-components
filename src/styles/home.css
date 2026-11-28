@@ -44,16 +44,24 @@
   margin-top: 1.5rem;
 }
 
-.home-actions a {
+.home-actions a,
+.home-actions button {
   display: inline-flex;
   align-items: center;
   min-height: 2.75rem;
   padding: 0 1.25rem;
   border: 1px solid var(--home-border);
   border-radius: 1.5rem;
+  background: none;
   color: inherit;
+  font: inherit;
   font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
+}
+
+.home-actions ui-button[hidden] {
+  display: none;
 }
 
 .home-actions a.home-primary {
@@ -62,7 +70,8 @@
   color: Canvas;
 }
 
-.home a:focus-visible {
+.home a:focus-visible,
+.home-actions button:focus-visible {
   outline: 2px solid CanvasText;
   outline-offset: 2px;
 }
@@ -190,4 +199,20 @@ ui-tabs:not(:defined) ui-tabs-panel:not([value="npm"]),
   color: var(--home-muted);
   font-size: 0.8125rem;
   font-weight: 400;
+}
+
+.home-version {
+  margin: 0;
+  color: var(--home-muted);
+  font-size: 0.9375rem;
+}
+
+.home-version[hidden] {
+  display: none;
+}
+
+.home-note {
+  margin: 0.25rem 0 0;
+  color: var(--home-muted);
+  font-size: 0.875rem;
 }

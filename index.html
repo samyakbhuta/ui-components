@@ -23,17 +23,23 @@
         <nav class="home-actions" aria-label="Try it">
           <a class="home-primary" href="/experiments/chat-shell.html">Try the chat demo</a>
           <a href="/experiments/ai-composer.html">See every component</a>
+          <ui-button class="home-stackblitz" hidden><button type="button">Open in StackBlitz</button></ui-button>
         </nav>
       </header>
 
       <section aria-labelledby="install-title">
         <h2 id="install-title">Install</h2>
+        <p class="home-version" hidden>
+          Latest on npm: <a href="https://www.npmjs.com/package/@samyakbhuta/ui-components?activeTab=versions"></a>.
+          <a href="https://github.com/samyakbhuta/ui-components/blob/main/packages/ui-components/CHANGELOG.md">What's new</a>
+        </p>
         <ui-tabs class="home-install-tabs" default-value="npm">
           <ui-tabs-list aria-label="Package manager">
             <ui-tabs-tab value="npm"><button type="button">npm</button></ui-tabs-tab>
             <ui-tabs-tab value="pnpm"><button type="button">pnpm</button></ui-tabs-tab>
             <ui-tabs-tab value="yarn"><button type="button">yarn</button></ui-tabs-tab>
             <ui-tabs-tab value="bun"><button type="button">bun</button></ui-tabs-tab>
+            <ui-tabs-tab value="cdn"><button type="button">No build step</button></ui-tabs-tab>
           </ui-tabs-list>
           <ui-tabs-panel value="npm">
             <pre class="home-install" data-copy-label="npm command"><code>npm install @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18</code></pre>
@@ -44,12 +50,21 @@
           <ui-tabs-panel value="yarn">
             <pre class="home-install" data-copy-label="yarn command"><code>yarn add @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18</code></pre>
           </ui-tabs-panel>
+          <ui-tabs-panel value="cdn">
+            <pre class="home-install" data-copy-label="script tag"><code>&lt;script type="module"&gt;
+  import "https://esm.sh/@samyakbhuta/ui-components@beta";
+&lt;/script&gt;</code></pre>
+            <p class="home-note">
+              For a plain HTML file, with nothing to install. esm.sh serves the package and ui-sdk as modules. Pin a
+              version, like <code>@0.1.0-beta.3</code>, before you ship.
+            </p>
+          </ui-tabs-panel>
           <ui-tabs-panel value="bun">
             <pre class="home-install" data-copy-label="bun command"><code>bun add @samyakbhuta/ui-components@beta @ui-sdk/web@0.1.0-beta.18 @ui-sdk/core@0.1.0-beta.18</code></pre>
           </ui-tabs-panel>
         </ui-tabs>
         <p>
-          Then <code>import "@samyakbhuta/ui-components"</code> once, and use the tags. The
+          With a package manager, <code>import "@samyakbhuta/ui-components"</code> once in your app, and use the tags. The
           <a href="https://github.com/samyakbhuta/ui-components/blob/main/docs/using-the-components.md">guide</a> covers
           frameworks, styling, translation and server rendering.
         </p>
@@ -91,6 +106,8 @@
     composer.busy = false;
   });
 &lt;/script&gt;</code></pre>
+        <p>Or start a project from it, then <code>npm install</code> and <code>npm run dev</code>:</p>
+        <pre class="home-install" data-copy-label="starter command"><code>npx degit samyakbhuta/ui-components/examples/quick-start my-chat</code></pre>
         <p>
           Using React, Vue or Svelte? Add <code>import type {} from "@samyakbhuta/ui-components/react"</code> (or
           <code>/vue</code>, <code>/svelte</code>) once, and every tag is typed. The
