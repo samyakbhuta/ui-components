@@ -7,6 +7,8 @@ import "@samyakbhuta/ui-components/ai-sources";
 import "@samyakbhuta/ui-components/ai-suggestions";
 import "@samyakbhuta/ui-components/ai-question";
 import "@samyakbhuta/ui-components/ai-approval";
+import "@samyakbhuta/ui-components/ai-chat";
+import type { ChatModel } from "@samyakbhuta/ui-components/ai-chat";
 import "@samyakbhuta/ui-components/ai-transcript";
 import "@samyakbhuta/ui-components/ai-chat-list";
 import { highlight } from "@samyakbhuta/ui-components/highlight";
@@ -90,10 +92,14 @@ function logEvents(root: HTMLElement) {
     "questionanswer",
     "questionskip",
     "approvaldecision",
+    "chatchange",
+    "chaterror",
   ];
   for (const type of types) {
     root.addEventListener(type, (event) => {
       const detail = (event as CustomEvent).detail;
+      // A whole conversation is too long to show; its size says enough.
+      if (type === "chatchange") return void (log.textContent = `chatchange {"messages": ${detail.messages.length} messages}`);
       const shown = JSON.stringify(detail, (key, value) =>
         value instanceof File ? `File(${value.name})` : key === "value" && Array.isArray(value) && value[0]?.file ? value.map((entry: { file: File; reasons: string[] }) => `${entry.file.name}: ${entry.reasons}`) : value,
       );
@@ -118,6 +124,56 @@ function resetDemo(root: HTMLElement, settled: string, events: string[], reset: 
   });
   sync();
 }
+
+/** The docs page's pretend model for <ai-chat>: it shows each kind of chunk, by what you ask. */
+const pretendChatModel: ChatModel = async function* ({ messages, signal }) {
+  const pause = (ms: number) =>
+    new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(resolve, ms);
+      signal.addEventListener("abort", () => (clearTimeout(timer), reject(signal.reason)), { once: true });
+    });
+  const stream = async function* (text: string) {
+    for (const word of text.split(/(?<= )/)) {
+      await pause(30);
+      yield word;
+    }
+  };
+  const asked = [...messages].reverse().find((message) => message.role === "user")?.text ?? "";
+  if (/trip/i.test(asked)) {
+    yield* stream("Happy to help. First, a question. ");
+    const city = yield { type: "question", question: "Which city should the trip start in?", options: ["Paris", "Rome", "Lisbon"], other: true, skippable: true };
+    const name = city && "labels" in city ? city.labels[0] : "Lisbon";
+    yield* stream(`**${name}** it is. Saturday: a long walk and lunch. Sunday: a museum, then the train home.`);
+    return;
+  }
+  if (/clean|delete/i.test(asked)) {
+    yield* stream("I can clear out the build folder. ");
+    const decision = yield { type: "approval", name: "run_command", label: "Run a command", description: "This deletes files in your project.", input: "rm -rf dist", always: true, reason: true };
+    if (decision && "decision" in decision && decision.decision === "deny") {
+      yield* stream(decision.reason ? `OK, I won't run that. You suggested instead: *${decision.reason}*.` : "OK, I won't run that.");
+      return;
+    }
+    yield { type: "tool", id: "rm", name: "run_command", label: "Running rm -rf dist…", input: "rm -rf dist" };
+    await pause(500);
+    yield { type: "tool-result", id: "rm", summary: "Ran rm -rf dist", output: "Removed dist/ (42 files)" };
+    yield* stream("Done. The build folder is gone.");
+    return;
+  }
+  yield { type: "thinking", text: "Looking up what custom elements are." };
+  await pause(600);
+  yield { type: "tool", id: "search", name: "web_search", label: "Searching the web…", input: { query: asked } };
+  await pause(500);
+  yield { type: "tool-result", id: "search", summary: "Searched the web", output: "2 results" };
+  yield* stream("Custom elements let you define your own HTML tags, like `<ai-chat>` [1]. They're one of the web component standards [2].");
+  yield {
+    type: "sources",
+    sources: [
+      { title: "Using custom elements", url: "https://developer.mozilla.org/docs/Web/API/Web_components/Using_custom_elements" },
+      { title: "Web components", url: "https://developer.mozilla.org/docs/Web/API/Web_components" },
+    ],
+  };
+  yield { type: "suggestions", suggestions: ["Plan a weekend trip", "Clean up my build folder"] };
+};
 
 const demos: Demo[] = [
   {
@@ -514,6 +570,30 @@ approval.decision = savedDecision // shows a saved decision, like when a chat op
     },
   },
   {
+    id: "chat",
+    title: "<ai-chat>",
+    intro:
+      "A whole chat in one tag: give it a model that streams a reply, and it runs the conversation. This pretend model shows each kind of chunk: thinking, a tool call, text, sources and follow-ups; a question that waits for your answer (ask for a trip); and an approval that waits for your decision (ask it to clean up). Stop and Retry work too.",
+    html: `<ai-chat class="sample-chat" style="height: 34rem">
+  <p slot="empty">Ask anything, or try a suggestion.</p>
+</ai-chat>`,
+    script: `chat.suggestions = ["What are custom elements?", "Plan a weekend trip", "Clean up my build folder"]
+chat.model = async function* ({ messages, signal }) {
+  yield { type: "thinking", text: "Looking it up." }
+  yield { type: "tool", id: "1", name: "web_search", input: { query } }
+  yield { type: "tool-result", id: "1", summary: "Searched the web" }
+  yield "Custom elements let you define your own tags [1]."
+  yield { type: "sources", sources }
+  const city = yield { type: "question", question: "Which city?", options: ["Paris", "Rome"] }
+  const decision = yield { type: "approval", name: "run_command", input: "rm -rf dist" }
+}`,
+    setup: (root) => {
+      const chat = root.querySelector<HTMLElementTagNameMap["ai-chat"]>(".sample-chat")!;
+      chat.suggestions = ["What are custom elements?", "Plan a weekend trip", "Clean up my build folder"];
+      chat.model = pretendChatModel;
+    },
+  },
+  {
     id: "syntax",
     title: "Syntax colouring",
     intro:
@@ -731,7 +811,7 @@ main.innerHTML = `
   <header class="docs-header">
     <a class="back" href="/showcase.html">← Showcase</a>
     <h1>AI chat components</h1>
-    <p>Live examples of <code>&lt;ai-composer&gt;</code>, <code>&lt;ai-message&gt;</code>, <code>&lt;ai-transcript&gt;</code>, <code>&lt;ai-thinking&gt;</code>, <code>&lt;ai-tool-call&gt;</code>, <code>&lt;ai-sources&gt;</code>, <code>&lt;ai-suggestions&gt;</code>, <code>&lt;ai-question&gt;</code>, <code>&lt;ai-approval&gt;</code> and <code>&lt;ai-chat-list&gt;</code>. Each has a README with its full API in <code>packages/ui-components/</code>.</p>
+    <p>Live examples of <code>&lt;ai-composer&gt;</code>, <code>&lt;ai-message&gt;</code>, <code>&lt;ai-transcript&gt;</code>, <code>&lt;ai-thinking&gt;</code>, <code>&lt;ai-tool-call&gt;</code>, <code>&lt;ai-sources&gt;</code>, <code>&lt;ai-suggestions&gt;</code>, <code>&lt;ai-question&gt;</code>, <code>&lt;ai-approval&gt;</code>, <code>&lt;ai-chat&gt;</code> and <code>&lt;ai-chat-list&gt;</code>. Each has a README with its full API in <code>packages/ui-components/</code>.</p>
     <nav aria-label="Examples"><ul>${demos.map((demo) => `<li><a href="#${demo.id}">${escape(demo.title)}</a></li>`).join("")}</ul></nav>
   </header>
   ${demos

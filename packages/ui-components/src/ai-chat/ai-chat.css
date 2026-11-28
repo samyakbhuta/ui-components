@@ -1,0 +1,30 @@
+/*
+ * <ai-chat> styles, in the `ai-chat` layer so unlayered page rules win.
+ */
+@layer ai-chat {
+  ai-chat {
+    --ai-chat-gap: 0.75rem;
+    --ai-chat-muted: color-mix(in srgb, CanvasText 68%, Canvas);
+
+    /* The conversation fills the height you give the chat; the composer stays at the bottom. */
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: var(--ai-chat-gap);
+    min-height: 0;
+  }
+
+  ai-chat > ai-transcript {
+    min-height: 0;
+  }
+
+  ai-chat [data-part="stopped"] {
+    margin: 0.25rem 0 0;
+    color: var(--ai-chat-muted);
+    font-size: 0.8125rem;
+  }
+
+  /* The element's own display would otherwise beat the hidden attribute. */
+  ai-chat[hidden] {
+    display: none !important;
+  }
+}
