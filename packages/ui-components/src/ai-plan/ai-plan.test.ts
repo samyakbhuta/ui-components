@@ -1,10 +1,11 @@
 import { within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
-import { settle } from "@ui-sdk/core/testing";
+import { checkServer, mount as mountPrimitive, settle } from "@ui-sdk/core/testing";
 import { createAgent } from "@ui-sdk/web/agent";
 import { afterEach, expect, test, vi } from "vitest";
 import "./ai-plan.ts";
 import type { AiPlanElement, PlanDecisionDetail } from "./ai-plan.ts";
+import { plan as planPrimitive } from "./plan.ts";
 
 afterEach(() => document.body.replaceChildren());
 
@@ -16,7 +17,7 @@ async function mount(markup: string, setup?: (card: AiPlanElement) => void) {
   setup?.(card);
   await settle();
   const decisions: PlanDecisionDetail[] = [];
-  card.addEventListener("plandecision", (event) => decisions.push(event.detail));
+  card.addEventListener("decisionchange", (event) => decisions.push(event.detail.value!));
   return { card, decisions, view: within(card) };
 }
 
@@ -66,11 +67,11 @@ test("Accept decides, shows the decision, moves focus there and announces it", a
   expect(line(card).textContent).toBe("Accepted");
   expect(line(card).dataset.decision).toBe("accept");
   expect(document.activeElement).toBe(line(card));
-  expect(view.getByRole("status").textContent).toBe("Accepted");
+  await vi.waitFor(() => expect([...document.querySelectorAll("[aria-live]")].map((region) => region.textContent).join(" ")).toContain("Accepted"));
   // The plan can still be opened, but nothing can be decided again.
   expect(view.queryByRole("button", { name: "Reject" })).toBeNull();
   expect(view.getByRole("button", { name: "Open plan" })).toBeTruthy();
-  expect(card.decide("reject")).toBe(false);
+  expect(card.api.decide("reject")).toBe(false);
 });
 
 test("accepts adds Accept-and-use buttons; the mode comes back with the decision", async () => {
@@ -90,7 +91,7 @@ test("accepts adds Accept-and-use buttons; the mode comes back with the decision
     "Accept and use accept-edits mode",
   ]);
   // A mode that isn't offered does nothing.
-  expect(card.decide("accept", { mode: "yolo" })).toBe(false);
+  expect(card.api.decide("accept", { mode: "yolo" })).toBe(false);
   await user.click(view.getByRole("button", { name: "Accept and use auto mode" }));
   expect(decisions).toEqual([{ decision: "accept", mode: "auto", feedback: null }]);
   expect(line(card).textContent).toBe("Accepted, using auto mode");
@@ -121,8 +122,8 @@ test("Revise… opens a box; Enter sends what to change, Escape and Cancel close
 test("Reject decides; cancelling keeps it asking; a saved decision shows; null asks again", async () => {
   const user = userEvent.setup();
   const { card, decisions, view } = await mount(`<ai-plan></ai-plan>`);
-  card.addEventListener("plandecision", (event) => event.preventDefault(), { once: true });
-  expect(card.decide("accept")).toBe(false);
+  card.addEventListener("decisionchange", (event) => event.preventDefault(), { once: true });
+  expect(card.api.decide("accept")).toBe(false);
   expect(card.decision).toBeNull();
   await user.click(view.getByRole("button", { name: "Reject" }));
   expect(decisions.at(-1)).toEqual({ decision: "reject", mode: null, feedback: null });
@@ -140,10 +141,10 @@ test("Reject decides; cancelling keeps it asking; a saved decision shows; null a
 test("disabled locks the buttons", async () => {
   const pressed = vi.fn();
   const { card, view } = await mount(`<ai-plan disabled></ai-plan>`);
-  card.addEventListener("plandecision", pressed);
+  card.addEventListener("decisionchange", pressed);
   const accept = view.getByRole("button", { name: "Accept" });
   expect(accept.matches(":disabled") || accept.getAttribute("aria-disabled") === "true").toBe(true);
-  expect(card.decide("accept")).toBe(false);
+  expect(card.api.decide("accept")).toBe(false);
   expect(pressed).not.toHaveBeenCalled();
 });
 
@@ -225,4 +226,79 @@ test("an app can let agents reject alone, by emptying its confirm sentence", asy
   const result = await createAgent({ allow: (step) => !step.confirm }).act({ steps: [{ ref: "Reject", action: "press" }] });
   expect(result.ok, result.error?.message).toBe(true);
   expect(decisions).toEqual([{ decision: "reject", mode: null, feedback: null }]);
+});
+
+test("each change says what asked for it and how; setting `open` or `decision` reports nothing", async () => {
+  const user = userEvent.setup();
+  const { card, view } = await mount(`<ai-plan></ai-plan>`, (c) => (c.plan = plan));
+  const reported: string[] = [];
+  card.addEventListener("openchange", (event) => reported.push(`open ${event.detail.value} ${event.detail.reason}`));
+  card.addEventListener("decisionchange", (event) => reported.push(`decision ${event.detail.value?.decision} ${event.detail.reason}`));
+
+  await user.click(view.getByRole("button", { name: "Open plan" }));
+  card.open = false;
+  await settle();
+  expect(view.getByRole("button", { name: "Open plan" }).getAttribute("aria-expanded")).toBe("false");
+  card.decision = { decision: "reject", mode: null, feedback: null };
+  card.decision = null;
+  await settle();
+  await user.click(view.getByRole("button", { name: "Revise…" }));
+  await user.keyboard("Keep the cache{Enter}");
+  expect(reported).toEqual(["open true trigger-press", "decision revise enter-key"]);
+});
+
+test("cancelling openchange keeps the plan closed", async () => {
+  const user = userEvent.setup();
+  const { card, view } = await mount(`<ai-plan></ai-plan>`, (c) => (c.plan = plan));
+  card.addEventListener("openchange", (event) => event.preventDefault());
+  await user.click(view.getByRole("button", { name: "Open plan" }));
+  await settle();
+  expect(card.open).toBe(false);
+  expect(part(card, "plan").hidden).toBe(true);
+});
+
+test("the agent sees the card by its heading, with its state and no actions of its own; Open plan is a Collapsible it can open", async () => {
+  const { decisions } = await mount(`<ai-plan heading="Clean up"></ai-plan>`, (c) => (c.plan = plan));
+  const agent = createAgent({ allow: (step) => !step.confirm });
+  const snapshot = agent.snapshot();
+  // `press` is the bridge's own, for a button inside by its text, and the button's mark still applies.
+  expect(snapshot.find((item) => item.label === "Clean up")).toMatchObject({ component: "plan", actions: ["press"], decision: null, open: false });
+  expect((await agent.act({ steps: [{ ref: "Clean up", action: "press", args: ["Reject"] }] })).ok).toBe(false);
+  expect(decisions).toEqual([]);
+  const opener = snapshot.find((item) => item.component === "collapsible")!;
+  expect(opener.label).toBe("Open plan");
+  const result = await agent.act({ steps: [{ ref: opener.ref, action: "setOpen", args: [true] }] });
+  expect(result.ok, result.error?.message).toBe(true);
+  expect(document.querySelector("ai-plan")!.open).toBe(true);
+});
+
+test("the primitive renders on a server, and its parts come and go as people revise and decide", async () => {
+  const markup = "<root><status></status><heading></heading><revise><input /></revise><actions></actions><decision></decision></root>";
+  checkServer(planPrimitive, { heading: "Clean up" }, markup);
+  const view = mountPrimitive(planPrimitive, { heading: "Clean up" }, markup);
+  try {
+    const root = view.part("root")!;
+    expect(root.getAttribute("role")).toBe("group");
+    expect(root.getAttribute("aria-labelledby")).toBe(view.part("heading")!.id);
+    expect(root.getAttribute("aria-describedby")).toBe(view.part("status")!.id);
+    expect(view.part("revise")!.isConnected).toBe(false);
+
+    expect(view.api.startRevising()).toBe(true);
+    await view.settle();
+    expect(view.part("revise")!.isConnected).toBe(true);
+    expect(view.part("actions")!.isConnected).toBe(false);
+    // Nothing typed: there's nothing to send.
+    expect(view.api.decide("revise")).toBe(false);
+
+    view.api.setFeedbackText("Keep the cache");
+    expect(view.api.decide("revise")).toBe(true);
+    await view.settle();
+    expect(view.changes.at(-1)).toMatchObject({ key: "decision", value: { decision: "revise", mode: null, feedback: "Keep the cache" }, reason: "imperative" });
+    expect(view.part("revise")!.isConnected).toBe(false);
+    expect(view.part("decision")!.isConnected).toBe(true);
+    expect(root.hasAttribute("decided")).toBe(true);
+    expect(view.announced).toContain("Asked for changes: “Keep the cache”");
+  } finally {
+    view.unmount();
+  }
 });

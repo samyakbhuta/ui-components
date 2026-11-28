@@ -95,6 +95,11 @@
     border-radius: 0.25rem;
   }
 
+  /* ui-sdk's Collapsible holds the header and the plan; it stays out of the layout. */
+  ai-plan > [data-part="collapsible"] {
+    display: contents;
+  }
+
   /* The plan itself, once opened: Markdown, scrolling within the card when long. */
   ai-plan [data-part="plan"] {
     margin-top: 0.75rem;
@@ -122,7 +127,7 @@
   }
 
   ai-plan [data-part="plan"] :is(ul, ol) {
-    padding-left: 1.25rem;
+    padding-inline-start: 1.25rem;
   }
 
   ai-plan [data-part="plan"] code {
@@ -252,14 +257,6 @@
     outline-offset: 2px;
   }
 
-  ai-plan [data-part="announcement"] {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
 
   /* On a narrow card, the buttons stack: the main ones first. */
   @container (max-width: 24rem) {

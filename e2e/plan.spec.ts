@@ -23,7 +23,9 @@ test("by keyboard: open the plan, revise it with Enter, then reset and accept wi
   await expect(plan.getByRole("textbox", { name: "What should change?" })).toBeFocused();
   await page.keyboard.type("Invite the neighbours too");
   await page.keyboard.press("Enter");
-  await expect(section.locator(".event-log")).toHaveText('plandecision {"decision":"revise","mode":null,"feedback":"Invite the neighbours too"}');
+  const log = section.locator(".event-log");
+  await expect(log).toHaveText(/^decisionchange /);
+  for (const piece of ['"reason":"enter-key"', '"source":"keyboard"', '"value":{"decision":"revise","mode":null,"feedback":"Invite the neighbours too"}']) await expect(log).toContainText(piece);
   const decision = plan.locator("[data-part='decision']");
   await expect(decision).toHaveText("Asked for changes: “Invite the neighbours too”");
   await expect(decision).toBeFocused();
@@ -31,7 +33,7 @@ test("by keyboard: open the plan, revise it with Enter, then reset and accept wi
   await section.getByRole("button", { name: "Reset demo" }).click();
   await expect(plan.getByRole("button", { name: "Accept", exact: true })).toBeFocused();
   await plan.getByRole("button", { name: "Accept and use auto mode" }).press("Enter");
-  await expect(section.locator(".event-log")).toHaveText('plandecision {"decision":"accept","mode":"auto","feedback":null}');
+  for (const piece of ['"reason":"press"', '"source":"keyboard"', '"value":{"decision":"accept","mode":"auto","feedback":null}']) await expect(log).toContainText(piece);
   await expect(decision).toHaveText("Accepted, using auto mode");
 });
 

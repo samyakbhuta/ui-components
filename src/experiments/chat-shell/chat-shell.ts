@@ -10,6 +10,8 @@ import "@samyakbhuta/ui-components/ai-suggestions";
 import "@samyakbhuta/ui-components/ai-question";
 import "@samyakbhuta/ui-components/ai-approval";
 import "@samyakbhuta/ui-components/ai-plan";
+import type { ApprovalElementEventMap } from "@samyakbhuta/ui-components/ai-approval";
+import type { PlanElementEventMap } from "@samyakbhuta/ui-components/ai-plan";
 import "@samyakbhuta/ui-components/ai-notice";
 import "@samyakbhuta/ui-components/ai-questions";
 import type { Source } from "@samyakbhuta/ui-components/ai-sources";
@@ -1149,8 +1151,9 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   // ui-sdk change events don't bubble, so the transcript hears them on the way down.
   transcript.addEventListener(
     "decisionchange",
-    (event) => {
-    if (event.target instanceof HTMLElement && event.target.localName !== "ai-approval") return;
+    (changed) => {
+    if (!(changed.target instanceof HTMLElement) || changed.target.localName !== "ai-approval") return;
+    const event = changed as ApprovalElementEventMap["decisionchange"];
     if (composer.busy) return event.preventDefault();
     const message = (event.target as HTMLElement).closest("ai-message") as AiMessageElement | null;
     const detail = message ? asked.get(message) : undefined;
@@ -1179,11 +1182,17 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
   });
 
   // A plan's decision continues the same turn. Accepting with a mode switches the composer to it.
-  transcript.addEventListener("plandecision", (event) => {
+  // Like the approval's, it doesn't bubble, so the transcript hears it on the way down.
+  transcript.addEventListener(
+    "decisionchange",
+    (changed) => {
+    if (!(changed.target instanceof HTMLElement) || changed.target.localName !== "ai-plan") return;
+    const event = changed as PlanElementEventMap["decisionchange"];
     if (composer.busy) return event.preventDefault();
     const message = (event.target as HTMLElement).closest("ai-message") as AiMessageElement | null;
     const detail = message ? asked.get(message) : undefined;
-    const { decision, mode, feedback } = event.detail;
+    if (!event.detail.value) return;
+    const { decision, mode, feedback } = event.detail.value;
     if (mode) composer.mode = mode;
     queueMicrotask(() => {
       if (!detail) return save();
@@ -1195,7 +1204,9 @@ export function mountChatShell(root: HTMLElement, { speed = 1, store = new ChatS
             : { party: "revised", reason: feedback ?? undefined };
       startReply(detail, undefined, script);
     });
-  });
+    },
+    { capture: true },
+  );
 
   // The usage limit's buttons. Each way round it unlocks the box and carries on.
   transcript.addEventListener("noticeaction", (event) => {

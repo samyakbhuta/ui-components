@@ -385,10 +385,10 @@ test("a plan waits for the decision; accepting with a mode switches the composer
   expect(second.heading).toBe("Clean up, gently");
   expect(second.accepts).toEqual([]);
 
-  first.decide("accept"); // already decided: nothing happens
+  first.api.decide("accept"); // already decided: nothing happens
   expect(decisions).toHaveLength(1);
-  const card = chat.querySelector<HTMLElement & { decide: (d: "accept", o?: { mode?: string }) => boolean }>("ai-plan:not([decided])")!;
-  card.decide("accept");
+  const card = chat.querySelector<HTMLElementTagNameMap["ai-plan"]>("ai-plan:not([decided])")!;
+  card.api.decide("accept");
   await idle();
   expect(decisions).toEqual([
     { decision: "revise", mode: null, feedback: "Keep the cache" },
