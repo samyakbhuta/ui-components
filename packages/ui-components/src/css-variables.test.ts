@@ -8,7 +8,7 @@ const stylesheets = Object.fromEntries(components.map(({ name, css }) => [name, 
 const readmes = Object.fromEntries(components.map(({ name, readme }) => [name, readme]));
 
 test("no component declares its public custom properties, so they can be set on any element around it", () => {
-  expect(Object.keys(stylesheets).length).toBeGreaterThanOrEqual(13);
+  expect(Object.keys(stylesheets).length).toBeGreaterThanOrEqual(14);
   for (const [name, css] of Object.entries(stylesheets)) {
     expect(css, name).toContain("--_ai-");
     // A declaration on the component itself would beat a value set on `ai-chat` or `:root`.

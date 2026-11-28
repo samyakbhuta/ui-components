@@ -37,6 +37,8 @@ export type StoredMessage = {
   questionSet?: StoredQuestionSet;
   /** A plan the reply proposed, with the decision once made. */
   plan?: StoredPlan;
+  /** A notice in the reply, like the usage limit. */
+  notice?: StoredNotice;
   /** Which scripted conversation of the pretend model the reply belongs to, so Retry continues it. */
   script?: StoredScript;
 };
@@ -68,12 +70,24 @@ export type StoredPlan = {
   decision?: { decision: "accept" | "reject" | "revise"; mode: string | null; feedback: string | null };
 };
 
+/** An `<ai-notice>`: what it said, when it resets, its buttons, and whether a way round it was chosen. */
+export type StoredNotice = {
+  heading: string;
+  text?: string;
+  tone?: "warning" | "error" | "info";
+  resetsAt?: string;
+  actions?: { value: string; label: string; href?: string; newTab?: boolean; primary?: boolean; disabled?: boolean }[];
+  /** True once people chose a way round it, so it no longer locks the box. */
+  unlocked?: boolean;
+};
+
 /** A step of one of the pretend model's scripted conversations: the trip planner, the cleanup, or the party. */
 export type StoredScript = {
   trip?: number;
   cleanup?: "ask" | "allowed" | "denied";
   party?: "ask" | "accepted" | "rejected" | "revised";
   gift?: "ask" | "answered";
+  limit?: "ask" | "smaller-model" | "extra";
   /** What was typed: with Deny, what to do instead; with Revise, what to change. */
   reason?: string;
   /** The mode a plan was accepted with. */
@@ -220,6 +234,7 @@ export function chatToMarkdown(chat: StoredChat, { exportedAt = new Date(), loca
       );
     }
     if (message.plan) parts.push("", ...planToMarkdown(message.plan));
+    if (message.notice) parts.push("", ...noticeToMarkdown(message.notice));
     if (message.sources?.length) parts.push("", ...message.sources.map((source, index) => `[${index + 1}]: ${source.url} "${source.title.replace(/"/g, "'")}"`));
     versions?.forEach((text, index) => {
       if (index + 1 !== version) parts.push("", `*Version ${index + 1} of ${versions.length}:*`, "", text.trim() || "*(no text)*");
@@ -286,6 +301,14 @@ function planToMarkdown(plan: StoredPlan) {
     "",
     outcome,
   ];
+}
+
+/** A notice: its heading and message, quoted, and when it resets. */
+function noticeToMarkdown(notice: StoredNotice) {
+  const lines = [`> **${notice.heading.replace(/\n/g, " ")}**`];
+  if (notice.text) lines.push(">", ...notice.text.split("\n").map((line) => (line ? `> ${line}` : ">")));
+  if (notice.resetsAt) lines.push(">", `> Resets ${new Date(notice.resetsAt).toUTCString()}`);
+  return lines;
 }
 
 /** A file name from a title, like "web-components-explained.md". */

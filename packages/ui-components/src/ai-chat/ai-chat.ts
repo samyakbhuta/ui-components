@@ -1,6 +1,7 @@
 import "../ai-approval/ai-approval.ts";
 import "../ai-composer/ai-composer.ts";
 import "../ai-message/ai-message.ts";
+import "../ai-notice/ai-notice.ts";
 import "../ai-plan/ai-plan.ts";
 import "../ai-question/ai-question.ts";
 import "../ai-questions/ai-questions.ts";
@@ -12,6 +13,7 @@ import "../ai-transcript/ai-transcript.ts";
 import type { AiApprovalElement, ApprovalDecisionDetail, ApprovalStrings } from "../ai-approval/ai-approval.ts";
 import type { AiComposerElement, PromptSubmitDetail } from "../ai-composer/ai-composer.ts";
 import type { AiMessageElement, MessageAttachment, MessageFeedback, MessageStrings } from "../ai-message/ai-message.ts";
+import type { AiNoticeElement, NoticeAction, NoticeStrings, NoticeTone } from "../ai-notice/ai-notice.ts";
 import type { AiPlanElement, PlanAcceptOption, PlanDecisionDetail, PlanStrings } from "../ai-plan/ai-plan.ts";
 import type { AiQuestionsElement, QuestionsAnswerDetail, QuestionsItem, QuestionsStrings } from "../ai-questions/ai-questions.ts";
 import type { AiQuestionElement, QuestionAnswer, QuestionOption, QuestionStrings } from "../ai-question/ai-question.ts";
@@ -67,6 +69,24 @@ export type ChatQuestions = {
   questions: QuestionsItem[];
 };
 
+/**
+ * Something that stops the conversation and needs action, like a usage limit. `yield` it, then
+ * return: the reply shows the card, and with `lock` the message box locks until it resets.
+ */
+export type ChatNotice = {
+  type: "notice";
+  heading: string;
+  text?: string;
+  /** `warning` (the default), `error` or `info`. */
+  tone?: NoticeTone;
+  /** When it stops applying, as an ISO time like `"2026-11-28T15:00:00Z"`. The box unlocks then. */
+  resetsAt?: string;
+  actions?: NoticeAction[];
+  dismissible?: boolean;
+  /** Locks the message box until it resets, it's dismissed, or you call `unlock()`. Defaults to true, except for `info`. */
+  lock?: boolean;
+};
+
 /** One piece of a reply, as the model yields it. A string is text to add. */
 export type ChatChunk =
   | string
@@ -79,7 +99,8 @@ export type ChatChunk =
   | ChatQuestion
   | ChatApproval
   | ChatPlan
-  | ChatQuestions;
+  | ChatQuestions
+  | ChatNotice;
 
 /** What comes back from a question, an approval or a plan, as the value of its `yield`. */
 export type ChatAnswer = QuestionAnswer | ApprovalDecisionDetail | PlanDecisionDetail | QuestionsAnswerDetail;
@@ -104,6 +125,8 @@ export type ChatMessage = {
   approval?: ChatApproval & { decision?: ApprovalDecisionDetail };
   plan?: ChatPlan & { decision?: PlanDecisionDetail };
   questions?: ChatQuestions & { answers?: QuestionAnswer[] };
+  /** `unlocked` is true once its lock was lifted, so a saved chat doesn't lock again. */
+  notice?: ChatNotice & { unlocked?: boolean };
 };
 
 /** What `model` gets. `messages` ends with the newest message; `signal` aborts when Stop is pressed. */
@@ -130,6 +153,8 @@ export type ChatStrings = {
   approvalPlaceholder: string;
   /** The composer's placeholder while a plan waits for a decision. */
   planPlaceholder: string;
+  /** Under the message box while a notice locks it, with the reset time when there is one. */
+  locked: (resetsAt: Date | null) => string;
   /**
    * Words for the parts the chat makes, passed on to each one as its `strings`: the messages
    * (Copy, Retry…), thinking, tool calls, sources, questions and approvals. Leave one out and
@@ -144,6 +169,7 @@ export type ChatStrings = {
   approval?: Partial<ApprovalStrings>;
   plan?: Partial<PlanStrings>;
   questions?: Partial<QuestionsStrings>;
+  notice?: Partial<NoticeStrings>;
 };
 
 export const defaultChatStrings: ChatStrings = {
@@ -155,6 +181,10 @@ export const defaultChatStrings: ChatStrings = {
   answerPlaceholder: "Answer the question above, or type your answer",
   approvalPlaceholder: "Allow or deny above, or tell it what to do instead",
   planPlaceholder: "Accept or reject the plan above, or say what to change",
+  locked: (resetsAt) =>
+    resetsAt
+      ? `Sending is paused until ${new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(resetsAt)}.`
+      : "Sending is paused. See the notice above.",
 };
 
 /** The events this element fires, by name. */
@@ -178,6 +208,7 @@ const partWords = {
   "ai-approval": "approval",
   "ai-plan": "plan",
   "ai-questions": "questions",
+  "ai-notice": "notice",
 } as const;
 type Part = keyof typeof partWords;
 
@@ -192,6 +223,7 @@ const copy = (message: ChatMessage): ChatMessage => ({
   approval: message.approval ? { ...message.approval } : undefined,
   plan: message.plan ? { ...message.plan } : undefined,
   questions: message.questions ? { ...message.questions } : undefined,
+  notice: message.notice ? { ...message.notice, actions: message.notice.actions?.map((action) => ({ ...action })) } : undefined,
 });
 
 /** An answer typed in the composer: the choice it names, or else an answer of one's own. */
@@ -228,6 +260,8 @@ export class AiChatElement extends BaseElement {
   #answer: ((value: ChatAnswer) => void) | null = null;
   #waitingOn: Card | null = null;
   #placeholder: string | null = null;
+  /** The notice locking the message box, and what the box was like before. */
+  #lock: { notice: AiNoticeElement; disabled: boolean; hint: string | null } | null = null;
   #rendered = false;
   #id = `ai-chat-${++count}`;
 
@@ -245,6 +279,8 @@ export class AiChatElement extends BaseElement {
   }
   set messages(value: ChatMessage[]) {
     this.#cancel();
+    // A notice from the conversation being replaced no longer locks the box.
+    if (this.#lock) this.#release();
     for (const { element } of this.#turns) element.remove();
     this.#turns = [];
     if (this.#rendered) for (const message of value ?? []) this.#turns.push(this.#show(copy(message)));
@@ -308,6 +344,21 @@ export class AiChatElement extends BaseElement {
   /** True while a question or an approval waits on the person. */
   get waiting(): boolean {
     return this.#answer !== null;
+  }
+
+  /** True while a notice locks the message box. */
+  get locked(): boolean {
+    return this.#lock !== null;
+  }
+
+  /** Unlocks the message box a notice locked, like once people choose a way round a limit. Returns false when it wasn't locked. */
+  unlock(): boolean {
+    const lock = this.#release();
+    if (!lock) return false;
+    const turn = this.#turns.find(({ element }) => element.contains(lock.notice));
+    if (turn?.data.notice) turn.data.notice = { ...turn.data.notice, unlocked: true };
+    this.#changed();
+    return true;
   }
 
   /** The composer inside, to set up modes, models, attachments and the like. */
@@ -580,6 +631,14 @@ export class AiChatElement extends BaseElement {
               current.data.questions = { ...asked, answers: (answer as QuestionsAnswerDetail).answers };
               break;
             }
+            case "notice": {
+              const current = reply();
+              current.data.notice = { ...chunk, actions: chunk.actions?.map((action) => ({ ...action })) };
+              const card = this.#noticeElement(current.data.notice);
+              current.element.append(card);
+              if (this.#locks(current.data.notice)) this.#lockFor(card);
+              break;
+            }
             case "plan": {
               // Like a question: the card ends the reply so far, and the model waits for the decision.
               const current = reply();
@@ -731,6 +790,11 @@ export class AiChatElement extends BaseElement {
       else this.#resumeOn(card);
       element.append(card);
     }
+    if (data.notice) {
+      const card = this.#noticeElement(data.notice);
+      element.append(card);
+      if (this.#locks(data.notice)) this.#lockFor(card);
+    }
     if (data.stopped) element.append(this.#stoppedNote());
     if (data.error !== undefined) element.error = data.error;
     this.transcript.append(element);
@@ -838,6 +902,58 @@ export class AiChatElement extends BaseElement {
       queueMicrotask(() => this.#settle(decision));
     });
     return card;
+  }
+
+  #noticeElement(chunk: ChatNotice) {
+    const card = this.#part("ai-notice");
+    card.slot = "footer";
+    card.heading = chunk.heading;
+    if (chunk.tone) card.tone = chunk.tone;
+    card.text = chunk.text ?? "";
+    card.actions = chunk.actions ?? [];
+    card.dismissible = chunk.dismissible ?? false;
+    if (chunk.resetsAt) card.resetsAt = chunk.resetsAt;
+    // Once it's over or dismissed, the box unlocks.
+    const release = () => {
+      if (this.#lock?.notice === card) this.unlock();
+    };
+    card.addEventListener("noticeexpire", release);
+    card.addEventListener("noticedismiss", (event) => queueMicrotask(() => !event.defaultPrevented && release()));
+    return card;
+  }
+
+  /** Puts the message box back as it was before the lock, and returns the lock. */
+  #release() {
+    const lock = this.#lock;
+    if (!lock) return null;
+    this.#lock = null;
+    const composer = this.composer;
+    composer.disabled = lock.disabled;
+    if (lock.hint === null) composer.removeAttribute("hint");
+    else composer.setAttribute("hint", lock.hint);
+    this.removeAttribute("locked");
+    return lock;
+  }
+
+  /** Whether a notice locks the box: by default unless it's `info`, and not once unlocked or past its reset time. */
+  #locks(notice: ChatNotice & { unlocked?: boolean }) {
+    if (notice.unlocked) return false;
+    if (notice.resetsAt && new Date(notice.resetsAt).getTime() <= Date.now()) return false;
+    return notice.lock ?? notice.tone !== "info";
+  }
+
+  /** Locks the message box for this notice, replacing any earlier lock. */
+  #lockFor(notice: AiNoticeElement) {
+    const composer = this.composer;
+    const previous = this.#lock;
+    this.#lock = {
+      notice,
+      disabled: previous ? previous.disabled : composer.disabled,
+      hint: previous ? previous.hint : composer.getAttribute("hint"),
+    };
+    composer.disabled = true;
+    composer.setAttribute("hint", this.#strings.locked(notice.resetsAt));
+    this.setAttribute("locked", "");
   }
 
   #sourcesElement(sources: Source[]) {

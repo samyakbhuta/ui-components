@@ -72,6 +72,15 @@ export const valid = (
       open
       onplandecision={(event) => (event.detail.decision === "accept" ? event.detail.mode : event.detail.feedback)}
     />
+    <ai-notice
+      heading="You've reached your usage limit"
+      tone="warning"
+      resetsAt="2026-11-28T15:00:00Z"
+      text="Upgrade, or wait until it resets."
+      actions={[{ value: "upgrade", label: "Upgrade plan", href: "/pricing", primary: true }]}
+      dismissible
+      onnoticeaction={(event) => event.detail.value}
+    />
     <ai-chat
       actions="copy retry feedback"
       suggestions={["Write a haiku"]}
@@ -111,6 +120,8 @@ export const invalid = (
     <ai-questions questions={[{ question: "Who?" }]} />
     {/* @ts-expect-error a plan's decision is accept, reject or revise */}
     <ai-plan decision={{ decision: "allow", mode: null, feedback: null }} />
+    {/* @ts-expect-error a notice's tone is warning, error or info */}
+    <ai-notice tone="danger" />
     {/* @ts-expect-error a model's chunks are text or known kinds */}
     <ai-chat model={async function* () { yield { type: "video", url: "x" }; }} />
     {/* @ts-expect-error sources need a title and a url */}

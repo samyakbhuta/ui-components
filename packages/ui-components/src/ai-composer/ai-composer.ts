@@ -630,9 +630,14 @@ export class AiComposerElement extends BaseElement {
   }
 
   #choose(part: "mode" | "model" | "thinking", value: string) {
-    const control = this.#control(part);
-    if (control) control.api.setValue(value);
-    else this.#pending[part] = value;
+    const control = this.#control(part) as (HTMLElement & { disabled?: boolean; api: { setValue(value: string): boolean } }) | null;
+    if (!control) return void (this.#pending[part] = value);
+    // A disabled control ignores changes, but code may set one while the composer is disabled,
+    // like switching model during a usage limit.
+    const disabled = Boolean(control.disabled);
+    if (disabled) control.disabled = false;
+    control.api.setValue(value);
+    if (disabled) control.disabled = true;
   }
 
   /** The value a control starts on: the one it had, the `default-*` attribute, or the first choice. */

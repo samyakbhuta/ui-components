@@ -22,6 +22,7 @@ const componentOrder = [
   "ai-questions",
   "ai-approval",
   "ai-plan",
+  "ai-notice",
   "ai-chat-list",
 ];
 

@@ -31,6 +31,7 @@ import type { AiSourcesElement, Source, SourcesEvents, SourcesStrings } from "./
 import type { AiChatElement, ChatEvents, ChatMessage, ChatModel, ChatStrings } from "./ai-chat/ai-chat.ts";
 import type { AiApprovalElement, ApprovalDecisionDetail, ApprovalEvents, ApprovalStrings } from "./ai-approval/ai-approval.ts";
 import type { AiQuestionsElement, QuestionsEvents, QuestionsItem, QuestionsStrings } from "./ai-questions/ai-questions.ts";
+import type { AiNoticeElement, NoticeAction, NoticeEvents, NoticeStrings, NoticeTone } from "./ai-notice/ai-notice.ts";
 import type { AiPlanElement, PlanAcceptOption, PlanDecisionDetail, PlanEvents, PlanStrings } from "./ai-plan/ai-plan.ts";
 import type { AiQuestionElement, QuestionAnswer, QuestionEvents, QuestionOption, QuestionStrings } from "./ai-question/ai-question.ts";
 import type { AiSuggestionsElement, Suggestion, SuggestionsEvents, SuggestionsStrings } from "./ai-suggestions/ai-suggestions.ts";
@@ -189,6 +190,17 @@ export interface AiPlanProps {
   strings?: Partial<PlanStrings>;
 }
 
+export interface AiNoticeProps {
+  heading?: string;
+  tone?: NoticeTone;
+  /** An ISO time, as the attribute takes it, or a Date. */
+  resetsAt?: Date | string | null;
+  dismissible?: boolean;
+  text?: string;
+  actions?: NoticeAction[];
+  strings?: Partial<NoticeStrings>;
+}
+
 export interface AiChatProps {
   model?: ChatModel | null;
   messages?: ChatMessage[];
@@ -221,6 +233,7 @@ export interface CustomElements {
   "ai-questions": { element: AiQuestionsElement; props: AiQuestionsProps; events: QuestionsEvents };
   "ai-approval": { element: AiApprovalElement; props: AiApprovalProps; events: ApprovalEvents };
   "ai-plan": { element: AiPlanElement; props: AiPlanProps; events: PlanEvents };
+  "ai-notice": { element: AiNoticeElement; props: AiNoticeProps; events: NoticeEvents };
   "ai-chat": { element: AiChatElement; props: AiChatProps; events: ChatEvents };
   "ai-chat-list": { element: AiChatListElement; props: AiChatListProps; events: ChatListEvents };
 }

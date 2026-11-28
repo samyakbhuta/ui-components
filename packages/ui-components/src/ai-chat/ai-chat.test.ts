@@ -466,3 +466,96 @@ test("several questions wait together; typing answers the one showing, and every
   await settle();
   expect(chat.querySelector("ai-questions")!.hasAttribute("answered")).toBe(true);
 });
+
+test("a notice shows in the reply and locks the message box until the app unlocks it", async () => {
+  const actions: string[] = [];
+  const { chat, replies, idle } = await mount("<ai-chat></ai-chat>", (c) => {
+    c.composer.setAttribute("hint", "Enter to send");
+    c.model = async function* () {
+      yield {
+        type: "notice",
+        heading: "You've reached your usage limit",
+        text: "Upgrade, or wait until it resets.",
+        actions: [
+          { value: "upgrade", label: "Upgrade plan", href: "#pricing", primary: true },
+          { value: "extra", label: "Use extra credits" },
+        ],
+      };
+    };
+  });
+  chat.addEventListener("noticeaction", (event) => actions.push(event.detail.value));
+  await send(chat, "Hi");
+  await idle();
+  const notice = replies()[0].querySelector("ai-notice")!;
+  expect(notice.heading).toBe("You've reached your usage limit");
+  expect(notice.text).toBe("Upgrade, or wait until it resets.");
+  expect(chat.locked).toBe(true);
+  expect(chat.hasAttribute("locked")).toBe(true);
+  expect(chat.composer.disabled).toBe(true);
+  expect(chat.composer.getAttribute("hint")).toBe("Sending is paused. See the notice above.");
+  expect(chat.messages[1].notice).toMatchObject({ type: "notice", heading: "You've reached your usage limit" });
+
+  // Pressing a button tells the app; the app decides whether that unlocks.
+  within(notice).getByRole("button", { name: "Use extra credits" }).click();
+  await settle();
+  expect(actions).toEqual(["extra"]);
+  expect(chat.locked).toBe(true);
+  expect(chat.unlock()).toBe(true);
+  expect(chat.composer.disabled).toBe(false);
+  expect(chat.composer.getAttribute("hint")).toBe("Enter to send");
+  expect(chat.messages[1].notice!.unlocked).toBe(true);
+  expect(chat.unlock()).toBe(false);
+});
+
+test("a notice with a reset time unlocks then, and a saved one locks again only while it applies", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"], now: new Date(2026, 10, 28, 14, 0) });
+  try {
+    const resetsAt = new Date(2026, 10, 28, 14, 30).toISOString();
+    const saved: ChatMessage[] = [
+      { role: "user", text: "Hi" },
+      { role: "assistant", text: "", notice: { type: "notice", heading: "Limit reached", resetsAt } },
+    ];
+    document.body.innerHTML = "<ai-chat></ai-chat>";
+    const chat = document.querySelector("ai-chat")!;
+    chat.strings = { locked: (at) => `Paused until ${at?.getHours()}:${String(at?.getMinutes()).padStart(2, "0")}` };
+    chat.messages = saved;
+    expect(chat.locked).toBe(true);
+    expect(chat.composer.getAttribute("hint")).toBe("Paused until 14:30");
+
+    vi.advanceTimersByTime(31 * 60_000);
+    expect(chat.querySelector("ai-notice")!.expired).toBe(true);
+    expect(chat.locked).toBe(false);
+    expect(chat.composer.disabled).toBe(false);
+
+    // Past its time, or once unlocked, a saved notice doesn't lock.
+    chat.messages = saved;
+    expect(chat.locked).toBe(false);
+    chat.messages = [saved[0], { ...saved[1], notice: { ...saved[1].notice!, resetsAt: undefined, unlocked: true } }];
+    expect(chat.locked).toBe(false);
+    // An info notice doesn't lock unless asked to.
+    chat.messages = [saved[0], { ...saved[1], notice: { type: "notice", heading: "New model", tone: "info" } }];
+    expect(chat.locked).toBe(false);
+    chat.messages = [saved[0], { ...saved[1], notice: { type: "notice", heading: "Signed out", tone: "info", lock: true } }];
+    expect(chat.locked).toBe(true);
+    chat.messages = [];
+    expect(chat.locked).toBe(false);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("dismissing a notice unlocks the box, and the notice's words come from chat.strings", async () => {
+  const user = userEvent.setup();
+  const { chat, idle } = await mount("<ai-chat></ai-chat>", (c) => {
+    c.strings = { notice: { dismiss: "Fermer" } };
+    c.model = async function* () {
+      yield { type: "notice", heading: "Hors ligne", tone: "error", dismissible: true };
+    };
+  });
+  await send(chat, "Bonjour");
+  await idle();
+  expect(chat.locked).toBe(true);
+  await user.click(within(chat.querySelector("ai-notice")!).getByRole("button", { name: "Fermer" }));
+  await settle();
+  expect(chat.locked).toBe(false);
+});

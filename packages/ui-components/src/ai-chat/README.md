@@ -50,6 +50,7 @@ It returns an async generator (or any async iterable) of chunks, or a promise of
 | `{ type: "questions", label?, questions }` | An [`<ai-questions>`](../ai-questions/README.md) set: several questions, one at a time. The model waits, and `{ answers }` comes back as the value of the `yield`, one per question. Typing in the box answers the question showing. |
 | `{ type: "approval", name, label?, description?, input?, always?, reason? }` | An [`<ai-approval>`](../ai-approval/README.md). The model waits, and the decision comes back as the value of the `yield`. |
 | `{ type: "plan", heading?, summary?, plan?, href?, accepts? }` | An [`<ai-plan>`](../ai-plan/README.md): a plan to review, with `plan` as Markdown. The model waits, and the decision comes back as the value of the `yield`. |
+| `{ type: "notice", heading, text?, tone?, resetsAt?, actions?, dismissible?, lock? }` | An [`<ai-notice>`](../ai-notice/README.md): something that stops the chat and needs action, like a usage limit. The message box locks until `resetsAt` (an ISO time), until it's dismissed, or until you call `unlock()`. `lock: false` doesn't lock; an `info` notice locks only with `lock: true`. Yield it and return. See [Limits and other notices](#limits-and-other-notices). |
 
 ## Questions and approvals
 
@@ -99,6 +100,7 @@ chat.model = async function* () {
 | --- | --- | --- |
 | `actions` | `copy retry` | The actions each reply offers, from `copy`, `retry`, `edit` and `feedback`, separated by spaces. Only the newest turn offers Retry. |
 | `waiting` | set by the element | Present while a question, an approval or a plan waits for the person. Style it, don't set it. |
+| `locked` | set by the element | Present while a notice locks the message box. Style it, don't set it. |
 
 ## Properties
 
@@ -112,6 +114,7 @@ chat.model = async function* () {
 | `strings` | `Partial<ChatStrings>` | Words to replace; see below. |
 | `busy` | `boolean` (read-only) | `true` while a reply comes in. |
 | `waiting` | `boolean` (read-only) | `true` while a question, an approval or a plan waits. |
+| `locked` | `boolean` (read-only) | `true` while a notice locks the message box. |
 | `composer`, `transcript` | (read-only) | The [`<ai-composer>`](../ai-composer/README.md) and [`<ai-transcript>`](../ai-transcript/README.md) inside, to set up. For example, `chat.composer.models = defaultModels`. |
 
 ## Methods
@@ -122,6 +125,7 @@ chat.model = async function* () {
 | `stop()` | Stops the reply coming in, as Stop does. |
 | `retry()` | Asks again for the newest turn, as Retry does. Returns `false` when there's nothing to retry. |
 | `clear()` | Empties the conversation. |
+| `unlock()` | Unlocks the message box a notice locked, like once people choose a way round a limit. Returns `false` when it wasn't locked. |
 
 ## Events
 
@@ -131,6 +135,40 @@ chat.model = async function* () {
 | `chaterror` | `{ error }` | The model threw, or its request failed. The reply shows the error's message, with Retry. Stop doesn't fire it. |
 
 The composer's own events, like `promptsubmit`, bubble from the chat too.
+
+## Limits and other notices
+
+When the person can't carry on, like at a usage limit, yield a notice from where the model handles the failed request, and return:
+
+```ts
+chat.model = async function* ({ messages, signal }) {
+  const response = await fetch("/api/chat", { method: "POST", body: JSON.stringify({ messages }), signal });
+  if (response.status === 429) {
+    const { resetsAt } = await response.json();
+    yield {
+      type: "notice",
+      heading: "You've reached your usage limit",
+      text: "Upgrade, or carry on another way.",
+      resetsAt,
+      actions: [
+        { value: "upgrade", label: "Upgrade plan", href: "/pricing", primary: true },
+        { value: "smaller-model", label: "Switch to a smaller model" },
+      ],
+    };
+    return;
+  }
+  // …stream the reply
+};
+
+chat.addEventListener("noticeaction", (event) => {
+  if (event.detail.value === "smaller-model") {
+    chat.composer.model = "haiku-5.5";
+    chat.unlock();
+  }
+});
+```
+
+The reply shows the card, and the message box locks, saying "Sending is paused until 3:00 PM" underneath. It unlocks by itself at the reset time, or when the notice is dismissed. A button press only tells you: call `unlock()` once the way round has worked. `messages` keeps the notice, and a saved chat locks again only while it still applies.
 
 ## Saving and restoring
 
@@ -171,6 +209,7 @@ An `<ai-composer>` or `<ai-transcript>` written inside is used instead of a new 
 | `answerPlaceholder` | `Answer the question above, or type your answer` |
 | `approvalPlaceholder` | `Allow or deny above, or tell it what to do instead` |
 | `planPlaceholder` | `Accept or reject the plan above, or say what to change` |
+| `locked(resetsAt)` | `Sending is paused until 3:00 PM.`, or `Sending is paused. See the notice above.` without a reset time: under the box while a notice locks it |
 
 The parts the chat makes have words of their own. Give them in `strings` too, under the part's name, and the chat passes them on to every one it shows, including those already on the page:
 
@@ -197,6 +236,7 @@ chat.strings = {
 | `approval` | Approvals. See [`<ai-approval>`'s](../ai-approval/README.md#translation). |
 | `plan` | Plans. See [`<ai-plan>`'s](../ai-plan/README.md#translation). |
 | `questions` | Sets of questions: the arrows, Continue and the summary. See [`<ai-questions>`'s](../ai-questions/README.md#translation). |
+| `notice` | Notices: the reset line, Dismiss and the tone's word. See [`<ai-notice>`'s](../ai-notice/README.md#translation). |
 
 Leave a key out and that part keeps its own defaults. The composer and the transcript have theirs through `chat.composer.strings` and `chat.transcript.strings`.
 

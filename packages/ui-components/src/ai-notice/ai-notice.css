@@ -1,0 +1,186 @@
+/*
+ * <ai-notice> styles, in the `ai-notice` layer so unlayered page rules win.
+ */
+@layer ai-notice {
+  ai-notice {
+    /* Tone colours: 3:1 or more for the border and icon, 4.5:1 for text, in light and dark. */
+    --_ai-notice-warning: var(--ai-notice-warning, light-dark(#8a5300, #f0b35a));
+    --_ai-notice-error: var(--ai-notice-error, light-dark(#b3261e, #ff8a80));
+    --_ai-notice-info: var(--ai-notice-info, light-dark(#2b5bc4, #8fb0ff));
+    --_ai-notice-muted: var(--ai-notice-muted, color-mix(in srgb, CanvasText 68%, Canvas));
+    --_ai-notice-accent: var(--ai-notice-accent, CanvasText);
+    --_ai-notice-accent-text: var(--ai-notice-accent-text, Canvas);
+    --_ai-notice-radius: var(--ai-notice-radius, 0.75rem);
+    --_notice-tone: var(--_ai-notice-warning);
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 36rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--_notice-tone);
+    border-radius: var(--_ai-notice-radius);
+    background: color-mix(in srgb, var(--_notice-tone) 7%, Canvas);
+    color: CanvasText;
+    font-size: 0.9375rem;
+    line-height: 1.45;
+  }
+
+  ai-notice[tone="error"] {
+    --_notice-tone: var(--_ai-notice-error);
+  }
+
+  ai-notice[tone="info"] {
+    --_notice-tone: var(--_ai-notice-info);
+  }
+
+  /* Once it's over, it steps back. */
+  ai-notice[expired] {
+    --_notice-tone: var(--_ai-notice-muted);
+    background: none;
+  }
+
+  ai-notice [data-part="icon"] {
+    flex: none;
+    color: var(--_notice-tone);
+  }
+
+  ai-notice [data-part="icon"] svg {
+    display: block;
+    width: 1.25rem;
+    height: 1.25rem;
+    /* Half a line down, less half the icon: beside the heading's first line. */
+    margin-top: calc(0.5lh - 0.625rem);
+  }
+
+  ai-notice [data-part="body"] {
+    flex: 1;
+    min-width: 0;
+  }
+
+  ai-notice [data-part="heading"] {
+    margin: 0;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  ai-notice [data-part="announcement"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  ai-notice [data-part="text"] {
+    margin: 0.125rem 0 0;
+    overflow-wrap: anywhere;
+  }
+
+  ai-notice [data-part="resets"] {
+    margin: 0.375rem 0 0;
+    color: var(--_ai-notice-muted);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  ai-notice [data-part="body"] > [data-part="actions"] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  ai-notice a[data-part="action"],
+  ai-notice [data-part="action"] button {
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    min-height: 2.25rem;
+    padding: 0.4rem 1rem;
+    border: 1px solid color-mix(in srgb, CanvasText 30%, Canvas);
+    border-radius: 1.25rem;
+    background: Canvas;
+    color: CanvasText;
+    font: inherit;
+    font-size: 0.875rem;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  ai-notice :is(a[data-part="action"], [data-part="action"] button):hover {
+    background: color-mix(in srgb, CanvasText 8%, Canvas);
+  }
+
+  ai-notice [data-part="action"][data-primary] button,
+  ai-notice a[data-part="action"][data-primary] {
+    border-color: var(--_ai-notice-accent);
+    background: var(--_ai-notice-accent);
+    color: var(--_ai-notice-accent-text);
+    font-weight: 600;
+  }
+
+  ai-notice :is([data-part="action"][data-primary] button, a[data-part="action"][data-primary]):hover {
+    background: color-mix(in srgb, var(--_ai-notice-accent) 85%, Canvas);
+  }
+
+  ai-notice :is(a[data-part="action"], [data-part="action"] button, [data-part="dismiss"] button):focus-visible {
+    outline: 2px solid var(--_ai-notice-accent);
+    outline-offset: 2px;
+  }
+
+  ai-notice [data-part="action"] button:disabled {
+    background: none;
+    color: var(--_ai-notice-muted);
+    cursor: default;
+  }
+
+  ai-notice [data-part="dismiss"] button {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    margin: -0.375rem -0.5rem 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--_ai-notice-muted);
+    cursor: pointer;
+  }
+
+  ai-notice [data-part="dismiss"] button:hover {
+    background: color-mix(in srgb, CanvasText 8%, Canvas);
+    color: CanvasText;
+  }
+
+  ai-notice [data-part="dismiss"] svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  @media (forced-colors: active) {
+    ai-notice {
+      border-color: CanvasText;
+    }
+
+    ai-notice [data-part="icon"] {
+      color: CanvasText;
+    }
+
+    ai-notice [data-part="action"][data-primary] button,
+    ai-notice a[data-part="action"][data-primary] {
+      border-color: Highlight;
+      background: Highlight;
+      color: HighlightText;
+    }
+  }
+
+  /* The element's own display would otherwise beat the hidden attribute. */
+  ai-notice[hidden],
+  ai-notice [hidden] {
+    display: none !important;
+  }
+}
